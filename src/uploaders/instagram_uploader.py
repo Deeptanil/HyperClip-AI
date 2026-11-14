@@ -8,6 +8,9 @@ Supports:
 import os
 import time
 import requests
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def upload_reel_meta_graph(video_url, caption, ig_user_id=None, access_token=None):
     """

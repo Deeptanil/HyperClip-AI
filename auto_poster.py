@@ -10,6 +10,10 @@ import json
 import asyncio
 import argparse
 from datetime import datetime
+from dotenv import load_dotenv
+
+# Load local environment variables from .env
+load_dotenv()
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
 

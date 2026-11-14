@@ -161,7 +161,7 @@ Keep total duration around 20-25 seconds (4 to 5 scenes max).
 Make it funny, fast-paced, relatable, and use fast storytelling slang ("Bro", "Literally", etc.).
 """
             response = client.models.generate_content(
-                model="gemini-2.0-flash",
+                model="gemini-3.8-flash",
                 contents=prompt
             )
             text = response.text.strip()

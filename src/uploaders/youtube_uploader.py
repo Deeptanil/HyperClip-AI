@@ -4,10 +4,13 @@ Runs completely free with standard OAuth2 credentials.
 """
 
 import os
+from dotenv import load_dotenv
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
+
+load_dotenv()
 
 SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
 
