@@ -8,6 +8,7 @@ from PIL import Image, ImageDraw
 from .environments import draw_environment
 from .elements import draw_vehicle, draw_nature, draw_architecture
 from .character_rig import draw_character
+from .bubbles import draw_speech_bubble
 
 WIDTH = 1080
 HEIGHT = 1920
@@ -109,7 +110,18 @@ def compose_scene_frame(scene_config, frame_idx=0, is_sfx_active=False):
             prop = primary_prop if idx == 0 else None
             draw_character(draw, char_x, char_y, c, frame_idx=frame_idx, scale=scale, active_prop=prop)
 
-    # 5. Impact Burst Lines on SFX hits
+    # 5. Dialogue & Speech Bubbles (Yash-Kavaiya / Manim Actor Style)
+    bubble_info = scene_config.get("dialogue_bubble")
+    if bubble_info:
+        bubble_text = bubble_info.get("text", "!")
+        bubble_type = bubble_info.get("type", "speech")
+        # Position bubble above primary speaker
+        speaker_x = chars[0].get("x", WIDTH // 2) + offset_x
+        mouth_xy = (speaker_x, base_cy - int(240 * scale) + int(35 * scale))
+        bubble_xy = (speaker_x - int(80 * scale), base_cy - int(380 * scale))
+        draw_speech_bubble(draw, bubble_text, mouth_xy, bubble_xy, bubble_type=bubble_type)
+
+    # 6. Impact Burst Lines on SFX hits
     if is_sfx_active:
         cx_burst = WIDTH // 2
         cy_burst = HEIGHT // 2 - 100

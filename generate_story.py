@@ -19,11 +19,12 @@ load_dotenv()
 sys.path.append(os.path.dirname(__file__))
 
 from src.story_engine.writer import generate_story_script
+from src.director.director_engine import StickmanDirector
 from src.narration.tts_engine import synthesize_story_narration
 from src.sound_fx import ensure_sfx_library
 from src.renderer.engine import render_story_video
 
-async def build_story_video(category="history", topic=None, output_path="story_output.mp4", publish=False):
+async def build_story_video(category="history", topic=None, style_mode="historical_cartoon", output_path="story_output.mp4", publish=False):
     # Ensure output directory exists
     output_dir = os.path.dirname(output_path)
     if not output_dir:
@@ -47,10 +48,15 @@ async def build_story_video(category="history", topic=None, output_path="story_o
         sfx_paths = ensure_sfx_library(assets_dir)
 
         # 2. Multi-Stage Scriptwriting & Editorial Gatekeeper
-        print(f"[2/4] Generating & reviewing script (Category: {category})...")
-        script = generate_story_script(category=category, topic=topic)
+        print(f"[2/4] Generating script & applying Director treatment (Style: {style_mode})...")
+        raw_script = generate_story_script(category=category, topic=topic)
+        
+        # Apply StickmanDirector (kaomei / Yash-Kavaiya / Gestura architecture)
+        director = StickmanDirector(style_mode=style_mode)
+        script = director.direct_treatment(raw_script)
+        
         print(f"      Title: \"{script.get('title')}\"")
-        print(f"      Scenes: {len(script.get('scenes', []))} beats")
+        print(f"      Scenes: {len(script.get('scenes', []))} directed beats")
 
         # 3. Speech Synthesis & Timestamps
         print("[3/4] Synthesizing human narration & generating karaoke subtitles...")
@@ -87,6 +93,7 @@ def main():
     parser = argparse.ArgumentParser(description="Autonomous Storytelling Video Generation Platform")
     parser.add_argument("--category", choices=["history", "mythology", "humor"], default="history")
     parser.add_argument("--topic", type=str, default=None)
+    parser.add_argument("--style", choices=["historical_cartoon", "modern_pop", "classic_bw"], default="historical_cartoon", help="Art direction style (kaomei style)")
     parser.add_argument("--output", type=str, default="story_output.mp4")
     parser.add_argument("--publish", action="store_true", help="Auto-publish to YouTube Shorts after rendering")
 
@@ -94,6 +101,7 @@ def main():
     asyncio.run(build_story_video(
         category=args.category,
         topic=args.topic,
+        style_mode=args.style,
         output_path=args.output,
         publish=args.publish
     ))
