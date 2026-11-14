@@ -1,12 +1,18 @@
-name: Twice-Daily Autonomous Shorts Publisher
+name: Intelligent Multi-Slot Shorts Publisher
 
 on:
   schedule:
-    - cron: '0 6,18 * * *'  # Runs twice daily at 06:00 UTC and 18:00 UTC (11:30 AM & 11:30 PM IST)
-  workflow_dispatch:        # Allows manual trigger button from GitHub Web UI
+    - cron: '0 3,7,10,14,16,19 * * *'  # Runs 6 times a day (IST: 8:30 AM, 12:30 PM, 3:30 PM, 7:30 PM, 9:30 PM, 12:30 AM)
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Force publish immediately (bypass IST peak window and daily quota checks)'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
-  build-and-publish:
+  check-and-publish:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -31,24 +37,28 @@ jobs:
           pip install -r requirements.txt
           pip install google-api-python-client google-auth google-auth-oauthlib requests instagrapi python-dotenv
 
-      - name: Run Pipeline & Publish Video
+      - name: Run Intelligent Pipeline
         env:
           # YouTube API Secrets
           YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
           
-          # Instagram Secrets (Direct login & Meta Graph)
+          # Instagram Secrets (Direct login, session & Meta Graph)
           INSTA_USERNAME: ${{ secrets.INSTA_USERNAME }}
           INSTA_PASSWORD: ${{ secrets.INSTA_PASSWORD }}
           INSTA_SESSION_DATA: ${{ secrets.INSTA_SESSION_DATA }}
           INSTAGRAM_ACCOUNT_ID: ${{ secrets.INSTAGRAM_ACCOUNT_ID }}
           META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
           
-          # Optional LLM Topic Generation
+          # LLM Topic Generation
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          python auto_poster.py --platforms youtube instagram
+          if [ "${{ inputs.force }}" = "true" ]; then
+            python auto_poster.py --platforms youtube instagram --force
+          else
+            python auto_poster.py --platforms youtube instagram
+          fi
 
       - name: Commit Updated Pipeline & 7-Day Posted Archive
         run: |

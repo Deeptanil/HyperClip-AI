@@ -1,9 +1,14 @@
 """
-Autonomous Storytelling Pipeline & Multi-Platform Auto Poster.
-Runs 2 times daily (every 12 hours) on GitHub Actions.
-Maintains:
-  - output/pipeline/: Staged next video ready for release.
-  - output/posted/: Archive of the last 7 days of published videos (auto-pruned).
+Autonomous Storytelling Pipeline & Intelligent Multi-Platform Auto Poster.
+Runs 6 times daily on GitHub Actions (with redundancy).
+Enforces:
+  - Max 2 posts per calendar day (IST timezone - Indian Audience).
+  - Min 5.0-hour cooldown interval between consecutive uploads.
+  - Optimal Indian viewer peak windows:
+      * Lunch Window: After 12:00 PM IST
+      * Evening Prime Time: After 7:00 PM IST
+  - Staging Queue (output/pipeline/): Always keeps the next post ready.
+  - Rolling Archive (output/posted/): Automatically deletes videos older than 7 days.
 """
 
 import os
@@ -13,12 +18,14 @@ import re
 import shutil
 import asyncio
 import argparse
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
+
 try:
     from dotenv import load_dotenv
     load_dotenv()
 except ImportError:
     pass
+
 sys.path.append(os.path.dirname(__file__))
 
 from src.uploaders.youtube_uploader import upload_short
@@ -30,6 +37,12 @@ LOG_FILE = "posted_log.json"
 OUTPUT_DIR = "output"
 PIPELINE_DIR = os.path.join(OUTPUT_DIR, "pipeline")
 POSTED_DIR = os.path.join(OUTPUT_DIR, "posted")
+
+# Indian Standard Time (UTC+5:30)
+IST = timezone(timedelta(hours=5, minutes=30))
+
+def get_now_ist():
+    return datetime.now(IST)
 
 def ensure_directories():
     os.makedirs(PIPELINE_DIR, exist_ok=True)
@@ -55,32 +68,103 @@ def save_log_entry(entry):
     with open(LOG_FILE, "w", encoding="utf-8") as f:
         json.dump(logs, f, indent=2)
 
+def check_can_post_now(force=False, min_gap_hours=5.0, max_daily_posts=2):
+    """
+    Intelligent Scheduling Gatekeeper for Indian Audience (IST):
+    1. Maximum 2 posts per day.
+    2. Minimum 5.0 hours separation between posts.
+    3. Peak window alignment:
+       - 1st post: Midday / Lunch peak (12:00 PM – 4:00 PM IST)
+       - 2nd post: Prime evening peak (7:00 PM – 11:00 PM IST)
+    """
+    now_ist = get_now_ist()
+    today_ist_str = now_ist.strftime("%Y-%m-%d")
+    current_hour_ist = now_ist.hour + (now_ist.minute / 60.0)
+
+    if force:
+        print("[*] Force mode enabled: Bypassing time window and daily quota checks.")
+        return True, "Force mode active"
+
+    logs = load_log()
+    today_posts = []
+    last_post_time = None
+
+    for entry in logs:
+        # Check if entry had a successful upload
+        uploads = entry.get("uploads", {})
+        has_success = any(
+            isinstance(val, str) and not val.lower().startswith("failed")
+            for val in uploads.values()
+        )
+        if not has_success:
+            continue
+
+        ts_str = entry.get("timestamp")
+        if not ts_str:
+            continue
+        try:
+            # Parse ISO timestamp (handling UTC/offsets)
+            dt = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+            dt_ist = dt.astimezone(IST)
+            if dt_ist.strftime("%Y-%m-%d") == today_ist_str:
+                today_posts.append(dt_ist)
+            if last_post_time is None or dt_ist > last_post_time:
+                last_post_time = dt_ist
+        except Exception:
+            pass
+
+    # Rule 1: Daily Quota Cap
+    if len(today_posts) >= max_daily_posts:
+        msg = f"Daily limit reached ({len(today_posts)}/{max_daily_posts} posted today in IST). All daily posts fulfilled."
+        return False, msg
+
+    # Rule 2: Minimum Interval Gap (Cooldown)
+    if last_post_time:
+        elapsed_hours = (now_ist - last_post_time).total_seconds() / 3600.0
+        if elapsed_hours < min_gap_hours:
+            remaining = min_gap_hours - elapsed_hours
+            msg = f"Cooldown active: Last post was {elapsed_hours:.1f}h ago. Need {remaining:.1f}h more separation."
+            return False, msg
+
+    # Rule 3: Peak Viewing Window for Indian Audience
+    if len(today_posts) == 0:
+        # First post of the day: Target lunch window (after 11:30 AM IST)
+        if current_hour_ist < 11.5:
+            msg = f"Awaiting Indian Lunch Peak Window (Current IST: {now_ist.strftime('%I:%M %p')}; window opens at 11:30 AM IST)."
+            return False, msg
+    elif len(today_posts) == 1:
+        # Second post of the day: Target evening prime time window (after 6:30 PM IST)
+        if current_hour_ist < 18.5:
+            msg = f"Awaiting Indian Evening Prime Time Window (Current IST: {now_ist.strftime('%I:%M %p')}; window opens at 06:30 PM IST)."
+            return False, msg
+
+    return True, f"Eligible for post {len(today_posts) + 1}/{max_daily_posts} (Current IST: {now_ist.strftime('%I:%M %p')})"
+
 def prune_posted_archive(days=7):
     """Deletes posted videos older than 7 days to keep repository lean."""
     ensure_directories()
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     cutoff = now - timedelta(days=days)
-    
+
     for fname in os.listdir(POSTED_DIR):
         if not fname.endswith((".mp4", ".json")):
             continue
         fpath = os.path.join(POSTED_DIR, fname)
         is_pruned = False
-        
-        # Check filename prefix YYYY-MM-DD
+
         match = re.match(r"^(\d{4}-\d{2}-\d{2})", fname)
         if match:
             try:
-                f_date = datetime.strptime(match.group(1), "%Y-%m-%d")
+                f_date = datetime.strptime(match.group(1), "%Y-%m-%d").replace(tzinfo=timezone.utc)
                 if f_date < cutoff:
                     os.remove(fpath)
                     print(f"[*] Pruned expired archive (>7 days): {fname}")
                     is_pruned = True
             except Exception:
                 pass
-                
+
         if not is_pruned:
-            mtime = datetime.utcfromtimestamp(os.path.getmtime(fpath))
+            mtime = datetime.fromtimestamp(os.path.getmtime(fpath), tz=timezone.utc)
             if mtime < cutoff:
                 os.remove(fpath)
                 print(f"[*] Pruned expired archive by mtime (>7 days): {fname}")
@@ -96,13 +180,12 @@ async def stage_new_video(category=None, topic=None, style_mode="historical_cart
     ensure_directories()
     categories = ["history", "mythology", "humor"]
     if not category:
-        # Rotate category based on log history
         logs = load_log()
         last_cat = logs[-1].get("category", "") if logs else ""
         next_cats = [c for c in categories if c != last_cat]
         category = next_cats[0] if next_cats else "history"
 
-    date_str = datetime.utcnow().strftime("%Y-%m-%d")
+    date_str = get_now_ist().strftime("%Y-%m-%d")
     temp_target = os.path.join(PIPELINE_DIR, f"temp_{date_str}.mp4")
 
     print(f"\n[*] Staging new {category} video into pipeline...")
@@ -114,17 +197,15 @@ async def stage_new_video(category=None, topic=None, style_mode="historical_cart
         publish=False
     )
 
-    # Derive short title and metadata
     from src.story_engine.vault import STORY_VAULT
     matching = [s for s in STORY_VAULT if s["category"] == category]
     story_meta = matching[0] if matching else {"title": f"{category.capitalize()} Story"}
-    
+
     title = story_meta.get("title", f"{category.capitalize()} Story")
     short_slug = slugify(title)
     final_video_name = f"{date_str}-{short_slug}.mp4"
     final_video_path = os.path.join(PIPELINE_DIR, final_video_name)
-    
-    # Avoid collision if file exists
+
     count = 1
     while os.path.exists(final_video_path):
         final_video_name = f"{date_str}-{short_slug}_{count}.mp4"
@@ -133,14 +214,13 @@ async def stage_new_video(category=None, topic=None, style_mode="historical_cart
 
     shutil.move(rendered_mp4, final_video_path)
 
-    # Write companion metadata json
     meta_json_path = os.path.splitext(final_video_path)[0] + ".json"
     tags = f"#{category} #history #animation #storytime #shorts #reels"
     meta_data = {
         "title": f"{title} 🎬",
         "category": category,
         "caption": f"{title}\n\n{story_meta.get('hook', '')}\n\n{tags}",
-        "staged_at": datetime.utcnow().isoformat()
+        "staged_at": datetime.now(timezone.utc).isoformat()
     }
     with open(meta_json_path, "w", encoding="utf-8") as f:
         json.dump(meta_data, f, indent=2)
@@ -148,15 +228,28 @@ async def stage_new_video(category=None, topic=None, style_mode="historical_cart
     print(f"[+] Successfully staged video: {final_video_path}")
     return final_video_path, meta_data
 
-async def run_pipeline(platforms=None):
+async def run_pipeline(platforms=None, force=False):
     if platforms is None:
         platforms = ["youtube", "instagram"]
 
     ensure_directories()
     prune_posted_archive(days=7)
 
+    now_ist = get_now_ist()
+    print("=" * 60)
+    print(f"⏰ AUTONOMOUS POSTING CHECK (IST: {now_ist.strftime('%Y-%m-%d %I:%M:%S %p')})")
+    print("=" * 60)
+
+    # Intelligent Gatekeeper
+    can_post, reason = check_can_post_now(force=force)
+    print(f"[*] Gatekeeper status: {reason}")
+
+    if not can_post:
+        print("[*] No action taken during this cycle. Exiting safely.")
+        return {"status": "skipped", "reason": reason}
+
     queued = get_queued_videos()
-    
+
     # If pipeline is completely empty, stage a video right now
     if not queued:
         print("[*] Pipeline empty. Staging an initial video...")
@@ -184,7 +277,7 @@ async def run_pipeline(platforms=None):
     print("=" * 60)
 
     results = {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "video": os.path.basename(video_to_post),
         "title": title,
         "category": meta.get("category", "story"),
@@ -252,13 +345,14 @@ async def run_pipeline(platforms=None):
 def main():
     parser = argparse.ArgumentParser(description="Autonomous Storytelling Pipeline & Publisher")
     parser.add_argument("--platforms", nargs="+", choices=["youtube", "instagram", "tiktok"], default=["youtube", "instagram"])
+    parser.add_argument("--force", action="store_true", help="Force publish immediately, bypassing time window & quota checks")
     parser.add_argument("--stage-only", action="store_true", help="Stage a new video in pipeline without publishing")
     args = parser.parse_args()
 
     if args.stage_only:
         asyncio.run(stage_new_video())
     else:
-        asyncio.run(run_pipeline(platforms=args.platforms))
+        asyncio.run(run_pipeline(platforms=args.platforms, force=args.force))
 
 if __name__ == "__main__":
     main()
