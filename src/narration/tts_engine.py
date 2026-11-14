@@ -1,20 +1,58 @@
 """
-Narration Engine.
-Supports:
-1. Edge-TTS (Fast, high-fidelity, zero-setup, accurate word timestamps)
-2. Kokoro-TTS (Open-weight 82M model with human breathing cadence)
+High-Naturalness Narration & Synchronized Subtitle Engine.
+Features:
+- Edge-TTS with phonetic pronunciation dictionary (fixes tricky names: Mjolnir, Thrym, Jotunheim, Freyja, Carvajal).
+- Millisecond-accurate timestamp synchronization directly locked to audio files (eliminates caption drift).
+- Impact bold karaoke subtitles in the upper safe zone (never obscures characters or scenery).
 """
 
 import os
+import re
+import json
 import asyncio
+import subprocess
 import edge_tts
 
 DEFAULT_VOICE = "en-US-ChristopherNeural"
 NARRATION_RATE = "+10%"
 
-async def generate_speech_edge(text, output_audio_path, voice=DEFAULT_VOICE, rate=NARRATION_RATE):
+# Phonetic substitutions for Edge-TTS speech (while subtitles keep original proper spelling)
+PRONUNCIATION_DICT = {
+    "Mjolnir": "Myol-neer",
+    "Thrym": "Thrim",
+    "Jotunheim": "Yoh-tun-hime",
+    "Freyja": "Fray-uh",
+    "Asgard": "Az-gard",
+    "Poisson": "Pwah-sohn",
+    "Lustig": "Loo-steeg",
+    "Crillon": "Cree-yohn",
+    "Carvajal": "Car-vah-hahl"
+}
+
+def apply_phonetics(text):
+    """Replaces tricky names with phonetically clear words for natural speech synthesis."""
+    spoken = text
+    for name, phon in PRONUNCIATION_DICT.items():
+        spoken = re.sub(rf"\b{name}\b", phon, spoken, flags=re.IGNORECASE)
+    return spoken
+
+def get_file_audio_duration(file_path):
+    """Measures exact duration of an audio file down to milliseconds via ffprobe."""
+    try:
+        cmd = [
+            "ffprobe", "-v", "error",
+            "-show_entries", "format=duration",
+            "-of", "default=noprint_wrappers=1:nokey=1",
+            file_path
+        ]
+        res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        return float(res.stdout.strip())
+    except Exception:
+        return None
+
+async def generate_speech_edge(spoken_text, output_audio_path, voice=DEFAULT_VOICE, rate=NARRATION_RATE):
     """Generates audio via edge-tts with word-level timestamps."""
-    comm = edge_tts.Communicate(text, voice, rate=rate)
+    comm = edge_tts.Communicate(spoken_text, voice, rate=rate)
     word_timestamps = []
 
     with open(output_audio_path, "wb") as f:
@@ -66,7 +104,6 @@ def generate_subtitles_ass(word_timestamps, output_ass_path, video_w=1080, video
         if chunk:
             phrases.append(chunk)
 
-    # Alignment 8 = Top-Center; Alignment 2 = Bottom-Center
     align_code = 8 if position == "top" else 2
     margin_v = 320 if position == "top" else 480
 
@@ -106,7 +143,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         f.write(ass_content)
 
 async def synthesize_story_narration(scenes, temp_dir):
-    """Synthesizes speech across all scenes, returns timed scene metadata."""
+    """Synthesizes speech across all scenes, returns timed scene metadata locked to audio durations."""
     os.makedirs(temp_dir, exist_ok=True)
     all_words = []
     timed_scenes = []
@@ -115,27 +152,40 @@ async def synthesize_story_narration(scenes, temp_dir):
 
     for idx, sc in enumerate(scenes):
         scene_audio = os.path.join(temp_dir, f"scene_{idx}.mp3")
-        words = await generate_speech_edge(sc["text"], scene_audio)
+        display_text = sc["text"]
+        spoken_text = apply_phonetics(display_text)
 
-        duration = words[-1]["end"] + 0.3 if words else 3.5
+        words = await generate_speech_edge(spoken_text, scene_audio)
+
+        exact_dur = get_file_audio_duration(scene_audio)
+        if not exact_dur and words:
+            exact_dur = words[-1]["end"]
+        elif not exact_dur:
+            exact_dur = 3.5
+
+        # Re-map phonetic spoken tokens back to original display words for subtitles
+        orig_words = display_text.strip().split()
+        if len(orig_words) == len(words):
+            for i in range(len(words)):
+                words[i]["word"] = orig_words[i]
 
         for w in words:
             all_words.append({
                 "word": w["word"],
                 "start": w["start"] + current_offset,
-                "end": w["end"] + current_offset
+                "end": min(w["end"] + current_offset, current_offset + exact_dur)
             })
 
         timed_scenes.append({
             **sc,
             "start_time": current_offset,
-            "duration": duration,
-            "end_time": current_offset + duration,
+            "duration": exact_dur,
+            "end_time": current_offset + exact_dur,
             "audio_file": scene_audio
         })
 
         scene_audios.append(scene_audio)
-        current_offset += duration
+        current_offset += exact_dur
 
     # Concatenate into full audio
     full_audio = os.path.join(temp_dir, "full_narration.mp3")
@@ -144,12 +194,11 @@ async def synthesize_story_narration(scenes, temp_dir):
         for sa in scene_audios:
             f.write(f"file '{os.path.basename(sa)}'\n")
 
-    import subprocess
     cmd = ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concat_txt, "-c", "copy", full_audio]
     subprocess.run(cmd, cwd=temp_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     # Subtitles
     ass_path = os.path.join(temp_dir, "subtitles.ass")
-    generate_subtitles_ass(all_words, ass_path)
+    generate_subtitles_ass(all_words, ass_path, position="top")
 
     return full_audio, ass_path, timed_scenes, current_offset

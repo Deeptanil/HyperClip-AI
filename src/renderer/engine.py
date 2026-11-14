@@ -39,7 +39,7 @@ def render_story_video(timed_scenes, full_audio_path, ass_path, sfx_paths, outpu
         frame_img = compose_scene_frame(active_scene, frame_idx=f, is_sfx_active=sfx_active)
         frame_img.save(os.path.join(frames_dir, f"frame_{f:05d}.png"))
 
-    # Mix Audio with timed SFX
+    # Mix Audio with timed SFX & Normalize with EBU R128 Loudnorm (eliminates volume creep)
     inputs = ["-i", full_audio_path]
     filter_complex_parts = ["[0:a]volume=1.0[a0]"]
     mix_labels = ["[a0]"]
@@ -52,12 +52,14 @@ def render_story_video(timed_scenes, full_audio_path, ass_path, sfx_paths, outpu
             delay_ms = int(sc["start_time"] * 1000)
             inputs.extend(["-i", sfx_file])
             filter_complex_parts.append(
-                f"[{input_idx}:a]adelay={delay_ms}|{delay_ms},volume=0.85[a{input_idx}]"
+                f"[{input_idx}:a]adelay={delay_ms}|{delay_ms},volume=0.75[a{input_idx}]"
             )
             mix_labels.append(f"[a{input_idx}]")
             input_idx += 1
 
-    mix_str = "".join(mix_labels) + f"amix=inputs={input_idx}:duration=first:dropout_transition=2[aout]"
+    # normalize=0 prevents amix from ramping up volume as delayed tracks finish
+    # loudnorm ensures consistent, normalized broadcast loudness throughout the entire video
+    mix_str = "".join(mix_labels) + f"amix=inputs={input_idx}:duration=first:dropout_transition=0:normalize=0[amixed];[amixed]loudnorm=I=-16:TP=-1.5:LRA=11[aout]"
     full_filter = ";".join(filter_complex_parts) + ";" + mix_str
 
     mixed_audio_path = os.path.join(temp_dir, "mixed_audio.wav")

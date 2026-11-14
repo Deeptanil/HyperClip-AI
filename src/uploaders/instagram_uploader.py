@@ -2,7 +2,7 @@
 Instagram Reels Uploader.
 Supports:
 1. Meta Graph API (Official Developer API - Abhinavkumar-07 style)
-2. Direct Upload via instagrapi (Local direct upload without needing public URL)
+2. Direct Upload via instagrapi (with session persistence & challenge code resolution)
 """
 
 import os
@@ -11,6 +11,8 @@ import requests
 from dotenv import load_dotenv
 
 load_dotenv()
+
+SESSION_FILE = "ig_session.json"
 
 def upload_reel_meta_graph(video_url, caption, ig_user_id=None, access_token=None):
     """
@@ -61,9 +63,10 @@ def upload_reel_meta_graph(video_url, caption, ig_user_id=None, access_token=Non
     print(f"[+] Published Instagram Reel ID: {reel_id}")
     return reel_id
 
-def upload_reel_direct(video_path, caption, username=None, password=None):
+def upload_reel_direct(video_path, caption, username=None, password=None, challenge_code=None):
     """
     Direct upload using instagrapi without needing a public web URL.
+    Reuses session cookies to bypass repeated 2FA/checkpoint security checks.
     """
     try:
         from instagrapi import Client
@@ -72,15 +75,68 @@ def upload_reel_direct(video_path, caption, username=None, password=None):
 
     username = username or os.getenv("INSTA_USERNAME")
     password = password or os.getenv("INSTA_PASSWORD")
+    challenge_code = challenge_code or os.getenv("INSTA_VERIFICATION_CODE", "449932")
 
     if not all([username, password]):
         raise ValueError("Missing INSTA_USERNAME or INSTA_PASSWORD.")
 
-    print(f"[*] Logging into Instagram as {username}...")
     cl = Client()
-    cl.login(username, password)
-    
+
+    def challenge_code_handler(user, choice):
+        print(f"[*] Instagram challenge requested ({choice}). Submitting verification code: {challenge_code}")
+        return str(challenge_code).strip()
+
+    cl.challenge_code_handler = challenge_code_handler
+
+    # 1. Restore session from secret or file if available
+    session_data = os.getenv("INSTA_SESSION_DATA")
+    if session_data and not os.path.exists(SESSION_FILE):
+        try:
+            with open(SESSION_FILE, "w", encoding="utf-8") as f:
+                f.write(session_data)
+            print("[+] Restored session from INSTA_SESSION_DATA environment variable")
+        except Exception:
+            pass
+
+    logged_in = False
+    if os.path.exists(SESSION_FILE):
+        try:
+            print("[*] Reusing saved session from ig_session.json...")
+            cl.load_settings(SESSION_FILE)
+            cl.login(username, password)
+            logged_in = True
+        except Exception as e:
+            print(f"[!] Session reuse failed ({e}), logging in fresh...")
+
+    # 2. Fresh login with challenge handler
+    if not logged_in:
+        print(f"[*] Logging into Instagram as {username}...")
+        cl.login(username, password)
+        try:
+            cl.dump_settings(SESSION_FILE)
+            print("[+] Saved fresh session to ig_session.json")
+        except Exception:
+            pass
+
+    # Generate custom thumbnail with FFmpeg so moviepy is not required
+    thumb_path = os.path.splitext(video_path)[0] + "_thumb.jpg"
+    try:
+        import subprocess
+        cmd_thumb = ["ffmpeg", "-y", "-ss", "00:00:02.000", "-i", video_path, "-vframes", "1", "-q:v", "2", thumb_path]
+        subprocess.run(cmd_thumb, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception as e:
+        print(f"[!] Thumbnail generation warning: {e}")
+        thumb_path = None
+
     print(f"[*] Uploading reel: {video_path}...")
-    media = cl.clip_upload(video_path, caption=caption)
-    print(f"[+] Uploaded Instagram Reel: https://instagram.com/reel/{media.code}")
+    if thumb_path and os.path.exists(thumb_path):
+        media = cl.clip_upload(video_path, caption=caption, thumbnail=thumb_path)
+        try:
+            os.remove(thumb_path)
+        except Exception:
+            pass
+    else:
+        media = cl.clip_upload(video_path, caption=caption)
+    reel_url = f"https://instagram.com/reel/{media.code}"
+    print(f"[+] Uploaded Instagram Reel: {reel_url}")
     return media.code
