@@ -14,9 +14,11 @@ import shutil
 import asyncio
 import argparse
 from datetime import datetime, timedelta
-from dotenv import load_dotenv
-
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 sys.path.append(os.path.dirname(__file__))
 
 from src.uploaders.youtube_uploader import upload_short
