@@ -81,15 +81,14 @@ def draw_character(draw, cx, cy, char_config, frame_idx=0, scale=1.0, active_pro
 
         # Draw Torso (Continuous Spine / Shirt)
         if style == "colored":
-            # Connected sporty colored athletic shirt
-            torso_poly = [
-                (neck_x - shoulder_w, neck_y),
-                (neck_x + shoulder_w, neck_y),
-                (pelvis_x + int(shoulder_w * 0.8), pelvis_y),
-                (pelvis_x - int(shoulder_w * 0.8), pelvis_y)
-            ]
-            draw.polygon(torso_poly, fill=c_fill, outline=INK_BLACK)
-            draw_capsule_line(draw, (neck_x, neck_y), (pelvis_x, pelvis_y), width=line_w - 4, color=c_fill)
+            # Sleek curved capsule body with perfectly rounded shoulders and hips
+            draw_capsule_line(draw, (neck_x, neck_y), (pelvis_x, pelvis_y), width=int(shoulder_w * 1.5) + line_w, color=INK_BLACK)
+            draw_capsule_line(draw, (neck_x, neck_y), (pelvis_x, pelvis_y), width=int(shoulder_w * 1.5), color=c_fill)
+            # Sporty white bib badge on chest with race number
+            bib_cx = (neck_x + pelvis_x) // 2
+            bib_cy = (neck_y + pelvis_y) // 2
+            draw.rounded_rectangle([bib_cx - int(24 * scale), bib_cy - int(16 * scale), bib_cx + int(24 * scale), bib_cy + int(16 * scale)], radius=int(6 * scale), fill=(255, 255, 255), outline=INK_BLACK, width=2)
+            draw.text((bib_cx - int(11 * scale), bib_cy - int(13 * scale)), "04", fill=INK_BLACK)
         else:
             draw_capsule_line(draw, (neck_x, neck_y), (pelvis_x, pelvis_y), width=line_w, color=INK_BLACK)
 
@@ -148,14 +147,16 @@ def draw_character(draw, cx, cy, char_config, frame_idx=0, scale=1.0, active_pro
     # 2. COLLAPSED ON GROUND (Continuous Lying Skeleton)
     # ========================================================
     if pose in ("collapsed", "fainted"):
-        ground_y = cy + int(180 * scale)
-        head_cx = cx - int(180 * scale)
+        # Anchor down to ground level (so character never floats in midair)
+        ground_y = 1530 if cy < 1300 else (cy + int(120 * scale))
+        head_cx = cx - int(160 * scale)
         head_cy = ground_y - int(40 * scale)
-        neck = (head_cx + head_r, head_cy)
-        pelvis = (cx + int(90 * scale), ground_y - int(30 * scale))
+        neck = (head_cx + head_r - 10, head_cy + 10)
+        pelvis = (cx + int(90 * scale), ground_y - int(25 * scale))
 
         if style == "colored":
-            draw.rounded_rectangle([neck[0] - 10, ground_y - int(60 * scale), pelvis[0] + 10, ground_y - 5], radius=12, fill=c_fill, outline=INK_BLACK, width=int(5 * scale))
+            draw_capsule_line(draw, neck, pelvis, width=int(55 * scale) + line_w, color=INK_BLACK)
+            draw_capsule_line(draw, neck, pelvis, width=int(55 * scale), color=c_fill)
         else:
             draw_capsule_line(draw, neck, pelvis, width=line_w)
 
@@ -166,34 +167,62 @@ def draw_character(draw, cx, cy, char_config, frame_idx=0, scale=1.0, active_pro
             draw.line([(ex - 10, head_cy - 10), (ex + 10, head_cy + 10)], fill=INK_BLACK, width=line_w - 4)
             draw.line([(ex + 10, head_cy - 10), (ex - 10, head_cy + 10)], fill=INK_BLACK, width=line_w - 4)
 
-        # Limbs sprawled
+        # Limbs sprawled along the ground
         draw_limb_2segment(draw, neck, (neck[0] + int(60 * scale), ground_y + int(5 * scale)), (neck[0] + int(120 * scale), ground_y + int(15 * scale)), width=line_w)
-        draw_limb_2segment(draw, pelvis, (pelvis[0] + int(80 * scale), ground_y + int(10 * scale)), (pelvis[0] + int(160 * scale), ground_y + int(15 * scale)), width=line_w)
+        draw_limb_2segment(draw, pelvis, (pelvis[0] + int(70 * scale), ground_y + int(10 * scale)), (pelvis[0] + int(150 * scale), ground_y + int(15 * scale)), width=line_w)
         return
 
     # ========================================================
-    # 3. NAPPING / SLEEPING
+    # 3. NAPPING / SLEEPING (Continuous Skeletal Rig in Ditch)
     # ========================================================
     if pose in ("napping", "sleeping"):
-        ground_y = cy + int(180 * scale)
-        head_cx = cx - int(140 * scale)
-        head_cy = ground_y - int(50 * scale)
-        neck = (head_cx + head_r, head_cy)
-        pelvis = (cx + int(80 * scale), ground_y - int(35 * scale))
+        # Anchor down to ditch ground level (never float in air)
+        ground_y = 1530 if cy < 1300 else (cy + int(70 * scale))
 
+        head_cx = cx - int(130 * scale)
+        head_cy = ground_y - int(45 * scale)
+        neck = (head_cx + head_r - 10, head_cy + 10)
+        pelvis = (cx + int(90 * scale), ground_y - int(25 * scale))
+
+        # Torso (Curved rounded capsule)
         if style == "colored":
-            draw.rounded_rectangle([neck[0] - 10, ground_y - int(60 * scale), pelvis[0], ground_y - 10], radius=14, fill=c_fill, outline=INK_BLACK, width=int(5 * scale))
+            draw_capsule_line(draw, neck, pelvis, width=int(55 * scale) + line_w, color=INK_BLACK)
+            draw_capsule_line(draw, neck, pelvis, width=int(55 * scale), color=c_fill)
         else:
             draw_capsule_line(draw, neck, pelvis, width=line_w)
 
+        # Head resting
         draw.ellipse([head_cx - head_r, head_cy - head_r, head_cx + head_r, head_cy + head_r], fill=(255, 255, 255), outline=INK_BLACK, width=line_w)
-        draw.line([(head_cx - 30, head_cy - 8), (head_cx - 8, head_cy - 8)], fill=INK_BLACK, width=line_w - 4)
-        draw.line([(head_cx + 8, head_cy - 8), (head_cx + 30, head_cy - 8)], fill=INK_BLACK, width=line_w - 4)
+        # Sleeping eyes & calm mouth
+        draw.line([(head_cx - int(26 * scale), head_cy - int(6 * scale)), (head_cx - int(8 * scale), head_cy - int(6 * scale))], fill=INK_BLACK, width=int(6 * scale))
+        draw.line([(head_cx + int(8 * scale), head_cy - int(6 * scale)), (head_cx + int(26 * scale), head_cy - int(6 * scale))], fill=INK_BLACK, width=int(6 * scale))
+        draw.arc([head_cx - int(10 * scale), head_cy + int(10 * scale), head_cx + int(14 * scale), head_cy + int(26 * scale)], 0, 180, fill=INK_BLACK, width=int(4 * scale))
 
-        # ZZZ
-        draw.text((head_cx + int(60 * scale), head_cy - int(80 * scale)), "z", fill=(56, 189, 248), stroke_width=2)
-        draw.text((head_cx + int(90 * scale), head_cy - int(130 * scale)), "Z", fill=(56, 189, 248), stroke_width=3)
-        draw.text((head_cx + int(125 * scale), head_cy - int(185 * scale)), "Z", fill=(56, 189, 248), stroke_width=4)
+        # Arms: Left arm bent under head like pillow, right arm resting on belly holding apple
+        draw_limb_2segment(draw, neck, (head_cx + int(10 * scale), head_cy + int(48 * scale)), (head_cx - int(25 * scale), head_cy + int(42 * scale)), width=line_w)
+        r_hand = (cx + int(60 * scale), ground_y - int(45 * scale))
+        draw_limb_2segment(draw, neck, (cx + int(20 * scale), ground_y - int(55 * scale)), r_hand, width=line_w)
+        if active_prop:
+            draw_prop(draw, active_prop, r_hand[0], r_hand[1], scale=scale)
+
+        # Legs: Natural sleeping curled legs rooted at pelvis
+        # Front leg (bent knee)
+        f_knee = (pelvis[0] + int(55 * scale), ground_y - int(60 * scale))
+        f_foot = (pelvis[0] + int(115 * scale), ground_y - int(12 * scale))
+        draw_limb_2segment(draw, pelvis, f_knee, f_foot, width=line_w)
+        draw_capsule_line(draw, (f_foot[0] - int(10 * scale), f_foot[1]), (f_foot[0] + int(25 * scale), f_foot[1]), width=line_w)
+
+        # Back leg (resting on ground of ditch)
+        b_knee = (pelvis[0] + int(40 * scale), ground_y - int(45 * scale))
+        b_foot = (pelvis[0] + int(95 * scale), ground_y + int(6 * scale))
+        draw_limb_2segment(draw, pelvis, b_knee, b_foot, width=line_w)
+        draw_capsule_line(draw, (b_foot[0] - int(10 * scale), b_foot[1]), (b_foot[0] + int(25 * scale), b_foot[1]), width=line_w)
+
+        # Animated drifting ZZZ
+        drift_x = int(math.sin(t * 1.5) * 8 * scale)
+        draw.text((head_cx + int(40 * scale) + drift_x, head_cy - int(65 * scale)), "z", fill=(56, 189, 248), stroke_width=2)
+        draw.text((head_cx + int(68 * scale) + drift_x * 2, head_cy - int(110 * scale)), "Z", fill=(56, 189, 248), stroke_width=3)
+        draw.text((head_cx + int(100 * scale) + drift_x * 3, head_cy - int(160 * scale)), "Z", fill=(56, 189, 248), stroke_width=4)
         return
 
     # ========================================================
@@ -204,9 +233,9 @@ def draw_character(draw, cx, cy, char_config, frame_idx=0, scale=1.0, active_pro
     pelvis = (cx, neck[1] + torso_len)
     shoulders = (cx, neck[1] + int(35 * scale))
 
-    # Torso
+    # Torso (Curved rounded capsule)
     if style == "colored":
-        draw.rounded_rectangle([cx - shoulder_w, neck[1], cx + shoulder_w, pelvis[1]], radius=int(16 * scale), fill=c_fill, outline=INK_BLACK, width=int(5 * scale))
+        draw.rounded_rectangle([cx - shoulder_w, neck[1], cx + shoulder_w, pelvis[1]], radius=int(shoulder_w), fill=c_fill, outline=INK_BLACK, width=int(5 * scale))
         draw.arc([cx - head_r, head_cy - head_r - 4, cx + head_r, head_cy], 180, 360, fill=c_fill, width=int(14 * scale))
     else:
         draw_capsule_line(draw, neck, pelvis, width=line_w)

@@ -39,6 +39,30 @@ def draw_environment(draw, env_type="default", width=WIDTH, height=HEIGHT):
         # Dirt road
         draw.polygon([(width // 2 - 80, height - 600), (width // 2 + 80, height - 600), (width, height), (0, height)], fill=(180, 83, 9))
 
+    elif env_type in ("orchard", "apple_orchard", "field"):
+        # Sunny orchard with rolling green hills and a ditch in the ground
+        # Sky
+        draw.rectangle([0, 0, width, height - 470], fill=(224, 242, 254))
+        # Sun
+        draw.ellipse([width - 240, 180, width - 100, 320], fill=(253, 224, 71))
+        # Distant rolling grass hills
+        draw.chord([-200, height - 820, 800, height - 320], 180, 360, fill=(134, 239, 172))
+        draw.chord([400, height - 780, 1400, height - 280], 180, 360, fill=(74, 222, 128))
+        # Ground
+        ground_y = height - 470  # y = 1450
+        draw.rectangle([0, ground_y, width, height], fill=(34, 197, 94))
+        draw.line([(0, ground_y), (width, ground_y)], fill=(22, 101, 52), width=8)
+
+        # The Open Ditch (Trench between trees where postman naps)
+        ditch_x1, ditch_x2 = 330, 750
+        draw.chord([ditch_x1, ground_y, ditch_x2, ground_y + 120], 0, 180, fill=(120, 53, 15), outline=(22, 101, 52), width=6)
+        draw.chord([ditch_x1 + 20, ground_y + 8, ditch_x2 - 20, ground_y + 110], 0, 180, fill=(146, 64, 14))
+
+        # Fallen apples scattered in orchard and ditch
+        for ax, ay in [(310, ground_y + 8), (380, ground_y + 65), (710, ground_y + 60), (770, ground_y + 10)]:
+            draw.ellipse([ax - 12, ay - 12, ax + 12, ay + 12], fill=(220, 38, 38), outline=(153, 27, 27), width=3)
+            draw.line([(ax, ay - 12), (ax + 4, ay - 18)], fill=(120, 53, 15), width=3)
+
     elif env_type in ("stadium", "finish_line", "podium"):
         # Olympic track
         # Blue sky

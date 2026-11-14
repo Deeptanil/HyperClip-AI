@@ -64,7 +64,7 @@ STORY_VAULT = [
                     {"type": "nature", "name": "apple_tree", "x": 860, "y": 1450, "scale": 0.95}
                 ],
                 "characters": [
-                    {"id": "postman", "style": "colored", "color": "#0284C7", "emotion": "deadpan", "pose": "napping", "x": 540}
+                    {"id": "postman", "style": "colored", "color": "#0284C7", "emotion": "deadpan", "pose": "napping", "x": 540, "y": 1450}
                 ],
                 "props": ["apple"],
                 "camera": "normal",
