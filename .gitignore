@@ -4,13 +4,15 @@ temp_build/
 temp_story_build/
 client_secrets.json
 cookies.txt
+ig_session.json
 .env
 *.png
 *.wav
 
-# Ignore loose mp4s in root or output root, but track pipeline and posted archives
+# Ignore all generated media on master branch (managed exclusively on 'content' branch)
 *.mp4
-!output/pipeline/*.mp4
-!output/posted/*.mp4
-!output/pipeline/*.json
-!output/posted/*.json
+output/*.mp4
+output/pipeline/*.mp4
+output/posted/*.mp4
+output/pipeline/*.json
+output/posted/*.json
