@@ -1,68 +1,182 @@
-# Autonomous Stickman Video Generator & Social Media Publisher
+# 🎬 Autonomous Storytelling Studio
 
-A 100% free, zero-cost, cloud-scheduled autonomous pipeline inspired by [Abhinavkumar-07/youtube-instagram-auto-uploader](https://github.com/Abhinavkumar-07/youtube-instagram-auto-uploader). It automatically generates ChainsFR-style stickman stop-motion videos and publishes them daily to **YouTube Shorts**, **Instagram Reels**, and **TikTok**.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/)
+[![Cloud: GitHub Actions](https://img.shields.io/badge/Cloud-GitHub%20Actions%20(100%25%20Free)-success.svg)](https://github.com/features/actions)
+[![Format: 9:16 Shorts/Reels](https://img.shields.io/badge/Format-9%3A16%20Vertical-FF0000.svg)](https://youtube.com/shorts)
+[![No AI Slop](https://img.shields.io/badge/Editorial-Anti--Slop%20Gatekeeper-8A2BE2.svg)](#-anti-slop-editorial-pipeline)
 
----
-
-## ⚡ Architecture
-
-```
-[GitHub Actions (Daily 2PM UTC Cron)]
-                 │
-  [1. Story & Script Generator (Gemini Flash / Built-in)]
-                 │
-  [2. Voice & Subtitles (edge-tts + Impact Karaoke ASS)]
-                 │
-  [3. 8 FPS Stop-Motion Engine (PIL + Line Boiling + Camera Zooms)]
-                 │
-  [4. SFX & FFmpeg 9:16 Video Assembly (~4s render)]
-                 │
-  [5. Multi-Platform Auto Publisher]
-       ├── YouTube Shorts (YouTube Data API v3)
-       ├── Instagram Reels (Meta Graph API / Instagrapi)
-       └── TikTok (Playwright session cookies)
-                 │
-  [6. Update & Commit posted_log.json]
-```
+A fully autonomous, AI-powered storytelling video generation platform that produces high-retention, 9:16 vertical stick-figure animated stories (60–120s) without generic AI slop, and publishes them daily to **YouTube Shorts** and **Instagram Reels** on a zero-cost cloud schedule.
 
 ---
 
-## 🚀 Running Free Forever on GitHub Actions
+## 🌟 Highlights
 
-You do not need a paid server or your own computer running. GitHub Actions provides **unlimited runner minutes for public repos** and **2,000 minutes/month for private repos** (a daily 4-second render consumes < 1 minute/day).
-
-### 1. Fork or Push this Repository to GitHub
-```bash
-git init
-git add .
-git commit -m "feat: automated stickman shorts generator"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO.git
-git push -u origin main
-```
-
-### 2. Configure GitHub Secrets
-Go to your repo: **Settings → Secrets and variables → Actions → New repository secret**:
-
-| Secret Name | Description | Where to get it |
-| :--- | :--- | :--- |
-| `YOUTUBE_CLIENT_ID` | Google OAuth Client ID | Google Cloud Console (APIs & Services) |
-| `YOUTUBE_CLIENT_SECRET`| Google OAuth Client Secret | Google Cloud Console (APIs & Services) |
-| `YOUTUBE_REFRESH_TOKEN`| Long-lived OAuth Refresh Token | Run `python tools/get_youtube_token.py <client_secrets.json>` |
-| `INSTAGRAM_ACCOUNT_ID` | Instagram Creator/Business ID | Meta for Developers / Graph API Explorer |
-| `META_ACCESS_TOKEN` | Long-lived System User Access Token | Meta for Developers Dashboard |
-| `GEMINI_API_KEY` | *(Optional)* For custom AI scripts | Google AI Studio (Free) |
+- **Anti-Slop Multi-Stage Writing**: Cold hooks, natural narrative pacing, and concrete details. Auto-rejects AI cliché words (*"delve"*, *"testament"*, *"beacon"*, *"little did they know"*, *"in conclusion"*).
+- **Procedural 2D Vector Animation Engine**:
+  - **Hierarchical Continuous Kinematics**: 10-DOF skeletal joint rotation rooted at the pelvis. Zero broken bodies, floating spines, or disconnected limbs.
+  - **Dynamic Vehicles & Architecture**: 1904 vintage touring cars, steam trains, skyscrapers, Parisian windows, stadium gates, finish banners.
+  - **Living Nature**: Fluffy apple trees with fallen fruit, pine forests, mountains, animated rolling grass hills, excavated ditches, and weather clouds.
+  - **Expressive Props & Bubbles**: Directional speech and thought bubbles with mouth-pointing vectors; props (Mjolnir, crowns, apples, briefcases, cash bags, medals).
+- **Director Art Treatment**: Multi-style production modes (`historical_cartoon`, `modern_pop`, `classic_bw`).
+- **Synchronized Audio & Subtitles**:
+  - **Zero-Drift Karaoke**: Timestamps measured directly from audio files via `ffprobe`, eliminating cumulative caption drift.
+  - **Phonetic Pronunciation Dictionary**: Automatically translates tricky proper names (*Mjolnir* $\rightarrow$ *Myol-neer*, *Thrym* $\rightarrow$ *Thrim*, *Jotunheim* $\rightarrow$ *Yoh-tun-hime*, *Carvajal* $\rightarrow$ *Car-vah-hahl*) so Edge-TTS pronounces them clearly while subtitles keep the proper spelling.
+  - **EBU R128 Loudness Normalization**: Prevents audio volume creep over time using professional broadcast loudness filters (`loudnorm`).
+  - **Top Safe-Zone Subtitles**: Bold Impact karaoke text placed in the upper third (`MarginV=320`) so it never blocks grounded characters, props, or platform UI elements.
+- **Smart Staging Pipeline & 7-Day Rolling Archive**:
+  - `output/pipeline/`: Always maintains the next post staged and ready (`YYYY-MM-DD-title.mp4`).
+  - `output/posted/`: Archives published videos for 7 days; older files are automatically pruned to keep the repository lean.
+- **Intelligent Gatekeeper (Optimized for Indian Audience - IST)**:
+  - Runs **6 times daily** on GitHub Actions to ensure failover redundancy without ever missing a posting slot.
+  - Strictly limits publishing to **2 videos per IST calendar day**.
+  - Enforces a minimum **5.0-hour cooldown** between posts.
+  - Aligns with Indian peak viewing windows:
+    - **Midday Lunch Window**: 12:30 PM – 3:30 PM IST (07:00 – 10:00 UTC)
+    - **Evening Prime Time**: 7:30 PM – 10:30 PM IST (14:00 – 17:00 UTC)
 
 ---
 
-## 💻 Local Testing & Manual Runs
+## ⚡ Architecture Flow
 
-### Generate Video Locally:
-```bash
-python main.py --output my_short.mp4
+```mermaid
+flowchart TD
+    GA["GitHub Actions (6x Daily Cron / Workflow Dispatch)"] --> Gate["Smart Gatekeeper (IST Timezone)"]
+    Gate -->|Daily Count >= 2 OR Cooldown < 5h| Skip["Sleep (0 Cost)"]
+    Gate -->|Within Lunch / Evening Peak Window| Post["Pick Video from output/pipeline/"]
+
+    subgraph Video_Generation ["Autonomous Generation Pipeline"]
+        W["Writer (Research & Anti-Slop Editor)"] --> Dir["Director Engine (Art Treatment & Camera)"]
+        Dir --> TTS["Edge-TTS (Phonetics + ffprobe Exact Timestamps)"]
+        TTS --> Kine["Kinematics Engine (Pelvis Root Rig + Elements + Props)"]
+        Kine --> FF["FFmpeg Assembler (EBU R128 Loudnorm + Top ASS Subtitles)"]
+    end
+
+    Post --> YT["YouTube Data API v3 (Shorts)"]
+    Post --> IG["Instagrapi (Reels with Session Persistence)"]
+    
+    YT --> Move["Move Video to output/posted/"]
+    IG --> Move
+    Move --> Prune["Prune output/posted/ (>7 Days Deleted)"]
+    Prune --> Staged["Ensure output/pipeline/ Has Next Video Staged"]
+    Staged --> Commit["Commit State & posted_log.json to Git [skip ci]"]
 ```
 
-### Run Full Auto-Poster Locally:
-```bash
-python auto_poster.py --platforms youtube instagram
+---
+
+## 📁 Project Structure
+
+```text
+auto-clipping/
+├── .github/workflows/
+│   └── daily_auto_post.yml      # 6x daily scheduled runner + manual dispatch
+├── output/
+│   ├── pipeline/                # Next staged videos ready to publish (tracked)
+│   └── posted/                  # Last 7 days archive of published videos (auto-pruned)
+├── src/
+│   ├── animation/
+│   │   ├── character_rig.py     # Continuous skeletal kinematics (pelvis root, capsule lines)
+│   │   ├── kinematics.py        # 10-DOF joint angle presets & smoothstep interpolation
+│   │   ├── bubbles.py           # Speech and thought bubbles with mouth-pointing vectors
+│   │   ├── elements.py          # Procedural vehicles, architecture, nature & trees
+│   │   ├── environments.py      # 9:16 vertical environments (palace, dust_road, orchard, etc.)
+│   │   ├── props.py             # Vector prop library (hammer, crown, apple, cash bag)
+│   │   └── compositor.py        # Multi-character compositor with camera zooms & shake
+│   ├── director/
+│   │   └── director_engine.py   # Director treatment & production style presets
+│   ├── narration/
+│   │   └── tts_engine.py        # Edge-TTS speech, phonetics dictionary & upper-third ASS karaoke
+│   ├── renderer/
+│   │   └── engine.py            # FFmpeg assembler with EBU R128 loudness normalization
+│   ├── story_engine/
+│   │   ├── editor.py            # Anti-slop adversarial criticism evaluator
+│   │   ├── writer.py            # Multi-stage beat planner & writer
+│   │   └── vault.py             # Verified story vault (Marathon, Thor's Wedding, Eiffel Scam)
+│   └── uploaders/
+│       ├── youtube_uploader.py  # YouTube Data API v3 client with auto-refresh OAuth
+│       ├── instagram_uploader.py# Direct Reels uploader with session reuse & checkpoint handling
+│       └── tiktok_uploader.py   # Playwright cookie-based publisher
+├── auto_poster.py               # Main CLI scheduler and intelligent gatekeeper
+├── generate_story.py            # Standalone story generation entry point
+├── posted_log.json              # Persistent audit log of all published videos
+└── requirements.txt             # Python dependencies
 ```
+
+---
+
+## 🛠️ Quickstart (Local Usage)
+
+### 1. Prerequisites
+- Python 3.11+
+- FFmpeg installed and available in your `PATH`
+
+### 2. Installation
+```bash
+git clone https://github.com/Deeptanil/auto-clipping.git
+cd auto-clipping
+pip install -r requirements.txt
+```
+
+### 3. Generate a Video Locally
+Generate a video without publishing:
+```bash
+# Generate a mythology story in modern_pop director style
+python generate_story.py --category mythology --style modern_pop --output output/thor_story.mp4
+
+# Generate a historical story in historical_cartoon style
+python generate_story.py --category history --style historical_cartoon --output output/marathon.mp4
+```
+
+### 4. Run the Intelligent Scheduler Locally
+```bash
+# Respects IST daily quota and peak window cooldowns
+python auto_poster.py
+
+# Force upload immediately (bypassing time windows for testing)
+python auto_poster.py --force
+```
+
+---
+
+## ☁️ Running 100% Free on GitHub Actions
+
+The platform runs autonomously in the cloud on GitHub Actions runners without requiring a paid VPS or server.
+
+### 1. Configure GitHub Repository Secrets
+Go to your GitHub repository: **Settings → Secrets and variables → Actions → New repository secret**:
+
+| Secret Name | Description |
+| :--- | :--- |
+| `YOUTUBE_CLIENT_ID` | Google Cloud Console OAuth Client ID |
+| `YOUTUBE_CLIENT_SECRET` | Google Cloud Console OAuth Client Secret |
+| `YOUTUBE_REFRESH_TOKEN` | YouTube OAuth2 Refresh Token (generated via `tools/get_youtube_token.py`) |
+| `INSTA_USERNAME` | Instagram Username |
+| `INSTA_PASSWORD` | Instagram Password |
+| `INSTA_SESSION_DATA` | Saved `ig_session.json` string to bypass security checkpoints |
+| `GEMINI_API_KEY` | *(Optional)* Google Gemini API key for dynamic story generation |
+
+### 2. Schedule Timing (IST Optimized)
+The workflow (`.github/workflows/daily_auto_post.yml`) evaluates 6 times a day:
+- `cron: '0 3,7,10,14,16,19 * * *'`
+- **Indian Lunch Slot**: 12:30 PM IST (with backup at 3:30 PM IST)
+- **Indian Evening Slot**: 7:30 PM IST (with backup at 9:30 PM IST)
+
+---
+
+## 💡 Acknowledgements & Credits
+
+This project stands on the shoulders of several outstanding open-source projects, architectures, and creators:
+
+- **[rahulanand1103/youtube-script-writer](https://github.com/rahulanand1103/youtube-script-writer)**: Inspiration for the multi-agent scriptwriting system, beat-sheet planning, tone controls, and adversarial editorial gatekeeper rules.
+- **[kaomei/stickman-video-director](https://github.com/kaomei/stickman-video-director)**: Concept for the Stickman Director architecture, Director vs. Autopilot modes, production locks, and multi-style art direction presets (`modern_pop`, `historical_cartoon`, `classic_bw`).
+- **[Yash-Kavaiya/manim-video-generator-actor](https://github.com/Yash-Kavaiya/manim-video-generator-actor)**: Architectural model for actor rigs, dynamic gestures, and vector speech/thought bubbles that direct their tails precisely to the speaker's mouth.
+- **[gestura-ai/stick-gen](https://github.com/gestura-ai/stick-gen)**: Inspiration for the 10-DOF skeletal rotational kinematics, Hermite smoothstep easing curves, and continuous athletic running stride.
+- **[Abhinavkumar-07/youtube-instagram-auto-uploader](https://github.com/Abhinavkumar-07/youtube-instagram-auto-uploader)**: Cloud automation architecture for scheduled multi-platform publishing via GitHub Actions.
+- **[hexgrad/kokoro](https://github.com/hexgrad/kokoro)** & **[Microsoft Edge-TTS](https://github.com/rany2/edge-tts)**: High-naturalness zero-cost voice synthesis technology powering the narration.
+- **FFmpeg & Gyan.dev**: Industrial-strength multimedia processing, subtitle burning, and EBU R128 loudness normalization.
+
+---
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE).
