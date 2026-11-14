@@ -1,8 +1,9 @@
 __pycache__/
 *.pyc
 temp_build/
+temp_story_build/
 *.mp4
-!final_stickman_short.mp4
+output/*.mp4
 assets/sfx/*.wav
 client_secrets.json
 cookies.txt

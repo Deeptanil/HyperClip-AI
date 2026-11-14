@@ -24,6 +24,14 @@ from src.sound_fx import ensure_sfx_library
 from src.renderer.engine import render_story_video
 
 async def build_story_video(category="history", topic=None, output_path="story_output.mp4", publish=False):
+    # Ensure output directory exists
+    output_dir = os.path.dirname(output_path)
+    if not output_dir:
+        output_path = os.path.join("output", output_path)
+        os.makedirs("output", exist_ok=True)
+    else:
+        os.makedirs(output_dir, exist_ok=True)
+
     temp_dir = os.path.abspath("./temp_story_build")
     assets_dir = os.path.abspath("./assets/sfx")
 

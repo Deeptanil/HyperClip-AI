@@ -44,7 +44,8 @@ async def run_pipeline(platforms=None, topic=None):
         platforms = ["youtube", "instagram", "tiktok"]
 
     timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-    video_filename = f"daily_short_{timestamp}.mp4"
+    os.makedirs("output", exist_ok=True)
+    video_filename = os.path.join("output", f"daily_short_{timestamp}.mp4")
 
     # Step 1: Generate the video
     print(f"\n==========================================")

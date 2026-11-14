@@ -18,6 +18,14 @@ from sound_fx import ensure_sfx_library
 from video_assembler import build_video
 
 async def generate_single_video(topic=None, output_path="output_stickman.mp4", provider="template", api_key=None):
+    # Ensure output directory exists
+    output_dir = os.path.dirname(output_path)
+    if not output_dir:
+        output_path = os.path.join("output", output_path)
+        os.makedirs("output", exist_ok=True)
+    else:
+        os.makedirs(output_dir, exist_ok=True)
+
     temp_dir = os.path.abspath("./temp_build")
     assets_dir = os.path.abspath("./assets/sfx")
     
