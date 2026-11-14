@@ -53,7 +53,8 @@ def generate_story_script(category=None, topic=None, api_key=None, max_revisions
     """
     api_key = api_key or os.getenv("GEMINI_API_KEY")
 
-    if api_key and (topic or category):
+    # Only call dynamic LLM if an explicit topic is provided and API key is present
+    if api_key and topic:
         try:
             from google import genai
             client = genai.Client(api_key=api_key)
