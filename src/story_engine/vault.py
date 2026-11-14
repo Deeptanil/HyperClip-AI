@@ -192,6 +192,90 @@ STORY_VAULT = [
                 "sfx": "whoosh"
             }
         ]
+    },
+    {
+        "id": "thors_wedding_dress",
+        "category": "mythology",
+        "title": "The Time Thor Had to Wear a Wedding Dress",
+        "hook": "When a giant stole Thor's magic hammer, the only way to get it back was to dress the god of thunder in a bridal gown.",
+        "scenes": [
+            {
+                "beat": "cold_hook",
+                "text": "One morning in Asgard, Thor woke up to discover that his magic hammer Mjolnir was gone. The giant king Thrym had buried it eight leagues underground and demanded goddess Freyja's hand in marriage as ransom.",
+                "environment": "palace",
+                "elements": [],
+                "characters": [
+                    {"id": "thor", "style": "colored", "color": "#DC2626", "emotion": "shocked", "pose": "hands_up", "x": 540}
+                ],
+                "props": ["hammer"],
+                "camera": "shake",
+                "sfx": "boom"
+            },
+            {
+                "beat": "absurd_setup",
+                "text": "Freyja refused so violently that the entire palace shook. So Loki came up with the only rational plan left: dress Thor in a silk wedding gown, slap a bridal veil over his glorious red beard, and pretend he's the bride.",
+                "environment": "palace",
+                "elements": [],
+                "characters": [
+                    {"id": "loki", "style": "colored", "color": "#16A34A", "emotion": "scheming", "pose": "pointing", "x": 380},
+                    {"id": "thor", "style": "colored", "color": "#DC2626", "emotion": "deadpan", "pose": "facepalm", "x": 700}
+                ],
+                "props": ["crown"],
+                "camera": "zoom_in",
+                "sfx": "pop"
+            },
+            {
+                "beat": "escalation_1",
+                "text": "At the wedding banquet in Jotunheim, the blushing bride sat down and immediately devoured an entire roasted ox, eight whole salmons, and drank three casks of mead.",
+                "environment": "banquet",
+                "elements": [],
+                "characters": [
+                    {"id": "thor", "style": "colored", "color": "#DC2626", "emotion": "talking", "pose": "eating", "x": 420},
+                    {"id": "thrym", "style": "bw", "emotion": "shocked", "pose": "hands_up", "x": 720}
+                ],
+                "props": ["bottle"],
+                "camera": "normal",
+                "sfx": "whoosh"
+            },
+            {
+                "beat": "escalation_2",
+                "text": "Thrym was suspicious, but Loki whispered: 'Freyja was so excited to marry you that she hasn't eaten for eight entire days.' Then Thrym leaned in for a kiss, saw glowing red laser eyes behind the veil, and nearly jumped through the roof.",
+                "environment": "banquet",
+                "elements": [],
+                "characters": [
+                    {"id": "loki", "style": "colored", "color": "#16A34A", "emotion": "scheming", "pose": "talking", "x": 360},
+                    {"id": "thrym", "style": "bw", "emotion": "sweating", "pose": "facepalm", "x": 720}
+                ],
+                "props": [],
+                "camera": "zoom_in",
+                "sfx": "pop"
+            },
+            {
+                "beat": "climax",
+                "text": "To seal the holy marriage, Thrym ordered Mjolnir brought out and placed on the bride's lap. Thor smiled beneath his veil, grabbed the hammer by the handle, and unleashed absolute destruction on every giant in the room.",
+                "environment": "palace",
+                "elements": [],
+                "characters": [
+                    {"id": "thor", "style": "colored", "color": "#DC2626", "emotion": "laughing", "pose": "celebrating", "x": 540}
+                ],
+                "props": ["hammer"],
+                "camera": "shake",
+                "sfx": "boom"
+            },
+            {
+                "beat": "resolution",
+                "text": "And that is how Thor saved Asgard, reclaimed his divine weapon, and established himself as the most terrifying bride in recorded history.",
+                "environment": "palace",
+                "elements": [],
+                "characters": [
+                    {"id": "thor", "style": "colored", "color": "#DC2626", "emotion": "smug", "pose": "pointing", "x": 400},
+                    {"id": "loki", "style": "colored", "color": "#16A34A", "emotion": "deadpan", "pose": "celebrating", "x": 680}
+                ],
+                "props": ["crown"],
+                "camera": "normal",
+                "sfx": "whoosh"
+            }
+        ]
     }
 ]
 

@@ -53,14 +53,22 @@ def format_ass_time(seconds):
         cs = 99
     return f"{h}:{m:02d}:{s:02d}.{cs:02d}"
 
-def generate_subtitles_ass(word_timestamps, output_ass_path, video_w=1080, video_h=1920):
-    """Generates punchy 3-word chunk karaoke subtitles styled in bold Impact."""
+def generate_subtitles_ass(word_timestamps, output_ass_path, video_w=1080, video_h=1920, position="top"):
+    """
+    Generates punchy 3-word chunk karaoke subtitles styled in bold Impact.
+    When position='top', captions are rendered in the upper-third (Alignment=8, MarginV=320)
+    so they never obstruct grounded characters, sleeping stickmen, or scenery.
+    """
     phrases = []
     chunk_size = 3
     for i in range(0, len(word_timestamps), chunk_size):
         chunk = word_timestamps[i:i + chunk_size]
         if chunk:
             phrases.append(chunk)
+
+    # Alignment 8 = Top-Center; Alignment 2 = Bottom-Center
+    align_code = 8 if position == "top" else 2
+    margin_v = 320 if position == "top" else 480
 
     ass_content = f"""[Script Info]
 Title: Storytelling Viral Subtitles
@@ -71,7 +79,7 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,Impact,80,&H00FFFFFF,&H0000FFFF,&H00000000,&H80000000,-1,0,0,0,100,100,2,0,1,10,2,2,80,80,440,1
+Style: Default,Impact,80,&H00FFFFFF,&H0000FFFF,&H00000000,&H80000000,-1,0,0,0,100,100,2,0,1,10,2,{align_code},80,80,{margin_v},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
