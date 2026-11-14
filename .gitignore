@@ -2,9 +2,15 @@ __pycache__/
 *.pyc
 temp_build/
 temp_story_build/
-*.mp4
-output/*.mp4
-assets/sfx/*.wav
 client_secrets.json
 cookies.txt
 .env
+*.png
+*.wav
+
+# Ignore loose mp4s in root or output root, but track pipeline and posted archives
+*.mp4
+!output/pipeline/*.mp4
+!output/posted/*.mp4
+!output/pipeline/*.json
+!output/posted/*.json
