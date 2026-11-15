@@ -30,15 +30,35 @@
     "streamer_tiers": {
       "tier_1": {
         "weight": 0.45,
-        "streamers": ["kaicenat", "caseoh_", "ishowspeed"]
+        "streamers": [
+          "kaicenat",
+          "caseoh_",
+          "ishowspeed"
+        ]
       },
       "tier_2": {
         "weight": 0.36,
-        "streamers": ["xqc", "clix", "jynxzi", "cinna"]
+        "streamers": [
+          "xqc",
+          "clix",
+          "jynxzi",
+          "cinna"
+        ]
       },
       "tier_3": {
         "weight": 0.19,
-        "streamers": ["darkviperau", "lord_kebun", "tgg", "technogamerz", "jasontheween", "stableronaldo", "lacy", "deansocool", "anthonyz", "burn"]
+        "streamers": [
+          "darkviperau",
+          "lord_kebun",
+          "tgg",
+          "technogamerz",
+          "jasontheween",
+          "stableronaldo",
+          "lacy",
+          "deansocool",
+          "anthonyz",
+          "burn"
+        ]
       }
     },
     "target_games": [],
@@ -52,7 +72,7 @@
     "post_peak_sec": 13,
     "max_clips_per_vod": 3,
     "min_clip_spacing_sec": 300,
-    "min_spike_sigma": 2.0,
+    "min_spike_sigma": 2,
     "min_messages_per_window": 12,
     "layout": "auto_stacked",
     "background_color": "#000000",
@@ -66,7 +86,7 @@
       "enabled": true,
       "shorts_per_day": 3,
       "hard_daily_ceiling": 3,
-      "min_gap_hours": 3.0
+      "min_gap_hours": 3
     },
     "instagram_accounts": [
       {
@@ -76,16 +96,16 @@
         "regular_per_day": 2,
         "trial_per_day": 2,
         "hard_daily_ceiling": 4,
-        "min_gap_hours": 3.0
+        "min_gap_hours": 3
       },
       {
         "slot": 2,
         "name": "Clip Page IG",
         "enabled": true,
-        "regular_per_day": 2,
+        "regular_per_day": 3,
         "trial_per_day": 2,
         "hard_daily_ceiling": 4,
-        "min_gap_hours": 3.0
+        "min_gap_hours": 3
       }
     ]
   },
@@ -98,7 +118,7 @@
   },
   "story_studio": {
     "max_daily_posts": 2,
-    "min_gap_hours": 5.0,
+    "min_gap_hours": 5,
     "instagram_account_slot": 1,
     "post_24_7": true
   }
