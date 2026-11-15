@@ -630,10 +630,12 @@
     const patEl = document.getElementById('setup-pat');
     const repoEl = document.getElementById('setup-repo');
     const branchEl = document.getElementById('setup-branch');
+    const contentBranchEl = document.getElementById('setup-content-branch');
 
     if (patEl) patEl.value = auth.pat || '';
     if (repoEl) repoEl.value = auth.repo || 'Deeptanil/HyperClip-AI';
     if (branchEl) branchEl.value = auth.branch || 'master';
+    if (contentBranchEl) contentBranchEl.value = auth.contentBranch || 'content';
 
     modal.classList.add('open');
   };
@@ -686,15 +688,52 @@
     window.closePreviewModal();
   }
 
-  function declineClip(clip) {
+  async function declineClip(clip) {
     if (!confirm(`Are you sure you want to decline and purge "${clip.title}"?`)) return;
+
+    if (auth.pat && !auth.isDemo && clip.path && clip.sha) {
+      try {
+        const headers = {
+          'Authorization': `token ${auth.pat.trim()}`,
+          'Accept': 'application/vnd.github.v3+json'
+        };
+        const cBranch = auth.contentBranch || 'content';
+
+        // Delete MP4 from GitHub
+        await fetch(`https://api.github.com/repos/${auth.repo}/contents/${clip.path}`, {
+          method: 'DELETE',
+          headers,
+          body: JSON.stringify({
+            message: `chore: purge rejected clip ${clip.filename} via dashboard`,
+            sha: clip.sha,
+            branch: cBranch
+          })
+        });
+
+        // Delete matching JSON if exists
+        if (clip.jsonPath && clip.jsonSha) {
+          await fetch(`https://api.github.com/repos/${auth.repo}/contents/${clip.jsonPath}`, {
+            method: 'DELETE',
+            headers,
+            body: JSON.stringify({
+              message: `chore: purge metadata for ${clip.filename} via dashboard`,
+              sha: clip.jsonSha,
+              branch: cBranch
+            })
+          });
+        }
+      } catch (e) {
+        console.warn('GitHub remote file deletion error:', e);
+      }
+    }
+
     pipelineClips = pipelineClips.filter(c => c.id !== clip.id);
     renderPipelineQueue();
     renderCalendar();
     window.closePreviewModal();
   }
 
-  // --- GitHub REST API Integration ---
+  // --- Real GitHub REST API Integration & Data Engine ---
   async function syncWithGitHub() {
     const statusText = document.getElementById('conn-status-text');
     const dot = document.getElementById('conn-dot');
@@ -707,25 +746,25 @@
     }
 
     try {
-      if (statusText) statusText.innerText = 'Syncing...';
+      if (statusText) statusText.innerText = 'Connecting to GitHub...';
       if (dot) dot.className = 'dot yellow';
 
-      const repoRes = await fetch(`https://api.github.com/repos/${auth.repo}`, {
-        headers: {
-          'Authorization': `Bearer ${auth.pat}`,
-          'Accept': 'application/vnd.github.v3+json'
-        }
-      });
+      const cleanPat = auth.pat.trim();
+      const headers = {
+        'Authorization': `token ${cleanPat}`,
+        'Accept': 'application/vnd.github.v3+json'
+      };
 
-      if (!repoRes.ok) throw new Error(`GitHub Repo error: ${repoRes.statusText}`);
+      // 1. Verify Repository Access
+      const repoRes = await fetch(`https://api.github.com/repos/${auth.repo}`, { headers });
+      if (!repoRes.ok) {
+        const errJson = await repoRes.json().catch(() => ({}));
+        throw new Error(errJson.message || `Repository access failed (${repoRes.status})`);
+      }
 
-      const configRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json?ref=${auth.branch}`, {
-        headers: {
-          'Authorization': `Bearer ${auth.pat}`,
-          'Accept': 'application/vnd.github.v3+json'
-        }
-      });
-
+      // 2. Fetch config.json from production branch (master)
+      const pBranch = auth.branch || 'master';
+      const configRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json?ref=${pBranch}`, { headers });
       if (configRes.ok) {
         const configData = await configRes.json();
         const contentStr = decodeURIComponent(escape(atob(configData.content)));
@@ -733,13 +772,185 @@
         applyRemoteConfig(configJson);
       }
 
+      // 3. Fetch Real Posted Audit Logs from Content Branch
+      const cBranch = auth.contentBranch || 'content';
+      let realPosted = [];
+      let totalMediaBytes = 0;
+
+      // Try posted_twitch_log.json on content branch, fallback to master
+      for (const branchAttempt of [cBranch, pBranch]) {
+        try {
+          const logRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/posted_twitch_log.json?ref=${branchAttempt}`, { headers });
+          if (logRes.ok) {
+            const logData = await logRes.json();
+            const logStr = decodeURIComponent(escape(atob(logData.content)));
+            const logEntries = JSON.parse(logStr);
+            if (Array.isArray(logEntries)) {
+              logEntries.forEach((entry, idx) => {
+                const uploads = entry.uploads || {};
+                const clips = entry.clips_used || [];
+                const cname = clips[0] || 'Published Clip';
+                const cleanTitle = cname.replace('.mp4', '').replace(/^\d{4}-\d{2}-\d{2}-/, '').replace(/_/g, ' ');
+
+                for (const [k, v] of Object.entries(uploads)) {
+                  if (typeof v === 'string' && !v.toLowerCase().startsWith('failed')) {
+                    const isIg1 = k.includes('instagram_1');
+                    const isIg2 = k.includes('instagram_2') || k.includes('instagram_');
+                    const isYt = k.includes('youtube');
+
+                    realPosted.push({
+                      id: `posted_${idx}_${k}`,
+                      title: cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1),
+                      account: isIg1 ? 'ig1' : isIg2 ? 'ig2' : 'youtube',
+                      platform: isIg1 ? 'Instagram (@solvikz)' : isIg2 ? 'Instagram (@loopablez)' : 'YouTube Shorts',
+                      date: entry.timestamp,
+                      url: v,
+                      status: 'posted',
+                      cname: cname
+                    });
+                  }
+                }
+              });
+            }
+            if (realPosted.length > 0) break;
+          }
+        } catch (e) {
+          console.warn('posted_twitch_log read attempt error:', e);
+        }
+      }
+
+      // 4. Fetch Real Staged Pipeline Clips from Content Branch
+      let realPipeline = [];
+      const pipelineCandidates = [
+        'output/stream_pipeline',
+        'output/twitch_pipeline'
+      ];
+
+      for (const folder of pipelineCandidates) {
+        try {
+          const folderRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/${folder}?ref=${cBranch}`, { headers });
+          if (folderRes.ok) {
+            const files = await folderRes.json();
+            if (Array.isArray(files)) {
+              const mp4s = files.filter(f => f.name.endsWith('.mp4'));
+              const jsons = files.filter(f => f.name.endsWith('.json'));
+
+              for (const mp4 of mp4s) {
+                totalMediaBytes += (mp4.size || 0);
+                const baseName = mp4.name.replace('.mp4', '');
+                const jsonFile = jsons.find(j => j.name === `${baseName}.json`);
+
+                let meta = {
+                  title: baseName.replace(/^\d{4}-\d{2}-\d{2}-/, '').replace(/_/g, ' '),
+                  caption: `#gaming #shorts #reels`,
+                  streamer: 'Streamer',
+                  z_score: 3.2,
+                  hype_score: 150
+                };
+
+                let jsonSha = null;
+                if (jsonFile) {
+                  totalMediaBytes += (jsonFile.size || 0);
+                  jsonSha = jsonFile.sha;
+                  try {
+                    const mRes = await fetch(jsonFile.url, { headers });
+                    if (mRes.ok) {
+                      const mData = await mRes.json();
+                      const mStr = decodeURIComponent(escape(atob(mData.content)));
+                      const parsedMeta = JSON.parse(mStr);
+                      meta = { ...meta, ...parsedMeta };
+                    }
+                  } catch (e) {
+                    console.warn('Metadata fetch error for', jsonFile.name, e);
+                  }
+                }
+
+                // Raw GitHub URL for video playback
+                const rawVideoUrl = mp4.download_url || `https://raw.githubusercontent.com/${auth.repo}/${cBranch}/${mp4.path}`;
+
+                realPipeline.push({
+                  id: `real_${baseName}`,
+                  filename: mp4.name,
+                  streamer: meta.streamer || meta.username || 'Stream Highlight',
+                  title: meta.title || baseName.replace(/_/g, ' '),
+                  caption: meta.caption || `${meta.title} #gaming #reels`,
+                  duration: meta.duration_sec ? `0:${String(meta.duration_sec).padStart(2, '0')}` : '0:35',
+                  durationSec: meta.duration_sec || 35,
+                  sigma: meta.z_score ? `${Number(meta.z_score).toFixed(1)} σ` : '3.2 σ',
+                  motion: 'Active Motion Detected',
+                  layout: 'Dual Stack 9:16',
+                  target: 'Instagram & YouTube',
+                  account: 'ig1',
+                  status: 'staged',
+                  videoUrl: rawVideoUrl,
+                  path: mp4.path,
+                  sha: mp4.sha,
+                  jsonPath: jsonFile ? jsonFile.path : null,
+                  jsonSha: jsonSha
+                });
+              }
+            }
+          }
+          if (realPipeline.length > 0) break;
+        } catch (e) {
+          console.warn('Pipeline folder fetch error for', folder, e);
+        }
+      }
+
+      // 5. Query Posted Archive Folders for Real Storage Size
+      const postedCandidates = ['output/stream_posted', 'output/twitch_posted'];
+      for (const pFolder of postedCandidates) {
+        try {
+          const pRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/${pFolder}?ref=${cBranch}`, { headers });
+          if (pRes.ok) {
+            const pFiles = await pRes.json();
+            if (Array.isArray(pFiles)) {
+              pFiles.forEach(f => { totalMediaBytes += (f.size || 0); });
+            }
+          }
+        } catch (e) {}
+      }
+
+      // 6. Bind Real Data to Dashboard State (DO NOT Fallback to Fake Demo Data)
+      pipelineClips = realPipeline;
+      postedClips = realPosted;
+
+      // Update real top stats from actual posted data
+      const now = new Date();
+      const todayStr = now.toISOString().split('T')[0];
+      const todayPosted = realPosted.filter(p => p.date && p.date.startsWith(todayStr));
+
+      const ig1Count = todayPosted.filter(p => p.account === 'ig1').length;
+      const ig2Count = todayPosted.filter(p => p.account === 'ig2').length;
+      const ytCount = todayPosted.filter(p => p.account === 'youtube').length;
+
+      const totalMb = (totalMediaBytes / (1024 * 1024)).toFixed(1);
+      const storagePct = ((totalMediaBytes / (1500 * 1024 * 1024)) * 100).toFixed(1);
+
+      const ig1ValEl = document.getElementById('ig1-stat-val');
+      const ig2ValEl = document.getElementById('ig2-stat-val');
+      const ytValEl = document.getElementById('yt-stat-val');
+      const storageValEl = document.getElementById('storage-stat-val');
+      const storageDescEl = document.getElementById('storage-stat-desc');
+
+      if (ig1ValEl) ig1ValEl.innerHTML = `${ig1Count} / ${settings.ig1Posts} <small class="text-dim-unit">today</small>`;
+      if (ig2ValEl) ig2ValEl.innerHTML = `${ig2Count} / ${settings.ig2Posts} <small class="text-dim-unit">today</small>`;
+      if (ytValEl) ytValEl.innerHTML = `${ytCount} / ${settings.ytPosts} <small class="text-dim-unit">today</small>`;
+      if (storageValEl) storageValEl.innerHTML = `${totalMb} MB <small class="text-dim-unit">/ 1500 MB</small>`;
+      if (storageDescEl) storageDescEl.innerText = `${storagePct}% used • Unposted clips protected`;
+
+      // Update Calendar & Queue with real GitHub data
+      calculateDynamicSpacing();
+      renderCalendar();
+      renderPipelineQueue();
+
       if (dot) dot.className = 'dot online';
-      if (statusText) statusText.innerText = `Connected: ${auth.repo}`;
+      if (statusText) statusText.innerText = `Connected: ${auth.repo} (${pipelineClips.length} in queue, ${postedClips.length} posted)`;
     } catch (err) {
-      console.warn('GitHub sync fallback:', err);
+      console.error('GitHub API Sync Error:', err);
       if (dot) dot.className = 'dot danger';
-      if (statusText) statusText.innerText = 'API Error (Using Cache)';
-      loadDemoData();
+      if (statusText) statusText.innerText = `Auth Error: ${err.message || 'Check Token'}`;
+      alert(`GitHub Sync Failed: ${err.message || 'Could not connect'}\n\nPlease verify that your token has 'repo' and 'workflow' scopes.`);
     }
   }
 
@@ -890,14 +1101,15 @@
       btnSavePat.addEventListener('click', () => {
         const pat = (document.getElementById('setup-pat')?.value || '').trim();
         const repo = (document.getElementById('setup-repo')?.value || '').trim();
-        const branch = (document.getElementById('setup-branch')?.value || '').trim();
+        const branch = (document.getElementById('setup-branch')?.value || 'master').trim();
+        const contentBranch = (document.getElementById('setup-content-branch')?.value || 'content').trim();
 
         if (!pat) {
           alert('Please enter a GitHub Personal Access Token or choose Explore with Demo Data.');
           return;
         }
 
-        auth = { pat, repo, branch, isDemo: false };
+        auth = { pat, repo, branch, contentBranch, isDemo: false };
         safeSetStorage(STORAGE_KEY_AUTH, auth);
         window.closeSetupModal();
         syncWithGitHub();
@@ -1037,8 +1249,11 @@
   // --- Initial Startup Execution (Race-Condition Free) ---
   function startApp() {
     initUI();
-    loadDemoData();
-    syncWithGitHub();
+    if (!auth.pat || auth.isDemo) {
+      loadDemoData();
+    } else {
+      syncWithGitHub();
+    }
   }
 
   if (document.readyState === 'loading') {
