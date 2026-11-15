@@ -2,7 +2,7 @@ name: Intelligent Multi-Slot Shorts Publisher
 
 on:
   schedule:
-    - cron: '0 3,7,10,14,16,19 * * *'  # Runs 6 times a day (IST: 8:30 AM, 12:30 PM, 3:30 PM, 7:30 PM, 9:30 PM, 12:30 AM)
+    - cron: '*/30 * * * *'  # Runs 48 times daily (every 30 minutes, 24/7 continuous pipeline)
   workflow_dispatch:
     inputs:
       force:

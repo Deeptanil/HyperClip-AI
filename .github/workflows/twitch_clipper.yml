@@ -2,8 +2,8 @@ name: HyperClip AI - Twitch Hype Clipper
 
 on:
   schedule:
-    # Runs every 30 minutes reliably on GitHub Actions scheduler
-    - cron: '*/30 * * * *'
+    # Runs every 15 minutes (96 times daily, 24/7 continuous stream monitoring & multi-slot publishing)
+    - cron: '*/15 * * * *'
   workflow_dispatch:
     inputs:
       force:
