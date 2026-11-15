@@ -71,55 +71,55 @@
     film: '<svg class="icon icon-lg" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>'
   };
 
-  // --- Demo Dataset (No Emojis) ---
+  // --- Demo Dataset (No Emojis, Real Streamer Clips) ---
   const DEMO_PIPELINE = [
     {
       id: 'clip_speed_1',
-      filename: '2026-11-15-ishowspeed_insane_reaction_dual.mp4',
+      filename: '2026-11-15-ishowspeed_gta6_heist_clutch.mp4',
       streamer: 'IShowSpeed',
-      title: 'IShowSpeed Reacts to GTA 6 Leak',
-      caption: 'Speed cannot believe this just happened live on stream. #ishowspeed #gta6 #gaming #reels #shorts',
-      duration: '0:34',
-      durationSec: 34,
+      title: 'IShowSpeed Reacts to GTA 6',
+      caption: 'Speed cannot believe this just happened live on stream! #ishowspeed #gta6 #gaming #reels #shorts',
+      duration: '0:15',
+      durationSec: 15,
       sigma: '3.8 σ',
       motion: 'Delta 18.4% (High Action)',
       layout: 'Dual Stack 9:16',
       target: 'Instagram (solvikz) & YouTube',
       account: 'ig1',
       status: 'staged',
-      videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4'
+      videoUrl: 'https://raw.githubusercontent.com/Deeptanil/HyperClip-AI/content/output/stream_pipeline/2026-11-15-ishowspeed_gta6_heist_clutch.mp4'
     },
     {
       id: 'clip_xqc_1',
-      filename: '2026-11-15-xqc_wild_debate_moment.mp4',
+      filename: '2026-11-15-xqc_among_us_nuclear_rage.mp4',
       streamer: 'xQc',
-      title: 'xQc Stunned by Viewer Question',
-      caption: 'Classic juicer moment on Just Chatting. #xqc #twitchclips #streamer #reels',
-      duration: '0:42',
-      durationSec: 42,
-      sigma: '3.1 σ',
+      title: 'xQc Nuclear Impostor Rage',
+      caption: 'Classic juicer rage moment live on stream. #xqc #twitchclips #streamer #reels #shorts',
+      duration: '0:15',
+      durationSec: 15,
+      sigma: '4.5 σ',
       motion: 'Delta 14.2% (Active)',
       layout: 'Dual Stack 9:16',
       target: 'Instagram (loopablez)',
       account: 'ig2',
       status: 'staged',
-      videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4'
+      videoUrl: 'https://raw.githubusercontent.com/Deeptanil/HyperClip-AI/content/output/stream_pipeline/2026-11-15-xqc_among_us_nuclear_rage.mp4'
     },
     {
-      id: 'clip_clix_1',
-      filename: '2026-11-15-clix_insane_fortnite_clutch.mp4',
-      streamer: 'Clix',
-      title: 'Clix 1v3 Trio CC Victory Clutch',
-      caption: 'He pulled this off with 10 HP left. #clix #fortnite #gaming #shorts',
-      duration: '0:28',
-      durationSec: 28,
+      id: 'clip_kai_1',
+      filename: '2026-11-15-kai_cenat_warzone_impossible_clutch.mp4',
+      streamer: 'Kai Cenat',
+      title: 'Kai Cenat Warzone Clutch',
+      caption: 'He pulled this off live with 10 HP left! #kaicenat #gaming #shorts #reels',
+      duration: '0:15',
+      durationSec: 15,
       sigma: '4.2 σ',
       motion: 'Delta 22.0% (Intense)',
-      layout: 'Single Gameplay 9:16',
+      layout: 'Dual Stack 9:16',
       target: 'YouTube Shorts',
       account: 'youtube',
       status: 'staged',
-      videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4'
+      videoUrl: 'https://raw.githubusercontent.com/Deeptanil/HyperClip-AI/content/output/stream_pipeline/2026-11-15-kai_cenat_warzone_impossible_clutch.mp4'
     }
   ];
 
@@ -913,7 +913,8 @@
     const player = document.getElementById('preview-player');
     if (!modal || !player) return;
 
-    player.src = clip.videoUrl;
+    player.src = clip.videoUrl || '';
+    player.load();
     const badge = document.getElementById('preview-streamer-badge');
     const title = document.getElementById('preview-modal-title');
     const caption = document.getElementById('preview-caption-edit');
