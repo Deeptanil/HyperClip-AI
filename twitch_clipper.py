@@ -468,6 +468,78 @@ def _pick_next_ig_action(acc_cfg: dict, acc_stats: dict, last_any_ig: datetime |
     return None
 
 
+def check_any_platform_can_post(
+    config: dict,
+    platforms: list = None,
+    force: bool = False,
+    ig_slot: int = None,
+    ig_kind: str = None
+) -> tuple[bool, str, list]:
+    """
+    Early gatekeeper: Checks if YouTube or any Instagram account is currently eligible
+    to post (i.e. not on cooldown and not exceeding daily ceilings).
+    Returns (can_post, reason_str, list_of_eligible_targets).
+    """
+    if platforms is None:
+        platforms = ["youtube", "instagram"]
+    if force:
+        return True, "Force mode enabled", platforms
+
+    logs = _load_json(TWITCH_LOG_FILE, [])
+    stats = _get_today_stats(logs)
+    sched = config.get("publishing_schedule", {})
+    now_ist = datetime.now(IST)
+
+    eligible = []
+    cooldown_reasons = []
+
+    # 1. YouTube Shorts check
+    yt_cfg = sched.get("youtube", {"enabled": True, "shorts_per_day": 3, "min_gap_hours": 3.0, "hard_daily_ceiling": 3})
+    if "youtube" in platforms and yt_cfg.get("enabled", True):
+        yt_count = stats["youtube"]["count"]
+        yt_ceiling = yt_cfg.get("hard_daily_ceiling", yt_cfg.get("shorts_per_day", 3))
+        last_yt = stats["youtube"]["last"]
+        min_yt_gap = float(yt_cfg.get("min_gap_hours", 3.0))
+
+        if yt_count >= yt_ceiling:
+            cooldown_reasons.append(f"YouTube hit daily cap ({yt_count}/{yt_ceiling})")
+        elif last_yt and ((now_ist - last_yt).total_seconds() / 3600.0) < min_yt_gap:
+            elapsed_h = (now_ist - last_yt).total_seconds() / 3600.0
+            remaining_m = int((min_yt_gap - elapsed_h) * 60)
+            cooldown_reasons.append(f"YouTube cooldown active ({elapsed_h:.1f}h/{min_yt_gap}h, {remaining_m}m remaining)")
+        else:
+            eligible.append("YouTube Shorts")
+
+    # 2. Instagram accounts check
+    if "instagram" in platforms:
+        cross_gap = sched.get("min_cross_account_gap_minutes", 20)
+        last_any_ig = max(
+            [t for t in (stats["ig_1"]["last"], stats["ig_2"]["last"]) if t is not None],
+            default=None,
+        )
+        ig_accounts = sched.get("instagram_accounts", [])
+        for acc_cfg in ig_accounts:
+            slot = acc_cfg.get("slot", 1)
+            if ig_slot is not None and slot != ig_slot:
+                continue
+            suffix = "" if slot == 1 else f"_{slot}"
+            if not (os.getenv(f"INSTA_USERNAME{suffix}") and os.getenv(f"INSTA_PASSWORD{suffix}")):
+                continue
+            if ig_kind in ("regular", "trial"):
+                action = ig_kind
+            else:
+                action = _pick_next_ig_action(acc_cfg, stats[f"ig_{slot}"], last_any_ig, cross_gap, force=force)
+            if action:
+                eligible.append(f"{acc_cfg.get('name', f'IG Slot {slot}')} [{action}]")
+
+    can_post = len(eligible) > 0
+    if can_post:
+        reason = f"Eligible targets ready: {', '.join(eligible)}"
+    else:
+        reason = f"All accounts on cooldown or cap reached ({'; '.join(cooldown_reasons) if cooldown_reasons else 'No accounts eligible'})"
+    return can_post, reason, eligible
+
+
 def publish_next_clip(
     config: dict,
     platforms: list = None,
@@ -477,6 +549,22 @@ def publish_next_clip(
 ) -> dict:
     if platforms is None:
         platforms = ["youtube", "instagram"]
+
+    # First check: Can any account post right now? If no, don't do anything and go back to sleep!
+    can_post, reason, eligible = check_any_platform_can_post(
+        config, platforms=platforms, force=force, ig_slot=ig_slot, ig_kind=ig_kind
+    )
+    if not can_post:
+        print("\n" + "=" * 60)
+        print(f"😴 GATEKEEPER CHECK: {reason}")
+        print("[*] No account is eligible to post right now. Going back to sleep.")
+        print("=" * 60)
+        return {"status": "skipped", "reason": reason}
+
+    print("\n" + "=" * 60)
+    print(f"🚀 GATEKEEPER APPROVED: {reason}")
+    print("[*] Proceeding with video staging, pipeline check, and publication...")
+    print("=" * 60)
 
     ensure_dirs()
     enforce_storage_limits(config)
