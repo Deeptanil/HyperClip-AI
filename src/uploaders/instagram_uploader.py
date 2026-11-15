@@ -158,18 +158,19 @@ def upload_reel_direct(video_path, caption, username=None, password=None, challe
 
     print(f"[*] Uploading reel (slot {account_slot}, trial={use_trial}): {video_path}...")
     try:
-        media = cl.clip_upload(video_path, **upload_kwargs)
-    except TypeError:
-        # Older instagrapi versions without trial kwargs
-        for k in ("trial", "trial_graduation_strategy", "show_preview_in_feed"):
-            upload_kwargs.pop(k, None)
-        media = cl.clip_upload(video_path, **upload_kwargs)
-
-    if thumb_path and os.path.exists(thumb_path):
         try:
-            os.remove(thumb_path)
-        except Exception:
-            pass
+            media = cl.clip_upload(video_path, **upload_kwargs)
+        except TypeError:
+            # Older instagrapi versions without trial kwargs
+            for k in ("trial", "trial_graduation_strategy", "show_preview_in_feed"):
+                upload_kwargs.pop(k, None)
+            media = cl.clip_upload(video_path, **upload_kwargs)
+    finally:
+        if thumb_path and os.path.exists(thumb_path):
+            try:
+                os.remove(thumb_path)
+            except Exception:
+                pass
 
     reel_url = f"https://instagram.com/reel/{media.code}"
     print(f"[+] Uploaded Instagram {'Trial ' if use_trial else ''}Reel: {reel_url}")

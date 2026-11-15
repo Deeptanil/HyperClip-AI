@@ -81,7 +81,6 @@
     "max_daily_posts": 2,
     "min_gap_hours": 5.0,
     "instagram_account_slot": 1,
-    "ist_lunch_start_hour": 11.5,
-    "ist_evening_start_hour": 18.5
+    "post_24_7": true
   }
 }

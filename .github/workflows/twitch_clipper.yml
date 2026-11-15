@@ -75,6 +75,7 @@ jobs:
           INSTA_USERNAME_2: ${{ secrets.INSTA_USERNAME_2 }}
           INSTA_PASSWORD_2: ${{ secrets.INSTA_PASSWORD_2 }}
           INSTA_SESSION_DATA_2: ${{ secrets.INSTA_SESSION_DATA_2 }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           if [ "${{ github.event.inputs.harvest_only }}" = "true" ]; then
             python twitch_clipper.py --harvest-only

@@ -64,6 +64,30 @@ def ensure_dirs():
     os.makedirs(TEMP_DIR, exist_ok=True)
 
 
+def _extract_transcript_from_ass(ass_path: str) -> str:
+    """Extracts spoken words from generated ASS karaoke file for AI hook context."""
+    if not ass_path or not os.path.exists(ass_path):
+        return ""
+    words = []
+    seen = set()
+    try:
+        with open(ass_path, "r", encoding="utf-8") as f:
+            for line in f:
+                if line.startswith("Dialogue:"):
+                    parts = line.split(",,", 1)
+                    if len(parts) < 2:
+                        continue
+                    # Extract the highlighted word inside {\c&H0000FFFF&}WORD{\c&H00FFFFFF&}
+                    m = re.search(r"\\c&H0000FFFF&\}([^\{]+)\{", parts[1])
+                    if m:
+                        w = m.group(1).strip()
+                        if w:
+                            words.append(w)
+    except Exception:
+        pass
+    return " ".join(words)[:300]
+
+
 def slugify(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", text.lower()).strip("_")[:28]
 
@@ -167,17 +191,23 @@ def harvest_clips(config: dict, max_total_new: int = 4) -> list:
                         raw_clip, ass_path, model_size=tc.get("whisper_model", "tiny.en")
                     )
 
+                transcript_text = _extract_transcript_from_ass(sub_file)
                 hook_headline = generate_hook_text(
                     streamer=target["display_name"],
                     game=target.get("game", "Stream"),
                     stream_title=target.get("title", ""),
                     sample_chat=m.get("sample_chat", []),
+                    transcript=transcript_text or None,
                 )
                 render_hook_banner(hook_headline, banner_path)
 
                 hook_slug = slugify_hook(hook_headline)
-                out_mp4 = os.path.join(TWITCH_PIPELINE_DIR, f"{date_str}-{hook_slug}.mp4")
-                out_json = os.path.join(TWITCH_PIPELINE_DIR, f"{date_str}-{hook_slug}.json")
+                base_name = f"{date_str}-{hook_slug}"
+                out_mp4 = os.path.join(TWITCH_PIPELINE_DIR, f"{base_name}.mp4")
+                if os.path.exists(out_mp4) or os.path.exists(os.path.join(TWITCH_POSTED_DIR, f"{base_name}.mp4")):
+                    base_name = f"{date_str}-{hook_slug}_{peak}"
+                    out_mp4 = os.path.join(TWITCH_PIPELINE_DIR, f"{base_name}.mp4")
+                out_json = os.path.join(TWITCH_PIPELINE_DIR, f"{base_name}.json")
 
                 frame_to_portrait(
                     raw_clip,
@@ -353,7 +383,14 @@ def publish_next_clip(config: dict, platforms: list = None, force: bool = False)
                 title = meta.get("title", cname.replace(".mp4", "").replace("_", " ").title())
                 caption = meta.get("caption", f"{title} #shorts #twitch #gaming")
                 try:
-                    yt_url = upload_short(cpath, title=title, description=caption)
+                    yt_url = upload_short(
+                        cpath,
+                        title=title,
+                        description=caption,
+                        tags=["shorts", "gaming", "gta6", "twitch", "clips"],
+                        category_id="20",
+                        title_suffix="#Shorts",
+                    )
                     results["uploads"]["youtube"] = yt_url
                     results["clips_used"].append(cname)
                 except Exception as e:

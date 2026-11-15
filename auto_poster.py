@@ -118,7 +118,7 @@ def check_can_post_now(force=False, min_gap_hours=5.0, max_daily_posts=2):
         msg = f"Daily limit reached ({len(today_posts)}/{max_daily_posts} posted today in IST). All daily posts fulfilled."
         return False, msg
 
-    # Rule 2: Minimum Interval Gap (Cooldown)
+    # Rule 2: Minimum Interval Gap (Cooldown) - posts 24/7 without regional time-of-day gating
     if last_post_time:
         elapsed_hours = (now_ist - last_post_time).total_seconds() / 3600.0
         if elapsed_hours < min_gap_hours:
@@ -126,19 +126,7 @@ def check_can_post_now(force=False, min_gap_hours=5.0, max_daily_posts=2):
             msg = f"Cooldown active: Last post was {elapsed_hours:.1f}h ago. Need {remaining:.1f}h more separation."
             return False, msg
 
-    # Rule 3: Peak Viewing Window for Indian Audience
-    if len(today_posts) == 0:
-        # First post of the day: Target lunch window (after 11:30 AM IST)
-        if current_hour_ist < 11.5:
-            msg = f"Awaiting Indian Lunch Peak Window (Current IST: {now_ist.strftime('%I:%M %p')}; window opens at 11:30 AM IST)."
-            return False, msg
-    elif len(today_posts) == 1:
-        # Second post of the day: Target evening prime time window (after 6:30 PM IST)
-        if current_hour_ist < 18.5:
-            msg = f"Awaiting Indian Evening Prime Time Window (Current IST: {now_ist.strftime('%I:%M %p')}; window opens at 06:30 PM IST)."
-            return False, msg
-
-    return True, f"Eligible for post {len(today_posts) + 1}/{max_daily_posts} (Current IST: {now_ist.strftime('%I:%M %p')})"
+    return True, f"Eligible for post {len(today_posts) + 1}/{max_daily_posts} (24/7 Global Schedule)"
 
 def prune_posted_archive(days=7):
     """Deletes posted videos older than 7 days to keep repository lean."""
