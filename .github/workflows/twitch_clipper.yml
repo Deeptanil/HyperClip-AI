@@ -113,8 +113,8 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -B content origin/content
-          mkdir -p output/twitch_pipeline output/twitch_posted
-          for p in posted_twitch_log.json clipper_state.json output/twitch_pipeline output/twitch_posted; do
+          mkdir -p output/stream_pipeline output/stream_posted
+          for p in posted_twitch_log.json clipper_state.json output/stream_pipeline output/stream_posted; do
             if [ -e "$p" ]; then
               git add -f "$p"
             fi

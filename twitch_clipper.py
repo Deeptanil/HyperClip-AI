@@ -31,8 +31,8 @@ from src.uploaders.instagram_uploader import upload_reel_direct
 CONFIG_FILE = "config.json"
 STATE_FILE = "clipper_state.json"
 TWITCH_LOG_FILE = "posted_twitch_log.json"
-TWITCH_PIPELINE_DIR = os.path.join("output", "twitch_pipeline")
-TWITCH_POSTED_DIR = os.path.join("output", "twitch_posted")
+STREAM_PIPELINE_DIR = os.path.join("output", "stream_pipeline")
+STREAM_POSTED_DIR = os.path.join("output", "stream_posted")
 TEMP_DIR = "temp_twitch"
 
 IST = timezone(timedelta(hours=5, minutes=30))
@@ -59,8 +59,8 @@ def _save_json(path: str, data):
 
 
 def ensure_dirs():
-    os.makedirs(TWITCH_PIPELINE_DIR, exist_ok=True)
-    os.makedirs(TWITCH_POSTED_DIR, exist_ok=True)
+    os.makedirs(STREAM_PIPELINE_DIR, exist_ok=True)
+    os.makedirs(STREAM_POSTED_DIR, exist_ok=True)
     os.makedirs(TEMP_DIR, exist_ok=True)
 
 
@@ -92,17 +92,17 @@ def slugify(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", text.lower()).strip("_")[:28]
 
 
-def prune_twitch_archive(days: int = 7):
+def prune_stream_archive(days: int = 7):
     ensure_dirs()
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-    for fname in os.listdir(TWITCH_POSTED_DIR):
+    for fname in os.listdir(STREAM_POSTED_DIR):
         if not fname.endswith((".mp4", ".json")):
             continue
-        fpath = os.path.join(TWITCH_POSTED_DIR, fname)
+        fpath = os.path.join(STREAM_POSTED_DIR, fname)
         mtime = datetime.fromtimestamp(os.path.getmtime(fpath), tz=timezone.utc)
         if mtime < cutoff:
             os.remove(fpath)
-            print(f"[*] Pruned expired Twitch clip (>7 days): {fname}")
+            print(f"[*] Pruned expired clip (>7 days): {fname}")
 
 
 def harvest_clips(config: dict, max_total_new: int = 4) -> list:
@@ -203,11 +203,11 @@ def harvest_clips(config: dict, max_total_new: int = 4) -> list:
 
                 hook_slug = slugify_hook(hook_headline)
                 base_name = f"{date_str}-{hook_slug}"
-                out_mp4 = os.path.join(TWITCH_PIPELINE_DIR, f"{base_name}.mp4")
-                if os.path.exists(out_mp4) or os.path.exists(os.path.join(TWITCH_POSTED_DIR, f"{base_name}.mp4")):
+                out_mp4 = os.path.join(STREAM_PIPELINE_DIR, f"{base_name}.mp4")
+                if os.path.exists(out_mp4) or os.path.exists(os.path.join(STREAM_POSTED_DIR, f"{base_name}.mp4")):
                     base_name = f"{date_str}-{hook_slug}_{peak}"
-                    out_mp4 = os.path.join(TWITCH_PIPELINE_DIR, f"{base_name}.mp4")
-                out_json = os.path.join(TWITCH_PIPELINE_DIR, f"{base_name}.json")
+                    out_mp4 = os.path.join(STREAM_PIPELINE_DIR, f"{base_name}.mp4")
+                out_json = os.path.join(STREAM_PIPELINE_DIR, f"{base_name}.json")
 
                 frame_to_portrait(
                     raw_clip,
@@ -310,22 +310,47 @@ def _get_today_stats(logs: list) -> dict:
     return stats
 
 
-def _pick_next_ig_action(acc_cfg: dict, acc_stats: dict, last_any_ig: datetime | None, cross_gap_min: int, force: bool) -> str | None:
-    """Returns 'regular', 'trial', or None for an Instagram account slot."""
+def _pick_next_ig_action(acc_cfg: dict, acc_stats: dict, last_any_ig: datetime | None, cross_gap_min: int, force: bool = False) -> str | None:
+    """
+    Returns 'regular', 'trial', or None for an Instagram account slot.
+    Enforces strict hard limits to protect accounts from shadowbans:
+    - Never exceeds hard_daily_ceiling (default 3, max 4) under ANY circumstances.
+    - Never violates cross-account gap (20 mins) or per-account cooldown (min_gap_hours).
+    """
     if not acc_cfg.get("enabled", True):
         return None
 
     now_ist = datetime.now(IST)
-    if not force:
-        if last_any_ig and ((now_ist - last_any_ig).total_seconds() / 60.0) < cross_gap_min:
-            return None
-        last_self = acc_stats["last"]
-        if last_self and ((now_ist - last_self).total_seconds() / 3600.0) < acc_cfg.get("min_gap_hours", 3.0):
+    reg_count = acc_stats.get("regular", 0)
+    trial_count = acc_stats.get("trial", 0)
+    total_today = reg_count + trial_count
+    hard_ceiling = acc_cfg.get("hard_daily_ceiling", acc_cfg.get("regular_per_day", 2) + acc_cfg.get("trial_per_day", 2))
+
+    # HARD CEILING: Under no condition can an account exceed this ceiling in 24 hours
+    if total_today >= hard_ceiling:
+        print(f"[-] Hard daily ceiling reached for {acc_cfg.get('name', 'IG')} ({total_today}/{hard_ceiling} today). Refusing to post.")
+        return None
+
+    # MINIMUM SPACING COOLDOWN: Never post within min_gap_hours of previous post on same account
+    last_self = acc_stats.get("last")
+    min_gap_h = float(acc_cfg.get("min_gap_hours", 3.0))
+    if last_self:
+        elapsed_self_h = (now_ist - last_self).total_seconds() / 3600.0
+        if elapsed_self_h < min_gap_h:
+            remaining_m = int((min_gap_h - elapsed_self_h) * 60)
+            print(f"[-] Spacing cooldown active for {acc_cfg.get('name', 'IG')}: {elapsed_self_h:.1f}h since last post. Must wait {remaining_m}m.")
             return None
 
-    if acc_stats["regular"] < acc_cfg.get("regular_per_day", 2):
+    # CROSS-ACCOUNT SAFEGUARD: Minimum separation between different accounts from same IP
+    if last_any_ig:
+        elapsed_cross_m = (now_ist - last_any_ig).total_seconds() / 60.0
+        if elapsed_cross_m < cross_gap_min:
+            print(f"[-] Cross-account cooldown active: {elapsed_cross_m:.1f}m since last IG upload. Must wait {cross_gap_min - int(elapsed_cross_m)}m.")
+            return None
+
+    if reg_count < acc_cfg.get("regular_per_day", 2):
         return "regular"
-    if acc_stats["trial"] < acc_cfg.get("trial_per_day", 2):
+    if trial_count < acc_cfg.get("trial_per_day", 2):
         return "trial"
     return None
 
@@ -341,13 +366,13 @@ def publish_next_clip(
         platforms = ["youtube", "instagram"]
 
     ensure_dirs()
-    prune_twitch_archive(days=7)
+    prune_stream_archive(days=7)
 
-    queued = sorted([f for f in os.listdir(TWITCH_PIPELINE_DIR) if f.endswith(".mp4")])
+    queued = sorted([f for f in os.listdir(STREAM_PIPELINE_DIR) if f.endswith(".mp4")])
     if len(queued) < 4:
         print("[*] Harvesting fresh hype clips to keep multi-account queue stocked...")
         harvest_clips(config, max_total_new=4)
-        queued = sorted([f for f in os.listdir(TWITCH_PIPELINE_DIR) if f.endswith(".mp4")])
+        queued = sorted([f for f in os.listdir(STREAM_PIPELINE_DIR) if f.endswith(".mp4")])
 
     if not queued:
         return {"status": "empty", "reason": "No clips found in pipeline or live streams."}
@@ -371,17 +396,28 @@ def publish_next_clip(
             return (None, None, None), {}
         cname = queued[clip_idx]
         clip_idx += 1
-        cpath = os.path.join(TWITCH_PIPELINE_DIR, cname)
+        cpath = os.path.join(STREAM_PIPELINE_DIR, cname)
         mpath = os.path.splitext(cpath)[0] + ".json"
         return (cname, cpath, mpath), _load_json(mpath, {})
 
     # 1. YouTube Shorts
-    yt_cfg = sched.get("youtube", {"enabled": True, "shorts_per_day": 3, "min_gap_hours": 3.0})
+    yt_cfg = sched.get("youtube", {"enabled": True, "shorts_per_day": 3, "min_gap_hours": 3.0, "hard_daily_ceiling": 3})
     if "youtube" in platforms and yt_cfg.get("enabled", True):
-        yt_ok = force or (
-            stats["youtube"]["count"] < yt_cfg.get("shorts_per_day", 3)
-            and (stats["youtube"]["last"] is None or (now_ist - stats["youtube"]["last"]).total_seconds() / 3600.0 >= yt_cfg.get("min_gap_hours", 3.0))
-        )
+        yt_count = stats["youtube"]["count"]
+        yt_ceiling = yt_cfg.get("hard_daily_ceiling", yt_cfg.get("shorts_per_day", 3))
+        last_yt = stats["youtube"]["last"]
+        min_yt_gap = float(yt_cfg.get("min_gap_hours", 3.0))
+
+        if yt_count >= yt_ceiling:
+            print(f"[-] Hard daily ceiling reached for YouTube ({yt_count}/{yt_ceiling} today). Refusing to post.")
+            yt_ok = False
+        elif last_yt and ((now_ist - last_yt).total_seconds() / 3600.0) < min_yt_gap:
+            elapsed_yt_h = (now_ist - last_yt).total_seconds() / 3600.0
+            remaining_m = int((min_yt_gap - elapsed_yt_h) * 60)
+            print(f"[-] YouTube cooldown active: {elapsed_yt_h:.1f}h since last Short. Must wait {remaining_m}m.")
+            yt_ok = False
+        else:
+            yt_ok = True
         if yt_ok:
             clip_info, meta = _next_clip()
             if clip_info[0]:
@@ -446,13 +482,13 @@ def publish_next_clip(
         logs.append(results)
         _save_json(TWITCH_LOG_FILE, logs)
         for cname in set(results["clips_used"]):
-            src_mp4 = os.path.join(TWITCH_PIPELINE_DIR, cname)
+            src_mp4 = os.path.join(STREAM_PIPELINE_DIR, cname)
             src_json = os.path.splitext(src_mp4)[0] + ".json"
             if os.path.exists(src_mp4):
-                shutil.move(src_mp4, os.path.join(TWITCH_POSTED_DIR, cname))
+                shutil.move(src_mp4, os.path.join(STREAM_POSTED_DIR, cname))
             if os.path.exists(src_json):
-                shutil.move(src_json, os.path.join(TWITCH_POSTED_DIR, os.path.basename(src_json)))
-        print(f"[+] Archived {len(set(results['clips_used']))} posted clip(s) to {TWITCH_POSTED_DIR}")
+                shutil.move(src_json, os.path.join(STREAM_POSTED_DIR, os.path.basename(src_json)))
+        print(f"[+] Archived {len(set(results['clips_used']))} posted clip(s) to {STREAM_POSTED_DIR}")
     else:
         print("[*] No eligible publishing slots right now (cooldown/daily cap active).")
 

@@ -18,6 +18,12 @@ HYPE_PATTERNS = re.compile(
     re.IGNORECASE,
 )
 
+OUTRO_PATTERNS = re.compile(
+    r"\b(bye+|goodnight|cya|see ya|gn|thanks for watching|thanks for stream|stream ending|"
+    r"outro|raid|raiding|ending stream|peace out|cya guys|signing off|until next time)\b",
+    re.IGNORECASE,
+)
+
 
 def detect_hype_moments(
     chat_json_path: str,
@@ -30,13 +36,13 @@ def detect_hype_moments(
     bucket_sec: int = 5,
     viewers: int = 0,
     intro_skip_sec: int = 480,
+    outro_skip_sec: int = 360,
 ) -> list:
     """
     Parses chat JSON and returns top distinct highlight moments sorted by score.
-    - Cuts out stream starting screens via `intro_skip_sec` (auto-scaled for shorter VODs).
-    - Scales chat velocity threshold dynamically based on live `viewers` count
-      (or stream baseline velocity if `viewers == 0`) so mega-chats and mid-size
-      creators are both judged fairly.
+    - Strictly filters out intro screens (`intro_skip_sec`) and outro screens (`outro_skip_sec`).
+    - Excludes chat spam windows dominated by goodbye/outro emotes or messages.
+    - Uses mid-stream chat baseline velocity to detect true gameplay/reaction spikes.
     """
     with open(chat_json_path, "r", encoding="utf-8") as f:
         data = json.load(f)
@@ -65,40 +71,60 @@ def detect_hype_moments(
 
         b_idx = int(offset // bucket_sec)
         hype_hits = len(HYPE_PATTERNS.findall(body))
+        outro_hits = len(OUTRO_PATTERNS.findall(body))
         weight = 1.0 + min(hype_hits, 3) * 0.75
 
         buckets[b_idx]["count"] += 1
         buckets[b_idx]["score"] += weight
+        buckets[b_idx]["outro_count"] = buckets[b_idx].get("outro_count", 0) + outro_hits
         if len(buckets[b_idx]["texts"]) < 6:
             buckets[b_idx]["texts"].append(body)
 
-    if max_offset < 30 or not buckets:
+    if max_offset < 60 or not buckets:
         return []
 
-    # Cut out "Stream Starting Soon" / intro screens:
-    # Full streams (>= 20m) skip `intro_skip_sec` (default 8 min); shorter VODs skip 15% (min 90s).
-    effective_intro_skip = intro_skip_sec if max_offset >= 1200 else min(intro_skip_sec, max(90, int(max_offset * 0.15)))
+    # Filter out start of stream (intro) and end of stream (outro):
+    # Full streams (>= 20m): skip first intro_skip_sec (default 8m) and last outro_skip_sec (default 6m)
+    # Shorter VODs: skip 15% from start and 15% from end
+    if max_offset >= 1200:
+        effective_intro_skip = intro_skip_sec
+        effective_outro_cutoff = max(effective_intro_skip + 120, max_offset - outro_skip_sec)
+    else:
+        pad = max(60, int(max_offset * 0.15))
+        effective_intro_skip = pad
+        effective_outro_cutoff = max(pad + 60, max_offset - pad)
+
     intro_bucket_cutoff = int(effective_intro_skip // bucket_sec)
+    outro_bucket_cutoff = int(effective_outro_cutoff // bucket_sec)
 
     num_buckets = int(max_offset // bucket_sec) + 1
     # 3-bucket (15-second) rolling window
     rolling_scores = []
     rolling_counts = []
+    rolling_outro_counts = []
     for i in range(num_buckets):
         s = sum(buckets[j]["score"] for j in range(max(0, i - 1), min(num_buckets, i + 2)))
         cnt = sum(buckets[j]["count"] for j in range(max(0, i - 1), min(num_buckets, i + 2)))
+        out_cnt = sum(buckets[j].get("outro_count", 0) for j in range(max(0, i - 1), min(num_buckets, i + 2)))
         rolling_scores.append(s)
         rolling_counts.append(cnt)
+        rolling_outro_counts.append(out_cnt)
 
-    # Compute baseline strictly from post-intro active windows
-    post_intro_scores = [rolling_scores[i] for i in range(intro_bucket_cutoff, num_buckets) if rolling_scores[i] > 0]
-    post_intro_counts = [rolling_counts[i] for i in range(intro_bucket_cutoff, num_buckets) if rolling_counts[i] > 0]
-    if len(post_intro_scores) < 5:
+    # Compute baseline strictly from mid-stream active windows (excluding both intro and outro)
+    mid_stream_scores = [
+        rolling_scores[i] for i in range(intro_bucket_cutoff, min(outro_bucket_cutoff, num_buckets))
+        if rolling_scores[i] > 0
+    ]
+    mid_stream_counts = [
+        rolling_counts[i] for i in range(intro_bucket_cutoff, min(outro_bucket_cutoff, num_buckets))
+        if rolling_counts[i] > 0
+    ]
+    if len(mid_stream_scores) < 5:
         return []
 
-    mean_score = sum(post_intro_scores) / len(post_intro_scores)
-    mean_count = sum(post_intro_counts) / len(post_intro_counts)
-    variance = sum((s - mean_score) ** 2 for s in post_intro_scores) / len(post_intro_scores)
+    mean_score = sum(mid_stream_scores) / len(mid_stream_scores)
+    mean_count = sum(mid_stream_counts) / len(mid_stream_counts)
+    variance = sum((s - mean_score) ** 2 for s in mid_stream_scores) / len(mid_stream_scores)
     std_score = math.sqrt(variance)
 
     # Scale minimum messages per 15s window by viewer count (or baseline chat speed)
@@ -115,15 +141,21 @@ def detect_hype_moments(
 
     threshold = mean_score + (min_spike_sigma * std_score)
 
-    # Collect candidate peaks (local maxima above threshold and viewer-scaled message count)
+    # Collect candidate peaks strictly within the mid-stream range
     candidates = []
-    for i in range(max(1, intro_bucket_cutoff), num_buckets - 1):
+    for i in range(max(1, intro_bucket_cutoff), min(outro_bucket_cutoff, num_buckets - 1)):
         s = rolling_scores[i]
         cnt = rolling_counts[i]
+        out_cnt = rolling_outro_counts[i]
+
+        # Ignore outro/goodbye spam spikes (e.g. chat spamming bye/gg/cya/raid)
+        if cnt > 0 and (out_cnt / float(cnt)) > 0.20:
+            continue
+
         if s >= threshold and cnt >= effective_min_msgs:
             if s >= rolling_scores[i - 1] and s >= rolling_scores[i + 1]:
                 peak_sec = i * bucket_sec + (bucket_sec // 2)
-                if peak_sec < effective_intro_skip:
+                if peak_sec < effective_intro_skip or peak_sec > effective_outro_cutoff:
                     continue
                 z_score = (s - mean_score) / std_score if std_score > 0 else 0.0
                 sample_msgs = buckets[i]["texts"] or buckets[max(0, i - 1)]["texts"]
