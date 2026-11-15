@@ -158,9 +158,41 @@ def prune_posted_archive(days=7):
                 print(f"[*] Pruned expired archive by mtime (>7 days): {fname}")
 
 def get_queued_videos():
-    """Returns sorted list of videos waiting in output/pipeline/."""
+    """Returns sorted list of videos waiting in output/pipeline/ by date (FIFO, never alphabetically)."""
     ensure_directories()
-    files = sorted([f for f in os.listdir(PIPELINE_DIR) if f.endswith(".mp4")])
+    files = [f for f in os.listdir(PIPELINE_DIR) if f.endswith(".mp4")]
+
+    def _file_sort_key(fname):
+        fpath = os.path.join(PIPELINE_DIR, fname)
+        mpath = os.path.splitext(fpath)[0] + ".json"
+        priority = 1
+        ts_val = 0.0
+        if os.path.exists(mpath):
+            try:
+                with open(mpath, "r", encoding="utf-8") as f:
+                    meta = json.load(f)
+                status = meta.get("approval_status", meta.get("status", "pending"))
+                priority = 0 if status == "approved" else 2 if status == "denied" else 1
+                raw_ts = meta.get("timestamp") or meta.get("staged_at") or meta.get("created_at")
+                if raw_ts:
+                    ts_val = datetime.fromisoformat(str(raw_ts)).timestamp()
+            except Exception:
+                pass
+        if ts_val <= 0:
+            m = re.match(r"^(\d{4}-\d{2}-\d{2})", fname)
+            if m:
+                try:
+                    ts_val = datetime.strptime(m.group(1), "%Y-%m-%d").timestamp()
+                except Exception:
+                    pass
+        if ts_val <= 0:
+            try:
+                ts_val = os.path.getmtime(fpath)
+            except Exception:
+                ts_val = 0.0
+        return (priority, ts_val)
+
+    files.sort(key=_file_sort_key)
     return [os.path.join(PIPELINE_DIR, f) for f in files]
 
 async def stage_new_video(category=None, topic=None, style_mode="historical_cartoon"):

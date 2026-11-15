@@ -570,15 +570,35 @@ def publish_next_clip(
     enforce_storage_limits(config)
 
     def _clip_sort_key(cname):
+        cpath = os.path.join(STREAM_PIPELINE_DIR, cname)
         mpath = os.path.join(STREAM_PIPELINE_DIR, os.path.splitext(cname)[0] + ".json")
         meta = _load_json(mpath, {})
         # Approved clips come first (0), pending clips come second (1), denied come last (2)
         status = meta.get("approval_status", meta.get("status", "pending"))
-        if status == "approved":
-            return (0, cname)
-        elif status == "denied":
-            return (2, cname)
-        return (1, cname)
+        priority = 0 if status == "approved" else 2 if status == "denied" else 1
+
+        # Never sort alphabetically: sort by date/timestamp (FIFO)
+        raw_ts = meta.get("timestamp") or meta.get("staged_at") or meta.get("created_at")
+        ts_val = 0.0
+        if raw_ts:
+            try:
+                ts_val = datetime.fromisoformat(str(raw_ts)).timestamp()
+            except Exception:
+                pass
+        if ts_val <= 0:
+            m = re.match(r"^(\d{4}-\d{2}-\d{2})", cname)
+            if m:
+                try:
+                    ts_val = datetime.strptime(m.group(1), "%Y-%m-%d").timestamp()
+                except Exception:
+                    pass
+        if ts_val <= 0:
+            try:
+                ts_val = os.path.getmtime(cpath)
+            except Exception:
+                ts_val = 0.0
+
+        return (priority, ts_val)
 
     queued = sorted([f for f in os.listdir(STREAM_PIPELINE_DIR) if f.endswith(".mp4")], key=_clip_sort_key)
 

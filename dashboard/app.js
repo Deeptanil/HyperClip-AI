@@ -1388,6 +1388,7 @@
                   isTrial: isTrial,
                   status: 'staged',
                   approval_status: meta.approval_status || meta.status || 'pending',
+                  timestamp: meta.timestamp || meta.staged_at || meta.created_at || null,
                   videoUrl: rawVideoUrl,
                   path: mp4.path,
                   sha: mp4.sha,
@@ -1416,6 +1417,29 @@
           }
         } catch (e) {}
       }
+
+      // Sort realPipeline: Approved first, pending second, denied last.
+      // Within each status, sort chronologically by date/timestamp (FIFO, never alphabetically).
+      realPipeline.sort((a, b) => {
+        const getPrio = (c) => (c.approval_status === 'approved' ? 0 : c.approval_status === 'denied' ? 2 : 1);
+        const prioA = getPrio(a);
+        const prioB = getPrio(b);
+        if (prioA !== prioB) return prioA - prioB;
+
+        const getTs = (c) => {
+          if (c.timestamp) {
+            const t = new Date(c.timestamp).getTime();
+            if (!isNaN(t)) return t;
+          }
+          const m = (c.filename || '').match(/^(\d{4}-\d{2}-\d{2})/);
+          if (m) {
+            const t = new Date(m[1]).getTime();
+            if (!isNaN(t)) return t;
+          }
+          return 0;
+        };
+        return getTs(a) - getTs(b);
+      });
 
       // 6. Bind Real Data to Dashboard State (DO NOT Fallback to Fake Demo Data)
       pipelineClips = realPipeline;
