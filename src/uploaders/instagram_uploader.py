@@ -164,7 +164,17 @@ def upload_reel_direct(video_path, caption, username=None, password=None, challe
             # Older instagrapi versions without trial kwargs
             for k in ("trial", "trial_graduation_strategy", "show_preview_in_feed"):
                 upload_kwargs.pop(k, None)
+            use_trial = False
             media = cl.clip_upload(video_path, **upload_kwargs)
+        except Exception as trial_err:
+            if use_trial and ("trial" in str(trial_err).lower() or "eligible" in str(trial_err).lower()):
+                print(f"[!] Trial Reel rejected by Instagram ({trial_err}); falling back to Regular Reel...")
+                for k in ("trial", "trial_graduation_strategy", "show_preview_in_feed"):
+                    upload_kwargs.pop(k, None)
+                use_trial = False
+                media = cl.clip_upload(video_path, **upload_kwargs)
+            else:
+                raise
     finally:
         if thumb_path and os.path.exists(thumb_path):
             try:

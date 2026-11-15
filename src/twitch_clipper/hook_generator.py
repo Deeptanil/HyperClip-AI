@@ -66,7 +66,7 @@ RULES:
 - Example: CLIX CLUTCHES WITH 1 HP 🤯
 """
             resp = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-3.8-flash",
                 contents=prompt,
                 config=types.GenerateContentConfig(temperature=0.7, max_output_tokens=30)
             )
