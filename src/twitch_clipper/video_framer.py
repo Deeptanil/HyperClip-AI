@@ -94,9 +94,9 @@ def detect_facecam_region(video_path: str, width: int, height: int) -> dict | No
     if len(hits) < 2:
         return None
 
-    # Standard 16:9 corner webcam box (~26% width, ~32% height) anchored to that corner
-    cam_w = int(width * 0.26)
-    cam_h = int(height * 0.32)
+    # Standard OBS corner webcam box (~21.5% width, ~28% height) anchored to that corner
+    cam_w = int(width * 0.215)
+    cam_h = int(height * 0.28)
     # Ensure even dimensions
     cam_w -= cam_w % 2
     cam_h -= cam_h % 2

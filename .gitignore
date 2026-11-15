@@ -19,3 +19,7 @@ output/pipeline/*.mp4
 output/posted/*.mp4
 output/pipeline/*.json
 output/posted/*.json
+output/twitch_pipeline/
+output/twitch_posted/
+posted_twitch_log.json
+clipper_state.json
