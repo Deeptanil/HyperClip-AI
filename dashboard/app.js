@@ -1497,7 +1497,7 @@
 
     const ig2 = igAccounts.find(a => a.slot === 2);
     if (ig2) {
-      settings.ig2Posts = ig2.regular_per_day + (ig2.trial_per_day || 0);
+      settings.ig2Posts = ig2.regular_per_day || 3;
       const s2 = document.getElementById('slider-ig2');
       const v2 = document.getElementById('val-ig2');
       if (s2) s2.value = settings.ig2Posts;
@@ -1845,6 +1845,7 @@
                 const acc2 = cfg.publishing_schedule.instagram_accounts.find(a => a.slot === 2);
                 if (acc2) {
                   acc2.regular_per_day = settings.ig2Posts;
+                  acc2.trial_per_day = 0;
                   acc2.hard_daily_ceiling = Math.max(acc2.hard_daily_ceiling || 4, settings.ig2Posts);
                 }
               }

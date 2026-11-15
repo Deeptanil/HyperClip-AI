@@ -103,7 +103,7 @@
         "name": "Clip Page IG",
         "enabled": true,
         "regular_per_day": 3,
-        "trial_per_day": 2,
+        "trial_per_day": 0,
         "hard_daily_ceiling": 4,
         "min_gap_hours": 3
       }
