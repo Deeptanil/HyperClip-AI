@@ -963,6 +963,31 @@ body {
   gap: 16px;
 }
 
+.setting-sub-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 14px;
+  margin-left: 12px;
+  background: var(--bg-elevated);
+  border-left: 3px solid var(--yellow);
+  border-radius: var(--radius-sm);
+}
+
+.setting-sub-row .setting-label {
+  font-size: 12px;
+  color: var(--yellow);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.setting-sub-row .setting-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
 .setting-info {
   display: flex;
   flex-direction: column;

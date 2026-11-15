@@ -39,12 +39,17 @@
 
   let settings = safeGetStorage(STORAGE_KEY_SETTINGS, {
     ig1Posts: 3,
+    ig1TrialPosts: 2,
     ig2Posts: 3,
     ytPosts: 3,
     hypeMode: false,
     streamYield: 3,
     clipSpacing: 300
   });
+
+  if (typeof settings.ig1TrialPosts === 'undefined') {
+    settings.ig1TrialPosts = Math.min(2, settings.ig1Posts || 3);
+  }
 
   let activeTab = 'calendar';
   let activeCalView = 'week'; // 'day', 'week', 'month'
@@ -159,8 +164,10 @@
 
     const summaryEl = document.getElementById('spacing-summary-text');
     if (summaryEl) {
+      const trial1 = settings.ig1TrialPosts || 0;
+      const reg1 = Math.max(0, settings.ig1Posts - trial1);
       summaryEl.innerHTML = `
-        <strong>Dynamic Spacing Plan:</strong> ${totalIg} Instagram Reels / day (${settings.ig1Posts} @solvikz, ${settings.ig2Posts} @loopablez) + ${settings.ytPosts} YouTube Shorts.<br>
+        <strong>Dynamic Spacing Plan:</strong> ${totalIg} Instagram Reels / day (${settings.ig1Posts} @solvikz [${trial1} trial, ${reg1} standard] + ${settings.ig2Posts} @loopablez) + ${settings.ytPosts} YouTube Shorts.<br>
         • <strong>Target Interval:</strong> 1 Reel every <strong>${intervalHours.toFixed(1)} hours (${intervalMins} mins)</strong> alternating accounts.<br>
         • <strong>Per-Account Gap:</strong> ≥ <strong>${(intervalHours * 2).toFixed(1)} hours</strong> between posts on the same account (Safe: threshold is ${minPerAccountHours}h).<br>
         • <strong>Cross-Account Buffer:</strong> ≥ <strong>${minCrossAccountMins} minutes</strong> separation between uploads to prevent same-IP flag.<br>
@@ -954,17 +961,40 @@
     }
   }
 
+  function updateTrialDesc() {
+    const descEl = document.getElementById('desc-ig1-trial');
+    if (descEl) {
+      const total = settings.ig1Posts || 3;
+      const trial = typeof settings.ig1TrialPosts !== 'undefined' ? settings.ig1TrialPosts : 2;
+      const reg = Math.max(0, total - trial);
+      descEl.innerText = `${trial} of ${total} posts will test with non-followers (${reg} standard reel${reg === 1 ? '' : 's'})`;
+    }
+  }
+
   function applyRemoteConfig(cfg) {
     const sched = cfg.publishing_schedule || {};
     const igAccounts = sched.instagram_accounts || [];
 
     const ig1 = igAccounts.find(a => a.slot === 1);
     if (ig1) {
-      settings.ig1Posts = ig1.regular_per_day + (ig1.trial_per_day || 0);
+      const reg = ig1.regular_per_day || 0;
+      const trial = ig1.trial_per_day || 0;
+      settings.ig1Posts = reg + trial;
+      settings.ig1TrialPosts = trial;
+
       const s1 = document.getElementById('slider-ig1');
       const v1 = document.getElementById('val-ig1');
       if (s1) s1.value = settings.ig1Posts;
       if (v1) v1.innerText = settings.ig1Posts;
+
+      const s1Trial = document.getElementById('slider-ig1-trial');
+      const v1Trial = document.getElementById('val-ig1-trial');
+      if (s1Trial) {
+        s1Trial.max = settings.ig1Posts;
+        s1Trial.value = settings.ig1TrialPosts;
+      }
+      if (v1Trial) v1Trial.innerText = settings.ig1TrialPosts;
+      updateTrialDesc();
     }
 
     const ig2 = igAccounts.find(a => a.slot === 2);
@@ -1176,7 +1206,53 @@
       });
     };
 
-    bindSlider('slider-ig1', 'val-ig1', 'ig1Posts');
+    // Specialized Slider for Instagram 1 and Dynamic Trial Allocation
+    const sliderIg1 = document.getElementById('slider-ig1');
+    const valIg1 = document.getElementById('val-ig1');
+    const sliderIg1Trial = document.getElementById('slider-ig1-trial');
+    const valIg1Trial = document.getElementById('val-ig1-trial');
+
+    if (sliderIg1) {
+      sliderIg1.value = settings.ig1Posts || 3;
+      if (valIg1) valIg1.innerText = settings.ig1Posts || 3;
+
+      sliderIg1.addEventListener('input', () => {
+        const total = parseInt(sliderIg1.value, 10);
+        if (valIg1) valIg1.innerText = total;
+        settings.ig1Posts = total;
+
+        // Dynamically clamp Trial Reels Share between 0 and total posts
+        if (sliderIg1Trial) {
+          sliderIg1Trial.max = total;
+          if (settings.ig1TrialPosts > total) {
+            settings.ig1TrialPosts = total;
+            sliderIg1Trial.value = total;
+            if (valIg1Trial) valIg1Trial.innerText = total;
+          }
+        }
+        updateTrialDesc();
+        safeSetStorage(STORAGE_KEY_SETTINGS, settings);
+        calculateDynamicSpacing();
+        renderCalendar();
+      });
+    }
+
+    if (sliderIg1Trial) {
+      sliderIg1Trial.max = settings.ig1Posts || 3;
+      sliderIg1Trial.value = settings.ig1TrialPosts || 2;
+      if (valIg1Trial) valIg1Trial.innerText = sliderIg1Trial.value;
+      updateTrialDesc();
+
+      sliderIg1Trial.addEventListener('input', () => {
+        const trial = parseInt(sliderIg1Trial.value, 10);
+        if (valIg1Trial) valIg1Trial.innerText = trial;
+        settings.ig1TrialPosts = trial;
+        updateTrialDesc();
+        safeSetStorage(STORAGE_KEY_SETTINGS, settings);
+        calculateDynamicSpacing();
+      });
+    }
+
     bindSlider('slider-ig2', 'val-ig2', 'ig2Posts');
     bindSlider('slider-yt', 'val-yt', 'ytPosts');
     bindSlider('slider-stream-yield', 'val-stream-yield', 'streamYield');
@@ -1205,6 +1281,16 @@
         if (s2) s2.value = settings.ig2Posts;
         if (v2) v2.innerText = settings.ig2Posts;
 
+        if (sliderIg1Trial) {
+          sliderIg1Trial.max = settings.ig1Posts;
+          if (settings.ig1TrialPosts > settings.ig1Posts) {
+            settings.ig1TrialPosts = settings.ig1Posts;
+            sliderIg1Trial.value = settings.ig1Posts;
+            if (valIg1Trial) valIg1Trial.innerText = settings.ig1Posts;
+          }
+        }
+        updateTrialDesc();
+
         safeSetStorage(STORAGE_KEY_SETTINGS, settings);
         calculateDynamicSpacing();
         renderCalendar();
@@ -1214,9 +1300,74 @@
     // 9. Save Settings Button
     const btnSaveSettings = document.getElementById('btn-save-settings');
     if (btnSaveSettings) {
-      btnSaveSettings.addEventListener('click', () => {
+      btnSaveSettings.addEventListener('click', async () => {
         safeSetStorage(STORAGE_KEY_SETTINGS, settings);
-        alert('Settings saved. Future scheduled slots adjusted. Staged pipeline clips preserved.');
+
+        if (auth.pat && !auth.isDemo) {
+          try {
+            btnSaveSettings.innerText = 'Saving to GitHub...';
+            const headers = {
+              'Authorization': `token ${auth.pat.trim()}`,
+              'Accept': 'application/vnd.github.v3+json'
+            };
+            const pBranch = auth.branch || 'master';
+
+            // 1. Get current config.json to get sha and existing structure
+            const curRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json?ref=${pBranch}`, { headers });
+            if (curRes.ok) {
+              const curData = await curRes.json();
+              const curStr = decodeURIComponent(escape(atob(curData.content)));
+              const cfg = JSON.parse(curStr);
+
+              // Update config
+              if (!cfg.publishing_schedule) cfg.publishing_schedule = {};
+              if (!cfg.publishing_schedule.youtube) cfg.publishing_schedule.youtube = {};
+              cfg.publishing_schedule.youtube.shorts_per_day = settings.ytPosts;
+
+              if (Array.isArray(cfg.publishing_schedule.instagram_accounts)) {
+                const acc1 = cfg.publishing_schedule.instagram_accounts.find(a => a.slot === 1);
+                if (acc1) {
+                  acc1.trial_per_day = settings.ig1TrialPosts;
+                  acc1.regular_per_day = Math.max(0, settings.ig1Posts - settings.ig1TrialPosts);
+                  acc1.hard_daily_ceiling = Math.max(acc1.hard_daily_ceiling || 4, settings.ig1Posts);
+                }
+                const acc2 = cfg.publishing_schedule.instagram_accounts.find(a => a.slot === 2);
+                if (acc2) {
+                  acc2.regular_per_day = settings.ig2Posts;
+                  acc2.hard_daily_ceiling = Math.max(acc2.hard_daily_ceiling || 4, settings.ig2Posts);
+                }
+              }
+
+              const updatedJsonStr = JSON.stringify(cfg, null, 2);
+              const b64 = btoa(unescape(encodeURIComponent(updatedJsonStr)));
+
+              // Commit updated config.json to GitHub
+              const putRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json`, {
+                method: 'PUT',
+                headers,
+                body: JSON.stringify({
+                  message: 'chore(config): update posting schedule & trial reels share via dashboard',
+                  content: b64,
+                  sha: curData.sha,
+                  branch: pBranch
+                })
+              });
+
+              if (putRes.ok) {
+                alert('Settings saved and committed to GitHub repository (config.json)!');
+              } else {
+                alert('Settings saved locally in dashboard.');
+              }
+            }
+          } catch (e) {
+            console.warn('Failed to commit config to GitHub:', e);
+            alert('Settings saved locally in dashboard.');
+          } finally {
+            btnSaveSettings.innerHTML = '<svg class="icon" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save Settings to Repository';
+          }
+        } else {
+          alert('Settings saved. Future scheduled slots adjusted. Staged pipeline clips preserved.');
+        }
       });
     }
 
