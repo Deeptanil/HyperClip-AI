@@ -94,7 +94,7 @@
         "name": "Main IG",
         "enabled": true,
         "regular_per_day": 2,
-        "trial_per_day": 2,
+        "trial_per_day": 1,
         "hard_daily_ceiling": 4,
         "min_gap_hours": 3
       },
