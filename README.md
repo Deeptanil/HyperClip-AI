@@ -1,12 +1,13 @@
-# 🎬 Autonomous Storytelling Studio
+# 🚀 HyperClip AI
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/)
-[![Cloud: GitHub Actions](https://img.shields.io/badge/Cloud-GitHub%20Actions%20(100%25%20Free)-success.svg)](https://github.com/features/actions)
+[![Cloud: GitHub Actions](https://img.shields.io/badge/Cloud-GitHub%20Actions%20(100%25%20Free)-success.svg)](https://github.com/Deeptanil/HyperClip-AI/actions)
 [![Format: 9:16 Shorts/Reels](https://img.shields.io/badge/Format-9%3A16%20Vertical-FF0000.svg)](https://youtube.com/shorts)
-[![No AI Slop](https://img.shields.io/badge/Editorial-Anti--Slop%20Gatekeeper-8A2BE2.svg)](#-anti-slop-editorial-pipeline)
+[![Twitch Highlight Clipper](https://img.shields.io/badge/Twitch-Chat%20Velocity%20Clipper-9146FF.svg)](#-twitch-hype-clipper-module-gta-6--gaming)
 
-A fully autonomous, AI-powered storytelling video generation platform that produces high-retention, 9:16 vertical stick-figure animated stories (60–120s) without generic AI slop, and publishes them daily to **YouTube Shorts** and **Instagram Reels** on a zero-cost cloud schedule.
+> **Autonomous Twitch hype detector and vertical short-form clipping pipeline powered by chat velocity, paired with an AI procedural storytelling engine.**  
+> Completely zero-cost, runs on free GitHub Actions cloud schedules, formats in vertical 9:16 (stacked facecam top + gameplay bottom on solid black), generates dynamic word-by-word subtitles, and auto-publishes to YouTube Shorts and Instagram Reels.
 
 ---
 
@@ -138,6 +139,19 @@ python auto_poster.py --force
 
 ---
 
+## 🎮 Twitch Hype Clipper Module (GTA 6 & Gaming)
+
+HyperClip AI includes a dedicated module for gaming streams (GTA 6, esports, IRL):
+- **Chat Velocity Spike Detection**: Downloads chat JSON via `TwitchDownloaderCLI` and calculates sliding-window message velocity and emote hype density (`OMEGALUL`, `KEKW`, `POG`, `W`, `CLIP IT`, `NO WAY`).
+- **Precision Sub-Minute Clip Slicing**: Downloads only the 30–50s highlight window directly from Twitch VODs using `-b` and `-e` arguments to save bandwidth and runner compute time.
+- **Stacked 9:16 Portrait Canvas (Black Background)**:
+  - **With Facecam**: Stacked layout with cropped facecam at the top and gameplay at the bottom over a clean, solid black canvas (`#000000` — zero distracting blur).
+  - **No Facecam**: Full 16:9 gameplay centered on the vertical black canvas with clean letterboxing.
+- **Word-by-Word ASS Karaoke Captions**: Free local streamer speech transcription using `faster-whisper` burned in the upper safe viewing zone.
+- **Second Channel / Account Multi-Posting**: Posts gaming clips to a dedicated secondary Instagram account (`INSTA_USERNAME_2`) and YouTube Shorts.
+
+---
+
 ## ☁️ Running 100% Free on GitHub Actions
 
 The platform runs autonomously in the cloud on GitHub Actions runners without requiring a paid VPS or server.
@@ -167,6 +181,7 @@ The workflow (`.github/workflows/daily_auto_post.yml`) evaluates 6 times a day:
 
 This project stands on the shoulders of several outstanding open-source projects, architectures, and creators:
 
+- **[lay295/TwitchDownloader](https://github.com/lay295/TwitchDownloader)**: The foundational CLI and engine for high-speed Twitch chat JSON extraction and sub-minute VOD segment downloading.
 - **[rahulanand1103/youtube-script-writer](https://github.com/rahulanand1103/youtube-script-writer)**: Inspiration for the multi-agent scriptwriting system, beat-sheet planning, tone controls, and adversarial editorial gatekeeper rules.
 - **[kaomei/stickman-video-director](https://github.com/kaomei/stickman-video-director)**: Concept for the Stickman Director architecture, Director vs. Autopilot modes, production locks, and multi-style art direction presets (`modern_pop`, `historical_cartoon`, `classic_bw`).
 - **[Yash-Kavaiya/manim-video-generator-actor](https://github.com/Yash-Kavaiya/manim-video-generator-actor)**: Architectural model for actor rigs, dynamic gestures, and vector speech/thought bubbles that direct their tails precisely to the speaker's mouth.
