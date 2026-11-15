@@ -80,7 +80,7 @@ def upload_reel_direct(video_path, caption, username=None, password=None, challe
 
     username = username or os.getenv(f"INSTA_USERNAME{suffix}")
     password = password or os.getenv(f"INSTA_PASSWORD{suffix}")
-    challenge_code = challenge_code or os.getenv(f"INSTA_VERIFICATION_CODE{suffix}", os.getenv("INSTA_VERIFICATION_CODE", "449932"))
+    challenge_code = challenge_code or os.getenv(f"INSTA_VERIFICATION_CODE{suffix}", os.getenv("INSTA_VERIFICATION_CODE", ""))
 
     if not all([username, password]):
         raise ValueError(f"Missing INSTA_USERNAME{suffix} or INSTA_PASSWORD{suffix}.")

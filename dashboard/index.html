@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HyperClip AI // Command Center</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
+</head>
+<body>
+  <div class="app-container">
+
+    <!-- Top Navigation Header -->
+    <header class="top-nav">
+      <div class="brand">
+        <div class="brand-logo">
+          ⚡ HYPERCLIP <span class="accent">// AI</span>
+        </div>
+        <div class="brand-badge">DARK OPS EDITION</div>
+        <div class="status-pill" id="conn-status-pill">
+          <span class="dot yellow" id="conn-dot"></span>
+          <span id="conn-status-text">Demo Mode</span>
+        </div>
+      </div>
+
+      <nav class="nav-center">
+        <button class="tab-btn active" data-tab="calendar">
+          📅 Schedule Calendar
+        </button>
+        <button class="tab-btn" data-tab="pipeline">
+          🎬 Review & Pipeline <span class="tab-badge" id="pipeline-count-badge">0</span>
+        </button>
+        <button class="tab-btn" data-tab="accounts">
+          🛡️ Diagnostics & Accounts
+        </button>
+        <button class="tab-btn" data-tab="settings">
+          ⚙️ Settings & Spacing
+        </button>
+      </nav>
+
+      <div class="nav-actions">
+        <button class="btn" id="btn-sync" title="Sync live state from GitHub repository">
+          🔄 Sync
+        </button>
+        <button class="btn btn-yellow" id="btn-run-action" title="Trigger clipping or publishing cycle">
+          🚀 Run Harvest / Post
+        </button>
+        <button class="btn" id="btn-open-setup" title="Configure GitHub Token & Repository">
+          🔑 Setup
+        </button>
+      </div>
+    </header>
+
+    <!-- Real-Time Top Stats Strip -->
+    <section class="stats-strip">
+      <div class="stat-card" id="stat-ig1">
+        <div class="stat-header">
+          <span class="stat-title">IG 1 (solvikz)</span>
+          <span class="status-pill"><span class="dot online"></span> Active</span>
+        </div>
+        <div class="stat-value" id="ig1-stat-val">1 / 3 <small style="font-size:12px;color:#a1a1aa">today</small></div>
+        <div class="stat-desc highlight" id="ig1-stat-desc">Trial Reels: Eligible • Cooldown: Ready</div>
+      </div>
+
+      <div class="stat-card" id="stat-ig2">
+        <div class="stat-header">
+          <span class="stat-title">IG 2 (loopablez)</span>
+          <span class="status-pill"><span class="dot online"></span> Active</span>
+        </div>
+        <div class="stat-value" id="ig2-stat-val">1 / 3 <small style="font-size:12px;color:#a1a1aa">today</small></div>
+        <div class="stat-desc" id="ig2-stat-desc">Regular Reels • Cooldown: 1h 40m</div>
+      </div>
+
+      <div class="stat-card" id="stat-yt">
+        <div class="stat-header">
+          <span class="stat-title">YouTube Shorts</span>
+          <span class="status-pill"><span class="dot online"></span> Ready</span>
+        </div>
+        <div class="stat-value" id="yt-stat-val">1 / 3 <small style="font-size:12px;color:#a1a1aa">today</small></div>
+        <div class="stat-desc" id="yt-stat-desc">Quota: 1,600 / 10,000 pts (Safe)</div>
+      </div>
+
+      <div class="stat-card" id="stat-storage">
+        <div class="stat-header">
+          <span class="stat-title">Pipeline & Storage</span>
+          <span class="status-pill"><span class="dot yellow"></span> Governor ON</span>
+        </div>
+        <div class="stat-value" id="storage-stat-val">48 MB <small style="font-size:12px;color:#a1a1aa">/ 1500 MB</small></div>
+        <div class="stat-desc" id="storage-stat-desc">3.2% used • Unposted clips protected</div>
+      </div>
+    </section>
+
+    <!-- Tab 1: 24-Hour Calendar View -->
+    <main class="main-view active" id="view-calendar">
+      <div class="calendar-bar">
+        <div class="view-switchers">
+          <button class="view-btn" data-cal-view="day">Day</button>
+          <button class="view-btn active" data-cal-view="week">Week (24h)</button>
+          <button class="view-btn" data-cal-view="month">Month</button>
+        </div>
+
+        <div class="cal-nav">
+          <button class="btn btn-sm" id="cal-prev">‹ Prev</button>
+          <div class="date-heading" id="cal-heading">Loading...</div>
+          <button class="btn btn-sm" id="cal-today">Today</button>
+          <button class="btn btn-sm" id="cal-next">Next ›</button>
+        </div>
+
+        <div class="filter-pills">
+          <span class="pill active" data-filter="all">All Accounts</span>
+          <span class="pill" data-filter="ig1">solvikz</span>
+          <span class="pill" data-filter="ig2">loopablez</span>
+          <span class="pill" data-filter="youtube">YouTube</span>
+          <span class="pill" data-filter="staged">Staged Only</span>
+        </div>
+      </div>
+
+      <!-- 24-Hour Vertical Week Grid -->
+      <div class="week-grid-container" id="week-view-wrapper">
+        <div class="week-grid-header" id="week-header-row">
+          <div class="col-header time-label-spacer">UTC/IST</div>
+          <!-- Days populated via JS -->
+        </div>
+        <div class="week-grid-scroll" id="week-scroll-container">
+          <div class="week-grid-body" id="week-body-grid">
+            <div class="time-axis" id="time-axis-col">
+              <!-- 24 hours 00:00 - 23:00 -->
+            </div>
+            <!-- 7 day columns populated via JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Day View (Hidden by default) -->
+      <div class="day-timeline" id="day-view-wrapper" style="display: none;">
+        <!-- Day hours populated via JS -->
+      </div>
+
+      <!-- Month View (Hidden by default) -->
+      <div class="month-grid" id="month-view-wrapper" style="display: none;">
+        <!-- Month cells populated via JS -->
+      </div>
+    </main>
+
+    <!-- Tab 2: Review & Pipeline Queue -->
+    <main class="main-view" id="view-pipeline">
+      <div class="pipeline-header">
+        <div>
+          <h2 style="font-size:18px;font-weight:800;color:#ffffff">Staged Clips Queue</h2>
+          <p style="font-size:12px;color:var(--text-muted)">Preview 9:16 portrait clips before publication. Accept to prioritize or decline to purge.</p>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-yellow" id="btn-harvest-fresh">⚡ Scan Live Streams for New Clips</button>
+        </div>
+      </div>
+
+      <div class="clips-grid" id="pipeline-clips-grid">
+        <!-- Rendered via JS -->
+      </div>
+    </main>
+
+    <!-- Tab 3: Diagnostics & Accounts -->
+    <main class="main-view" id="view-accounts">
+      <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <h2 style="font-size:18px;font-weight:800;color:#ffffff">Platform Accounts & Shadowban Shield</h2>
+          <p style="font-size:12px;color:var(--text-muted)">Real-time session health, trial reel eligibility, and anti-spam interval verification.</p>
+        </div>
+        <button class="btn btn-yellow" id="btn-test-diag">🛡️ Run Live Credentials Test</button>
+      </div>
+
+      <div class="accounts-grid" id="accounts-grid-wrapper">
+        <!-- Instagram solvikz -->
+        <div class="account-box">
+          <div class="account-box-header">
+            <div>
+              <div class="acc-name">📸 Instagram Primary</div>
+              <div class="acc-handle">@solvikz (Slot 1)</div>
+            </div>
+            <span class="status-pill"><span class="dot online"></span> Healthy</span>
+          </div>
+          <div class="diag-list">
+            <div class="diag-row"><span class="diag-label">Session Status:</span><span class="diag-val" style="color:var(--success)">Saved & Verified</span></div>
+            <div class="diag-row"><span class="diag-label">Trial Reels:</span><span class="diag-val" style="color:var(--yellow)">Eligible (Active)</span></div>
+            <div class="diag-row"><span class="diag-label">Daily Capacity:</span><span class="diag-val">3 Posts / Day Max</span></div>
+            <div class="diag-row"><span class="diag-label">Today's Posts:</span><span class="diag-val">1 / 3 Posted</span></div>
+            <div class="diag-row"><span class="diag-label">Min Separation:</span><span class="diag-val">3.0 Hours (Strict)</span></div>
+            <div class="diag-row"><span class="diag-label">Next Post Window:</span><span class="diag-val" style="color:var(--success)">Eligible Now</span></div>
+          </div>
+          <div style="font-size:11px;color:var(--text-dim)">Uses direct Reels API with automatic retry and instant verification.</div>
+        </div>
+
+        <!-- Instagram loopablez -->
+        <div class="account-box">
+          <div class="account-box-header">
+            <div>
+              <div class="acc-name">📸 Instagram Secondary</div>
+              <div class="acc-handle">@loopablez (Slot 2)</div>
+            </div>
+            <span class="status-pill"><span class="dot online"></span> Healthy</span>
+          </div>
+          <div class="diag-list">
+            <div class="diag-row"><span class="diag-label">Session Status:</span><span class="diag-val" style="color:var(--success)">Saved & Verified</span></div>
+            <div class="diag-row"><span class="diag-label">Trial Reels:</span><span class="diag-val" style="color:var(--text-dim)">Ineligible (Auto Fallback)</span></div>
+            <div class="diag-row"><span class="diag-label">Fallback Mode:</span><span class="diag-val" style="color:var(--yellow)">Standard Reel Active</span></div>
+            <div class="diag-row"><span class="diag-label">Daily Capacity:</span><span class="diag-val">3 Posts / Day Max</span></div>
+            <div class="diag-row"><span class="diag-label">Today's Posts:</span><span class="diag-val">1 / 3 Posted</span></div>
+            <div class="diag-row"><span class="diag-label">Min Separation:</span><span class="diag-val">3.0 Hours (Strict)</span></div>
+            <div class="diag-row"><span class="diag-label">Cross-Account Buffer:</span><span class="diag-val">20 Min Anti-Bot Buffer</span></div>
+          </div>
+          <div style="font-size:11px;color:var(--text-dim)">Verified live upload to @loopablez without trial rejection errors.</div>
+        </div>
+
+        <!-- YouTube Shorts -->
+        <div class="account-box">
+          <div class="account-box-header">
+            <div>
+              <div class="acc-name">▶️ YouTube Shorts</div>
+              <div class="acc-handle">Autonomous Channel</div>
+            </div>
+            <span class="status-pill"><span class="dot online"></span> Connected</span>
+          </div>
+          <div class="diag-list">
+            <div class="diag-row"><span class="diag-label">OAuth 2.0 Token:</span><span class="diag-val" style="color:var(--success)">Valid & Auto-Refreshing</span></div>
+            <div class="diag-row"><span class="diag-label">Daily Shorts Limit:</span><span class="diag-val">3 Shorts / Day</span></div>
+            <div class="diag-row"><span class="diag-label">API Quota Usage:</span><span class="diag-val">1,600 / 10,000 pts</span></div>
+            <div class="diag-row"><span class="diag-label">Today's Uploads:</span><span class="diag-val">1 / 3 Shorts</span></div>
+            <div class="diag-row"><span class="diag-label">Min Separation:</span><span class="diag-val">3.0 Hours</span></div>
+            <div class="diag-row"><span class="diag-label">Category / Format:</span><span class="diag-val">Gaming (20) / #Shorts</span></div>
+          </div>
+          <div style="font-size:11px;color:var(--text-dim)">Dual upload system with automatic category tagging and #Shorts suffix.</div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Tab 4: Settings & Automation -->
+    <main class="main-view" id="view-settings">
+      <div class="settings-container">
+        <!-- Frequency and Spacing Card -->
+        <div class="settings-card">
+          <div class="settings-card-title">⚡ Daily Frequency & Equal Spacing</div>
+          <p style="font-size:12px;color:var(--text-muted)">Configure target uploads per account. The algorithm automatically groups and spaces all Instagram posts equally throughout the 24 hours.</p>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">Instagram 1 (@solvikz) Posts / Day</span>
+              <span class="setting-desc">Reels scheduled across the 24h cycle</span>
+            </div>
+            <div class="setting-ctrl">
+              <input type="range" id="slider-ig1" min="1" max="5" value="3">
+              <span class="range-val" id="val-ig1">3</span>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">Instagram 2 (@loopablez) Posts / Day</span>
+              <span class="setting-desc">Treated independently to prevent cross-account penalties</span>
+            </div>
+            <div class="setting-ctrl">
+              <input type="range" id="slider-ig2" min="1" max="5" value="3">
+              <span class="range-val" id="val-ig2">3</span>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">YouTube Shorts / Day</span>
+              <span class="setting-desc">Respects 10,000 unit daily API quota</span>
+            </div>
+            <div class="setting-ctrl">
+              <input type="range" id="slider-yt" min="1" max="5" value="3">
+              <span class="range-val" id="val-yt">3</span>
+            </div>
+          </div>
+
+          <!-- Dynamic Spacing Visualizer -->
+          <div class="spacing-box" id="spacing-summary-box">
+            <div class="spacing-summary" id="spacing-summary-text">
+              Loading dynamic spacing calculation...
+            </div>
+          </div>
+        </div>
+
+        <!-- Hype Mode & Quality Card -->
+        <div class="settings-card">
+          <div class="settings-card-title">🔥 Hype Event Boost & Multi-Clip Yield</div>
+          
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">GTA 6 / Special Hype Weekend Mode</span>
+              <span class="setting-desc">Temporarily boosts frequency to 4 posts/account and captures more stream peaks</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="toggle-hype">
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">Clips Per Stream Yield</span>
+              <span class="setting-desc">Extract 2 to 3 highlights per downloaded chat to maximize efficiency</span>
+            </div>
+            <div class="setting-ctrl">
+              <input type="range" id="slider-stream-yield" min="1" max="3" value="3">
+              <span class="range-val" id="val-stream-yield">3</span>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">Min Spacing Between Clips in Same Stream</span>
+              <span class="setting-desc">Ensures highlights are distinct (seconds)</span>
+            </div>
+            <div class="setting-ctrl">
+              <input type="range" id="slider-clip-spacing" min="180" max="600" step="30" value="300">
+              <span class="range-val" id="val-clip-spacing">300s</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Storage Governor Card -->
+        <div class="settings-card">
+          <div class="settings-card-title">🛡️ Storage Governor & Safeguards</div>
+          
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">Cleanup Watermark (80% Full)</span>
+              <span class="setting-desc">Deletes temp scratch files and posted clips older than 5 days</span>
+            </div>
+            <span class="status-pill" style="color:var(--yellow)">Active at 1200 MB</span>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">Aggressive Purge Watermark (90% Full)</span>
+              <span class="setting-desc">Purges oldest posted clips in stream_posted/ until back below 80%</span>
+            </div>
+            <span class="status-pill" style="color:var(--danger)">Active at 1350 MB</span>
+          </div>
+
+          <div class="spacing-box" style="border-color: rgba(34, 197, 94, 0.4)">
+            <div style="font-size:12px;color:var(--success);font-weight:700;">
+              ✓ CRITICAL SAFEGUARD ACTIVE:
+            </div>
+            <div style="font-size:11px;color:var(--text-muted)">
+              Clips waiting in <code>stream_pipeline/</code> are NEVER deleted by the automated governor. Warning logs will be dispatched if queue storage exceeds threshold.
+            </div>
+          </div>
+
+          <button class="btn btn-yellow" id="btn-save-settings" style="width:100%;justify-content:center;padding:12px;">
+            💾 Save Settings to GitHub Repository
+          </button>
+        </div>
+      </div>
+    </main>
+
+    <!-- Setup / Auth Modal -->
+    <div class="modal-overlay" id="modal-setup">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-title">🔑 Connect GitHub Repository</div>
+          <button class="modal-close" id="btn-close-setup">✕</button>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted)">
+          Enter your GitHub Personal Access Token (with <code>repo</code> and <code>workflow</code> scopes) to manage and review clips directly on GitHub.
+        </p>
+
+        <div class="input-group">
+          <label class="input-label">GitHub Personal Access Token (PAT)</label>
+          <input type="password" class="text-input" id="setup-pat" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
+        </div>
+
+        <div class="input-group">
+          <label class="input-label">Repository (owner/repo)</label>
+          <input type="text" class="text-input" id="setup-repo" value="Deeptanil/HyperClip-AI">
+        </div>
+
+        <div class="input-group">
+          <label class="input-label">Production Branch</label>
+          <input type="text" class="text-input" id="setup-branch" value="master">
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:10px;">
+          <button class="btn btn-yellow" id="btn-save-pat" style="flex:1;justify-content:center">Connect & Test</button>
+          <button class="btn" id="btn-use-demo" style="flex:1;justify-content:center">Explore with Demo Data</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 9:16 Portrait Video Preview Modal -->
+    <div class="modal-overlay" id="modal-preview">
+      <div class="modal-content preview-modal">
+        <div class="preview-video-pane">
+          <video id="preview-player" controls playsinline></video>
+        </div>
+        <div class="preview-details-pane">
+          <div class="modal-header">
+            <div>
+              <div class="status-pill" id="preview-streamer-badge" style="color:var(--yellow);margin-bottom:6px">xQc // Stream Highlight</div>
+              <h3 class="modal-title" id="preview-modal-title">Clip Title</h3>
+            </div>
+            <button class="modal-close" id="btn-close-preview">✕</button>
+          </div>
+
+          <div class="input-group">
+            <label class="input-label">Generated Caption & Hashtags</label>
+            <textarea class="text-input" id="preview-caption-edit" rows="4" style="resize:vertical"></textarea>
+          </div>
+
+          <div class="diag-list">
+            <div class="diag-row"><span class="diag-label">Hype Spike Sigma:</span><span class="diag-val" id="preview-sigma">3.4 σ</span></div>
+            <div class="diag-row"><span class="diag-label">Visual Motion Score:</span><span class="diag-val" id="preview-motion">High Delta (Active)</span></div>
+            <div class="diag-row"><span class="diag-label">Facecam Framing:</span><span class="diag-val" id="preview-layout">Dual Stack 9:16</span></div>
+            <div class="diag-row"><span class="diag-label">Target Platform:</span><span class="diag-val" id="preview-target">Instagram & YouTube</span></div>
+          </div>
+
+          <div style="display:flex;gap:8px;margin-top:auto">
+            <button class="btn btn-yellow" id="btn-approve-clip" style="flex:1;justify-content:center">✓ Approve & Prioritize</button>
+            <button class="btn btn-danger" id="btn-decline-clip" style="flex:1;justify-content:center">✕ Decline & Delete</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

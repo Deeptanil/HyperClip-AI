@@ -93,6 +93,92 @@ def slugify(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", text.lower()).strip("_")[:28]
 
 
+def _get_directory_size_mb(path: str) -> float:
+    """Calculates total size of directory in megabytes."""
+    total_bytes = 0
+    if os.path.exists(path):
+        for root, _, files in os.walk(path):
+            for f in files:
+                fp = os.path.join(root, f)
+                try:
+                    total_bytes += os.path.getsize(fp)
+                except OSError:
+                    pass
+    return total_bytes / (1024.0 * 1024.0)
+
+
+def enforce_storage_limits(config: dict):
+    """
+    Monitors repository media storage against 80% and 90% watermarks:
+    - At 80%: Cleans temporary files, cache, and posted archives older than 5 days.
+    - At 90%: Aggressively purges oldest posted archives until storage is <= 80%.
+    - SAFEGUARD: NEVER deletes unposted clips in stream_pipeline/.
+    """
+    ensure_dirs()
+    sg = config.get("storage_governor", {})
+    if not sg.get("enabled", True):
+        return
+
+    max_mb = float(sg.get("max_repo_mb", 1500))
+    cleanup_pct = float(sg.get("cleanup_threshold_percent", 80))
+    aggressive_pct = float(sg.get("aggressive_threshold_percent", 90))
+
+    posted_mb = _get_directory_size_mb(STREAM_POSTED_DIR)
+    pipeline_mb = _get_directory_size_mb(STREAM_PIPELINE_DIR)
+    temp_mb = _get_directory_size_mb(TEMP_DIR)
+    total_media_mb = posted_mb + pipeline_mb + temp_mb
+
+    usage_pct = (total_media_mb / max_mb) * 100.0
+    print(f"[*] Storage check: {total_media_mb:.1f}MB / {max_mb:.1f}MB ({usage_pct:.1f}% used) [Pipeline: {pipeline_mb:.1f}MB, Posted: {posted_mb:.1f}MB]")
+
+    # 1. Clean temp_twitch if not empty
+    if os.path.exists(TEMP_DIR) and os.listdir(TEMP_DIR):
+        for f in os.listdir(TEMP_DIR):
+            fp = os.path.join(TEMP_DIR, f)
+            try:
+                if os.path.isfile(fp):
+                    os.remove(fp)
+            except OSError:
+                pass
+
+    # 2. Level 1 Cleanup (>= 80%): Prune posted archive older than 5 days
+    if usage_pct >= cleanup_pct:
+        print(f"[!] Storage watermark reached ({usage_pct:.1f}% >= {cleanup_pct}%). Running standard posted prune...")
+        prune_stream_archive(days=sg.get("max_posted_archive_days", 5))
+        posted_mb = _get_directory_size_mb(STREAM_POSTED_DIR)
+        total_media_mb = posted_mb + pipeline_mb
+        usage_pct = (total_media_mb / max_mb) * 100.0
+
+    # 3. Level 2 Aggressive Purge (>= 90%): Delete oldest posted files until <= 80%
+    if usage_pct >= aggressive_pct:
+        print(f"[!] CRITICAL: Storage exceeds aggressive limit ({usage_pct:.1f}% >= {aggressive_pct}%). Purging posted archive...")
+        posted_files = []
+        for fname in os.listdir(STREAM_POSTED_DIR):
+            if fname.endswith((".mp4", ".json")):
+                fp = os.path.join(STREAM_POSTED_DIR, fname)
+                try:
+                    posted_files.append((fp, os.path.getmtime(fp)))
+                except OSError:
+                    pass
+        # Sort oldest first
+        posted_files.sort(key=lambda x: x[1])
+        for fp, _ in posted_files:
+            try:
+                os.remove(fp)
+                print(f"[*] Aggressive purge deleted: {os.path.basename(fp)}")
+            except OSError:
+                pass
+            posted_mb = _get_directory_size_mb(STREAM_POSTED_DIR)
+            total_media_mb = posted_mb + pipeline_mb
+            if (total_media_mb / max_mb) * 100.0 <= cleanup_pct:
+                break
+
+    # 4. Pipeline Warning Safeguard (Unposted clips are NEVER deleted)
+    if (pipeline_mb / max_mb) * 100.0 >= cleanup_pct:
+        print(f"[!] WARNING: Unposted pipeline queue alone is taking {pipeline_mb:.1f}MB ({pipeline_mb/max_mb*100:.1f}% of limit).")
+        print("[!] SAFEGUARD: Pending posts will NOT be deleted. Existing queue should be published before staging more clips.")
+
+
 def prune_stream_archive(days: int = 7):
     ensure_dirs()
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
@@ -109,9 +195,10 @@ def prune_stream_archive(days: int = 7):
 def harvest_clips(config: dict, max_total_new: int = 4) -> list:
     """
     Scans eligible streamers, downloads unscanned chat windows, detects hype spikes,
-    and stages framed + captioned portrait clips into output/twitch_pipeline/.
+    and stages framed + captioned portrait clips into output/stream_pipeline/.
     """
     ensure_dirs()
+    enforce_storage_limits(config)
     tc = config.get("twitch_clipper", {})
     state = _load_json(STATE_FILE, {"vods": {}})
 
@@ -151,8 +238,8 @@ def harvest_clips(config: dict, max_total_new: int = 4) -> list:
             chat_json,
             pre_peak_sec=tc.get("pre_peak_sec", 22),
             post_peak_sec=tc.get("post_peak_sec", 13),
-            max_clips=tc.get("max_clips_per_vod", 4),
-            min_spacing_sec=tc.get("min_clip_spacing_sec", 180),
+            max_clips=tc.get("max_clips_per_vod", 3),
+            min_spacing_sec=tc.get("min_clip_spacing_sec", 300),
             min_spike_sigma=tc.get("min_spike_sigma", 2.0),
             min_messages_per_window=tc.get("min_messages_per_window", 12),
             viewers=target.get("viewers", 0),
@@ -169,7 +256,7 @@ def harvest_clips(config: dict, max_total_new: int = 4) -> list:
             continue
 
         already_clipped = vod_state.get("clipped_peaks", [])
-        min_spacing = tc.get("min_clip_spacing_sec", 180)
+        min_spacing = tc.get("min_clip_spacing_sec", 300)
 
         for m in moments:
             if len(staged_clips) >= max_total_new:
@@ -392,7 +479,7 @@ def publish_next_clip(
         platforms = ["youtube", "instagram"]
 
     ensure_dirs()
-    prune_stream_archive(days=7)
+    enforce_storage_limits(config)
 
     queued = sorted([f for f in os.listdir(STREAM_PIPELINE_DIR) if f.endswith(".mp4")])
     if len(queued) < 4:
@@ -472,7 +559,17 @@ def publish_next_clip(
             [t for t in (stats["ig_1"]["last"], stats["ig_2"]["last"]) if t is not None],
             default=None,
         )
-        for acc_cfg in sched.get("instagram_accounts", []):
+
+        ig_accounts = sched.get("instagram_accounts", [])
+        # Prioritize accounts that haven't posted recently or missed an upload to catch up fairly
+        def _acc_sort_priority(acc):
+            slot = acc.get("slot", 1)
+            last_dt = stats[f"ig_{slot}"]["last"]
+            return last_dt.timestamp() if last_dt else 0.0
+
+        sorted_ig_accounts = sorted(ig_accounts, key=_acc_sort_priority)
+
+        for acc_cfg in sorted_ig_accounts:
             slot = acc_cfg.get("slot", 1)
             if ig_slot is not None and slot != ig_slot:
                 continue
