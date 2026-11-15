@@ -18,6 +18,21 @@ on:
         required: false
         type: boolean
         default: false
+      platforms:
+        description: 'Platforms to publish to (space separated, e.g. youtube instagram)'
+        required: false
+        type: string
+        default: 'youtube instagram'
+      ig_slot:
+        description: 'Optional Instagram slot override (1 or 2)'
+        required: false
+        type: string
+        default: ''
+      ig_kind:
+        description: 'Optional Instagram post kind (auto, regular, trial)'
+        required: false
+        type: string
+        default: 'auto'
 
 concurrency:
   group: hyperclip-twitch-pipeline
@@ -77,12 +92,20 @@ jobs:
           INSTA_SESSION_DATA_2: ${{ secrets.INSTA_SESSION_DATA_2 }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
+          PLATFORMS="${{ github.event.inputs.platforms || 'youtube instagram' }}"
+          EXTRA_ARGS=""
+          if [ -n "${{ github.event.inputs.ig_slot }}" ]; then
+            EXTRA_ARGS="$EXTRA_ARGS --ig-slot ${{ github.event.inputs.ig_slot }}"
+          fi
+          if [ -n "${{ github.event.inputs.ig_kind }}" ] && [ "${{ github.event.inputs.ig_kind }}" != "auto" ]; then
+            EXTRA_ARGS="$EXTRA_ARGS --ig-kind ${{ github.event.inputs.ig_kind }}"
+          fi
           if [ "${{ github.event.inputs.harvest_only }}" = "true" ]; then
             python twitch_clipper.py --harvest-only
           elif [ "${{ github.event.inputs.force }}" = "true" ]; then
-            python twitch_clipper.py --platforms youtube instagram --force
+            python twitch_clipper.py --platforms $PLATFORMS --force $EXTRA_ARGS
           else
-            python twitch_clipper.py --platforms youtube instagram
+            python twitch_clipper.py --platforms $PLATFORMS $EXTRA_ARGS
           fi
 
       - name: Commit Clips & State Exclusively to 'content' Branch

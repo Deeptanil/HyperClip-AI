@@ -330,7 +330,13 @@ def _pick_next_ig_action(acc_cfg: dict, acc_stats: dict, last_any_ig: datetime |
     return None
 
 
-def publish_next_clip(config: dict, platforms: list = None, force: bool = False) -> dict:
+def publish_next_clip(
+    config: dict,
+    platforms: list = None,
+    force: bool = False,
+    ig_slot: int = None,
+    ig_kind: str = None,
+) -> dict:
     if platforms is None:
         platforms = ["youtube", "instagram"]
 
@@ -406,11 +412,16 @@ def publish_next_clip(config: dict, platforms: list = None, force: bool = False)
         )
         for acc_cfg in sched.get("instagram_accounts", []):
             slot = acc_cfg.get("slot", 1)
+            if ig_slot is not None and slot != ig_slot:
+                continue
             suffix = "" if slot == 1 else f"_{slot}"
             if not (os.getenv(f"INSTA_USERNAME{suffix}") and os.getenv(f"INSTA_PASSWORD{suffix}")):
                 continue
 
-            action_kind = _pick_next_ig_action(acc_cfg, stats[f"ig_{slot}"], last_any_ig, cross_gap, force)
+            if ig_kind in ("regular", "trial"):
+                action_kind = ig_kind
+            else:
+                action_kind = _pick_next_ig_action(acc_cfg, stats[f"ig_{slot}"], last_any_ig, cross_gap, force)
             if not action_kind:
                 continue
 
@@ -454,6 +465,8 @@ if __name__ == "__main__":
     parser.add_argument("--check-only", action="store_true", help="Check live/VOD targets and exit")
     parser.add_argument("--force", action="store_true", help="Bypass daily cap and cooldown")
     parser.add_argument("--platforms", nargs="+", default=["youtube", "instagram"])
+    parser.add_argument("--ig-slot", type=int, default=None, help="Target a specific IG account slot (1 or 2)")
+    parser.add_argument("--ig-kind", choices=["auto", "regular", "trial"], default="auto", help="Force IG post type")
     args = parser.parse_args()
 
     cfg = load_config()
@@ -463,4 +476,5 @@ if __name__ == "__main__":
     elif args.harvest_only:
         harvest_clips(cfg)
     else:
-        publish_next_clip(cfg, platforms=args.platforms, force=args.force)
+        kind_arg = None if args.ig_kind == "auto" else args.ig_kind
+        publish_next_clip(cfg, platforms=args.platforms, force=args.force, ig_slot=args.ig_slot, ig_kind=kind_arg)
