@@ -63,11 +63,12 @@ def upload_reel_meta_graph(video_url, caption, ig_user_id=None, access_token=Non
     print(f"[+] Published Instagram Reel ID: {reel_id}")
     return reel_id
 
-def upload_reel_direct(video_path, caption, username=None, password=None, challenge_code=None, account_slot=1):
+def upload_reel_direct(video_path, caption, username=None, password=None, challenge_code=None, account_slot=1, trial=False):
     """
     Direct upload using instagrapi without needing a public web URL.
     Reuses session cookies to bypass repeated 2FA/checkpoint security checks.
-    Supports account_slot=1 (primary) and account_slot=2 (secondary Twitch clips account).
+    Supports account_slot=1 (primary) and account_slot=2 (secondary clip account),
+    and Trial Reels (trial=True) with automatic eligibility check.
     """
     try:
         from instagrapi import Client
@@ -132,15 +133,44 @@ def upload_reel_direct(video_path, caption, username=None, password=None, challe
         print(f"[!] Thumbnail generation warning: {e}")
         thumb_path = None
 
-    print(f"[*] Uploading reel: {video_path}...")
+    use_trial = False
+    if trial:
+        try:
+            eligible = cl.clip_trial_eligible() if hasattr(cl, "clip_trial_eligible") else True
+            if eligible:
+                use_trial = True
+                print("[*] Uploading as Instagram Trial Reel (slot %s)..." % account_slot)
+            else:
+                print("[!] Account slot %s not eligible for Trial Reels; falling back to Regular Reel." % account_slot)
+        except Exception as e:
+            print(f"[!] Trial Reel eligibility check warning ({e}); attempting regular upload.")
+
+    upload_kwargs = {"caption": caption}
     if thumb_path and os.path.exists(thumb_path):
-        media = cl.clip_upload(video_path, caption=caption, thumbnail=thumb_path)
+        upload_kwargs["thumbnail"] = thumb_path
+
+    if use_trial:
+        upload_kwargs.update({
+            "trial": True,
+            "trial_graduation_strategy": "manual",
+            "show_preview_in_feed": False,
+        })
+
+    print(f"[*] Uploading reel (slot {account_slot}, trial={use_trial}): {video_path}...")
+    try:
+        media = cl.clip_upload(video_path, **upload_kwargs)
+    except TypeError:
+        # Older instagrapi versions without trial kwargs
+        for k in ("trial", "trial_graduation_strategy", "show_preview_in_feed"):
+            upload_kwargs.pop(k, None)
+        media = cl.clip_upload(video_path, **upload_kwargs)
+
+    if thumb_path and os.path.exists(thumb_path):
         try:
             os.remove(thumb_path)
         except Exception:
             pass
-    else:
-        media = cl.clip_upload(video_path, caption=caption)
+
     reel_url = f"https://instagram.com/reel/{media.code}"
-    print(f"[+] Uploaded Instagram Reel: {reel_url}")
+    print(f"[+] Uploaded Instagram {'Trial ' if use_trial else ''}Reel: {reel_url}")
     return media.code

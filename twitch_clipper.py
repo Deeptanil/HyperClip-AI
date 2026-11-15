@@ -220,45 +220,68 @@ def harvest_clips(config: dict, max_total_new: int = 4) -> list:
     return staged_clips
 
 
-def check_can_publish_twitch(config: dict, force: bool = False) -> tuple:
-    if force:
-        return True, "Force mode active"
-
-    tc = config.get("twitch_clipper", {})
-    max_daily = tc.get("max_daily_posts", 4)
-    min_gap = tc.get("min_gap_hours", 2.5)
-
+def _get_today_stats(logs: list) -> dict:
+    """Computes today's (IST) upload counts and last timestamps per destination."""
     now_ist = datetime.now(IST)
     today_str = now_ist.strftime("%Y-%m-%d")
-    logs = _load_json(TWITCH_LOG_FILE, [])
 
-    today_posts = []
-    last_post = None
+    stats = {
+        "youtube": {"count": 0, "last": None},
+        "ig_1": {"regular": 0, "trial": 0, "last": None},
+        "ig_2": {"regular": 0, "trial": 0, "last": None},
+    }
+
     for entry in logs:
-        uploads = entry.get("uploads", {})
-        if not any(isinstance(v, str) and not v.lower().startswith("failed") for v in uploads.values()):
-            continue
         ts_str = entry.get("timestamp")
         if not ts_str:
             continue
         try:
             dt_ist = datetime.fromisoformat(ts_str.replace("Z", "+00:00")).astimezone(IST)
-            if dt_ist.strftime("%Y-%m-%d") == today_str:
-                today_posts.append(dt_ist)
-            if last_post is None or dt_ist > last_post:
-                last_post = dt_ist
         except Exception:
-            pass
+            continue
 
-    if len(today_posts) >= max_daily:
-        return False, f"Twitch daily limit reached ({len(today_posts)}/{max_daily} today)"
+        uploads = entry.get("uploads", {})
+        is_today = dt_ist.strftime("%Y-%m-%d") == today_str
 
-    if last_post:
-        elapsed = (now_ist - last_post).total_seconds() / 3600.0
-        if elapsed < min_gap:
-            return False, f"Cooldown active ({elapsed:.1f}h < {min_gap}h)"
+        yt_val = uploads.get("youtube")
+        if isinstance(yt_val, str) and not yt_val.lower().startswith("failed"):
+            if is_today:
+                stats["youtube"]["count"] += 1
+            if stats["youtube"]["last"] is None or dt_ist > stats["youtube"]["last"]:
+                stats["youtube"]["last"] = dt_ist
 
-    return True, f"Eligible ({len(today_posts) + 1}/{max_daily} today)"
+        for slot in (1, 2):
+            key = f"ig_{slot}"
+            for kind in ("regular", "trial"):
+                u_key = f"instagram_{slot}_{kind}"
+                val = uploads.get(u_key)
+                if isinstance(val, str) and not val.lower().startswith("failed"):
+                    if is_today:
+                        stats[key][kind] += 1
+                    if stats[key]["last"] is None or dt_ist > stats[key]["last"]:
+                        stats[key]["last"] = dt_ist
+
+    return stats
+
+
+def _pick_next_ig_action(acc_cfg: dict, acc_stats: dict, last_any_ig: datetime | None, cross_gap_min: int, force: bool) -> str | None:
+    """Returns 'regular', 'trial', or None for an Instagram account slot."""
+    if not acc_cfg.get("enabled", True):
+        return None
+
+    now_ist = datetime.now(IST)
+    if not force:
+        if last_any_ig and ((now_ist - last_any_ig).total_seconds() / 60.0) < cross_gap_min:
+            return None
+        last_self = acc_stats["last"]
+        if last_self and ((now_ist - last_self).total_seconds() / 3600.0) < acc_cfg.get("min_gap_hours", 3.0):
+            return None
+
+    if acc_stats["regular"] < acc_cfg.get("regular_per_day", 2):
+        return "regular"
+    if acc_stats["trial"] < acc_cfg.get("trial_per_day", 2):
+        return "trial"
+    return None
 
 
 def publish_next_clip(config: dict, platforms: list = None, force: bool = False) -> dict:
@@ -269,67 +292,105 @@ def publish_next_clip(config: dict, platforms: list = None, force: bool = False)
     prune_twitch_archive(days=7)
 
     queued = sorted([f for f in os.listdir(TWITCH_PIPELINE_DIR) if f.endswith(".mp4")])
-    if not queued:
-        print("[*] Twitch pipeline empty. Harvesting new hype clips first...")
+    if len(queued) < 2:
+        print("[*] Harvesting fresh hype clips to keep multi-account queue stocked...")
         harvest_clips(config, max_total_new=3)
         queued = sorted([f for f in os.listdir(TWITCH_PIPELINE_DIR) if f.endswith(".mp4")])
 
     if not queued:
         return {"status": "empty", "reason": "No clips found in pipeline or live streams."}
 
-    can_post, reason = check_can_publish_twitch(config, force=force)
-    print(f"[*] Twitch Gatekeeper: {reason}")
-    if not can_post:
-        return {"status": "skipped", "reason": reason}
-
-    tc = config.get("twitch_clipper", {})
-    ig_slot = tc.get("instagram_account_slot", 2)
-
-    clip_name = queued[0]
-    clip_path = os.path.join(TWITCH_PIPELINE_DIR, clip_name)
-    meta_path = os.path.splitext(clip_path)[0] + ".json"
-    meta = _load_json(meta_path, {})
-
-    title = meta.get("title", clip_name.replace(".mp4", "").replace("_", " ").title())
-    caption = meta.get("caption", f"{title} #shorts #twitch #gaming")
+    logs = _load_json(TWITCH_LOG_FILE, [])
+    stats = _get_today_stats(logs)
+    sched = config.get("publishing_schedule", {})
+    now_ist = datetime.now(IST)
 
     results = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "video": clip_name,
-        "streamer": meta.get("username", "unknown"),
-        "title": title,
         "uploads": {},
+        "clips_used": [],
     }
 
-    if "youtube" in platforms:
-        try:
-            yt_url = upload_short(clip_path, title=title, description=caption)
-            results["uploads"]["youtube"] = yt_url
-        except Exception as e:
-            print(f"[-] YouTube upload error: {e}")
-            results["uploads"]["youtube"] = f"Failed: {e}"
+    clip_idx = 0
 
+    def _next_clip():
+        nonlocal clip_idx
+        if clip_idx >= len(queued):
+            return (None, None, None), {}
+        cname = queued[clip_idx]
+        clip_idx += 1
+        cpath = os.path.join(TWITCH_PIPELINE_DIR, cname)
+        mpath = os.path.splitext(cpath)[0] + ".json"
+        return (cname, cpath, mpath), _load_json(mpath, {})
+
+    # 1. YouTube Shorts
+    yt_cfg = sched.get("youtube", {"enabled": True, "shorts_per_day": 3, "min_gap_hours": 3.0})
+    if "youtube" in platforms and yt_cfg.get("enabled", True):
+        yt_ok = force or (
+            stats["youtube"]["count"] < yt_cfg.get("shorts_per_day", 3)
+            and (stats["youtube"]["last"] is None or (now_ist - stats["youtube"]["last"]).total_seconds() / 3600.0 >= yt_cfg.get("min_gap_hours", 3.0))
+        )
+        if yt_ok:
+            clip_info, meta = _next_clip()
+            if clip_info[0]:
+                cname, cpath, _ = clip_info
+                title = meta.get("title", cname.replace(".mp4", "").replace("_", " ").title())
+                caption = meta.get("caption", f"{title} #shorts #twitch #gaming")
+                try:
+                    yt_url = upload_short(cpath, title=title, description=caption)
+                    results["uploads"]["youtube"] = yt_url
+                    results["clips_used"].append(cname)
+                except Exception as e:
+                    print(f"[-] YouTube upload error: {e}")
+                    results["uploads"]["youtube"] = f"Failed: {e}"
+
+    # 2. Instagram Accounts (Slot 1 & Slot 2, Regular & Trial Reels, spaced safely)
     if "instagram" in platforms:
-        suffix = "" if ig_slot == 1 else f"_{ig_slot}"
-        if os.getenv(f"INSTA_USERNAME{suffix}") and os.getenv(f"INSTA_PASSWORD{suffix}"):
+        cross_gap = sched.get("min_cross_account_gap_minutes", 20)
+        last_any_ig = max(
+            [t for t in (stats["ig_1"]["last"], stats["ig_2"]["last"]) if t is not None],
+            default=None,
+        )
+        for acc_cfg in sched.get("instagram_accounts", []):
+            slot = acc_cfg.get("slot", 1)
+            suffix = "" if slot == 1 else f"_{slot}"
+            if not (os.getenv(f"INSTA_USERNAME{suffix}") and os.getenv(f"INSTA_PASSWORD{suffix}")):
+                continue
+
+            action_kind = _pick_next_ig_action(acc_cfg, stats[f"ig_{slot}"], last_any_ig, cross_gap, force)
+            if not action_kind:
+                continue
+
+            clip_info, meta = _next_clip()
+            if not clip_info[0]:
+                break
+            cname, cpath, _ = clip_info
+            title = meta.get("title", cname.replace(".mp4", "").replace("_", " ").title())
+            caption = meta.get("caption", f"{title} #reels #twitch #gaming")
+
             try:
-                code = upload_reel_direct(clip_path, caption, account_slot=ig_slot)
-                results["uploads"]["instagram"] = f"https://instagram.com/reel/{code}"
+                code = upload_reel_direct(cpath, caption, account_slot=slot, trial=(action_kind == "trial"))
+                results["uploads"][f"instagram_{slot}_{action_kind}"] = f"https://instagram.com/reel/{code}"
+                results["clips_used"].append(cname)
+                last_any_ig = datetime.now(IST)
+                break  # At most 1 IG account per 30-min cycle to prevent same-IP dual-login flags
             except Exception as e:
-                print(f"[-] Instagram (slot {ig_slot}) upload error: {e}")
-                results["uploads"]["instagram"] = f"Failed: {e}"
-        else:
-            print(f"[!] INSTA_USERNAME{suffix} / INSTA_PASSWORD{suffix} not set. Skipping Instagram slot {ig_slot}.")
+                print(f"[-] Instagram (slot {slot}, {action_kind}) upload error: {e}")
+                results["uploads"][f"instagram_{slot}_{action_kind}"] = f"Failed: {e}"
 
     if any(isinstance(v, str) and not v.lower().startswith("failed") for v in results["uploads"].values()):
-        logs = _load_json(TWITCH_LOG_FILE, [])
         logs.append(results)
         _save_json(TWITCH_LOG_FILE, logs)
-
-        shutil.move(clip_path, os.path.join(TWITCH_POSTED_DIR, clip_name))
-        if os.path.exists(meta_path):
-            shutil.move(meta_path, os.path.join(TWITCH_POSTED_DIR, os.path.basename(meta_path)))
-        print(f"[+] Archived posted Twitch clip to {TWITCH_POSTED_DIR}")
+        for cname in set(results["clips_used"]):
+            src_mp4 = os.path.join(TWITCH_PIPELINE_DIR, cname)
+            src_json = os.path.splitext(src_mp4)[0] + ".json"
+            if os.path.exists(src_mp4):
+                shutil.move(src_mp4, os.path.join(TWITCH_POSTED_DIR, cname))
+            if os.path.exists(src_json):
+                shutil.move(src_json, os.path.join(TWITCH_POSTED_DIR, os.path.basename(src_json)))
+        print(f"[+] Archived {len(set(results['clips_used']))} posted clip(s) to {TWITCH_POSTED_DIR}")
+    else:
+        print("[*] No eligible publishing slots right now (cooldown/daily cap active).")
 
     return results
 

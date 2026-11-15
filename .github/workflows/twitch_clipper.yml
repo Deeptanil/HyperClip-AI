@@ -62,6 +62,9 @@ jobs:
           YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+          INSTA_USERNAME: ${{ secrets.INSTA_USERNAME }}
+          INSTA_PASSWORD: ${{ secrets.INSTA_PASSWORD }}
+          INSTA_SESSION_DATA: ${{ secrets.INSTA_SESSION_DATA }}
           INSTA_USERNAME_2: ${{ secrets.INSTA_USERNAME_2 }}
           INSTA_PASSWORD_2: ${{ secrets.INSTA_PASSWORD_2 }}
           INSTA_SESSION_DATA_2: ${{ secrets.INSTA_SESSION_DATA_2 }}
@@ -80,5 +83,9 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -B content origin/content
           mkdir -p output/twitch_pipeline output/twitch_posted
-          git add -f posted_twitch_log.json clipper_state.json output/twitch_pipeline output/twitch_posted 2>/dev/null || true
+          for p in posted_twitch_log.json clipper_state.json output/twitch_pipeline output/twitch_posted; do
+            if [ -e "$p" ]; then
+              git add -f "$p"
+            fi
+          done
           git diff --quiet && git diff --staged --quiet || (git commit -m "chore(twitch): automated hype clip harvest & publish [skip ci]" && git push origin content)
