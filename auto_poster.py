@@ -232,6 +232,16 @@ async def run_pipeline(platforms=None, force=False):
     if platforms is None:
         platforms = ["youtube", "instagram"]
 
+    if not force and os.path.exists("config.json"):
+        try:
+            with open("config.json", "r", encoding="utf-8") as cf:
+                cfg = json.load(cf)
+            if cfg.get("mode") == "twitch_hype" and cfg.get("disable_stickman_during_hype", False):
+                print("[*] Hype mode active ('disable_stickman_during_hype=true'). Skipping stickman story pipeline.")
+                return {"status": "paused_for_hype"}
+        except Exception:
+            pass
+
     ensure_directories()
     prune_posted_archive(days=7)
 

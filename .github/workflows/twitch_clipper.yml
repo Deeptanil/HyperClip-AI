@@ -1,0 +1,84 @@
+name: HyperClip AI - Twitch Hype Clipper
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'  # Checks every 30 mins for live streams (>= 30m) & stages/publishes hype clips
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Force harvest and publish immediately (bypass daily cap and cooldown)'
+        required: false
+        type: boolean
+        default: false
+      harvest_only:
+        description: 'Only harvest and stage clips without publishing'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  clip-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Working Branch (master)
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache TwitchDownloaderCLI & Whisper Models
+        uses: actions/cache@v4
+        with:
+          path: |
+            tools/bin
+            ~/.cache/huggingface
+          key: ${{ runner.os }}-hyperclip-${{ hashFiles('requirements.txt') }}
+
+      - name: Install System Dependencies (FFmpeg & Fonts)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-liberation fonts-dejavu
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Sync Queue & State from Content Branch
+        run: |
+          git fetch origin content
+          git checkout origin/content -- output/ posted_twitch_log.json clipper_state.json 2>/dev/null || true
+
+      - name: Run HyperClip AI Twitch Pipeline
+        env:
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+          INSTA_USERNAME_2: ${{ secrets.INSTA_USERNAME_2 }}
+          INSTA_PASSWORD_2: ${{ secrets.INSTA_PASSWORD_2 }}
+          INSTA_SESSION_DATA_2: ${{ secrets.INSTA_SESSION_DATA_2 }}
+        run: |
+          if [ "${{ github.event.inputs.harvest_only }}" = "true" ]; then
+            python twitch_clipper.py --harvest-only
+          elif [ "${{ github.event.inputs.force }}" = "true" ]; then
+            python twitch_clipper.py --platforms youtube instagram --force
+          else
+            python twitch_clipper.py --platforms youtube instagram
+          fi
+
+      - name: Commit Clips & State Exclusively to 'content' Branch
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -B content origin/content
+          mkdir -p output/twitch_pipeline output/twitch_posted
+          git add -f posted_twitch_log.json clipper_state.json output/twitch_pipeline output/twitch_posted 2>/dev/null || true
+          git diff --quiet && git diff --staged --quiet || (git commit -m "chore(twitch): automated hype clip harvest & publish [skip ci]" && git push origin content)

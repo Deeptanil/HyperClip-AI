@@ -1,0 +1,46 @@
+{
+  "project_name": "HyperClip AI",
+  "mode": "twitch_hype",
+  "disable_stickman_during_hype": true,
+  "twitch_clipper": {
+    "streamers": [
+      "kaicenat",
+      "ishowspeed",
+      "xqc",
+      "clix",
+      "jasontheween",
+      "stableronaldo",
+      "lacy",
+      "cinna",
+      "deansocool",
+      "anthonyz",
+      "burn"
+    ],
+    "target_games": [],
+    "min_stream_minutes": 30,
+    "check_past_vods_if_offline": true,
+    "past_vod_max_age_hours": 24,
+    "clip_duration_sec": 35,
+    "pre_peak_sec": 22,
+    "post_peak_sec": 13,
+    "max_clips_per_vod": 4,
+    "min_clip_spacing_sec": 180,
+    "min_spike_sigma": 2.0,
+    "min_messages_per_window": 12,
+    "layout": "auto_stacked",
+    "background_color": "#000000",
+    "enable_captions": true,
+    "whisper_model": "tiny.en",
+    "max_daily_posts": 4,
+    "min_gap_hours": 2.5,
+    "instagram_account_slot": 2,
+    "default_hashtags": "#gta6 #twitch #gaming #shorts #reels #clips #viral"
+  },
+  "story_studio": {
+    "max_daily_posts": 2,
+    "min_gap_hours": 5.0,
+    "instagram_account_slot": 1,
+    "ist_lunch_start_hour": 11.5,
+    "ist_evening_start_hour": 18.5
+  }
+}

@@ -5,6 +5,9 @@ temp_story_build/
 client_secrets.json
 cookies.txt
 ig_session.json
+ig_session_*.json
+tools/bin/
+temp_twitch/
 .env
 *.png
 *.wav

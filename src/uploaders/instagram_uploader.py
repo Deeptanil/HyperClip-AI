@@ -63,22 +63,26 @@ def upload_reel_meta_graph(video_url, caption, ig_user_id=None, access_token=Non
     print(f"[+] Published Instagram Reel ID: {reel_id}")
     return reel_id
 
-def upload_reel_direct(video_path, caption, username=None, password=None, challenge_code=None):
+def upload_reel_direct(video_path, caption, username=None, password=None, challenge_code=None, account_slot=1):
     """
     Direct upload using instagrapi without needing a public web URL.
     Reuses session cookies to bypass repeated 2FA/checkpoint security checks.
+    Supports account_slot=1 (primary) and account_slot=2 (secondary Twitch clips account).
     """
     try:
         from instagrapi import Client
     except ImportError:
         raise ImportError("instagrapi is required for direct upload. Run: pip install instagrapi")
 
-    username = username or os.getenv("INSTA_USERNAME")
-    password = password or os.getenv("INSTA_PASSWORD")
-    challenge_code = challenge_code or os.getenv("INSTA_VERIFICATION_CODE", "449932")
+    suffix = "" if account_slot == 1 else f"_{account_slot}"
+    session_file = SESSION_FILE if account_slot == 1 else f"ig_session_{account_slot}.json"
+
+    username = username or os.getenv(f"INSTA_USERNAME{suffix}")
+    password = password or os.getenv(f"INSTA_PASSWORD{suffix}")
+    challenge_code = challenge_code or os.getenv(f"INSTA_VERIFICATION_CODE{suffix}", os.getenv("INSTA_VERIFICATION_CODE", "449932"))
 
     if not all([username, password]):
-        raise ValueError("Missing INSTA_USERNAME or INSTA_PASSWORD.")
+        raise ValueError(f"Missing INSTA_USERNAME{suffix} or INSTA_PASSWORD{suffix}.")
 
     cl = Client()
 
@@ -89,20 +93,20 @@ def upload_reel_direct(video_path, caption, username=None, password=None, challe
     cl.challenge_code_handler = challenge_code_handler
 
     # 1. Restore session from secret or file if available
-    session_data = os.getenv("INSTA_SESSION_DATA")
-    if session_data and not os.path.exists(SESSION_FILE):
+    session_data = os.getenv(f"INSTA_SESSION_DATA{suffix}")
+    if session_data and not os.path.exists(session_file):
         try:
-            with open(SESSION_FILE, "w", encoding="utf-8") as f:
+            with open(session_file, "w", encoding="utf-8") as f:
                 f.write(session_data)
-            print("[+] Restored session from INSTA_SESSION_DATA environment variable")
+            print(f"[+] Restored session from INSTA_SESSION_DATA{suffix} environment variable")
         except Exception:
             pass
 
     logged_in = False
-    if os.path.exists(SESSION_FILE):
+    if os.path.exists(session_file):
         try:
-            print("[*] Reusing saved session from ig_session.json...")
-            cl.load_settings(SESSION_FILE)
+            print(f"[*] Reusing saved session from {session_file}...")
+            cl.load_settings(session_file)
             cl.login(username, password)
             logged_in = True
         except Exception as e:
@@ -110,11 +114,11 @@ def upload_reel_direct(video_path, caption, username=None, password=None, challe
 
     # 2. Fresh login with challenge handler
     if not logged_in:
-        print(f"[*] Logging into Instagram as {username}...")
+        print(f"[*] Logging into Instagram (slot {account_slot}) as {username}...")
         cl.login(username, password)
         try:
-            cl.dump_settings(SESSION_FILE)
-            print("[+] Saved fresh session to ig_session.json")
+            cl.dump_settings(session_file)
+            print(f"[+] Saved fresh session to {session_file}")
         except Exception:
             pass
 
