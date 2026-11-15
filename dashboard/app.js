@@ -102,7 +102,7 @@
       durationSec: 28,
       sigma: '4.9 σ',
       motion: 'Delta 28.5% (Victory Moment)',
-      layout: 'Centered Gameplay 9:16',
+      layout: 'Dual Stack 9:16',
       target: 'Instagram (solvikz) [Trial Reel] & YouTube',
       account: 'ig1',
       isTrial: true,
@@ -908,7 +908,7 @@
 
       card.innerHTML = `
         <div class="clip-preview-container">
-          <video src="${clip.videoUrl}" preload="metadata" muted playsinline></video>
+          <video src="${clip._blobUrl || clip.videoUrl || ('media/' + clip.filename)}" onerror="if(!this.dataset.triedLocal){this.dataset.triedLocal=1;this.src='media/${clip.filename}';}" preload="metadata" muted playsinline></video>
           <div class="clip-overlay-badge">
             <span>${clip.streamer}</span>
           </div>
@@ -971,11 +971,28 @@
     if (modal) modal.classList.remove('open');
   };
 
+  let activePreviewSessionId = 0;
+
   window.openPreviewModal = async function (clip) {
+    const currentSession = ++activePreviewSessionId;
     selectedClip = clip;
     const modal = document.getElementById('modal-preview');
     const player = document.getElementById('preview-player');
     if (!modal || !player) return;
+
+    // Immediately stop old video, detach error listeners, blank video surface, and show loader
+    player.pause();
+    player.onerror = null;
+    player.oncanplay = null;
+    player.onloadeddata = null;
+    player.removeAttribute('src');
+    player.load();
+    player.style.opacity = '0';
+
+    const loader = document.getElementById('preview-video-loader');
+    const errorEl = document.getElementById('preview-video-error');
+    if (loader) loader.style.display = 'flex';
+    if (errorEl) errorEl.style.display = 'none';
 
     const badge = document.getElementById('preview-streamer-badge');
     const title = document.getElementById('preview-modal-title');
@@ -1017,8 +1034,10 @@
               'Accept': 'application/vnd.github.v3.raw'
             }
           });
+          if (currentSession !== activePreviewSessionId) return;
           if (res.ok) {
             const blob = await res.blob();
+            if (currentSession !== activePreviewSessionId) return;
             clip._blobUrl = URL.createObjectURL(blob);
           }
         }
@@ -1027,20 +1046,28 @@
       }
     }
 
+    if (currentSession !== activePreviewSessionId) return;
+
     // Build candidate source list with local and remote fallbacks
     const candidates = [];
     if (clip._blobUrl) candidates.push(clip._blobUrl);
     if (clip.filename) {
       candidates.push(`media/${clip.filename}`);
-      candidates.push(`../output/stream_pipeline/${clip.filename}`);
       candidates.push(`output/stream_pipeline/${clip.filename}`);
+      candidates.push(`../output/stream_pipeline/${clip.filename}`);
     }
     if (clip.videoUrl) candidates.push(clip.videoUrl);
 
     let candidateIdx = 0;
     function loadNextSource() {
+      if (currentSession !== activePreviewSessionId) return;
       if (candidateIdx >= candidates.length) {
         console.warn('All playback sources exhausted for clip:', clip.title);
+        const lEl = document.getElementById('preview-video-loader');
+        const errEl = document.getElementById('preview-video-error');
+        if (lEl) lEl.style.display = 'none';
+        if (errEl) errEl.style.display = 'flex';
+        player.style.opacity = '0';
         return;
       }
       const nextSrc = candidates[candidateIdx++];
@@ -1049,7 +1076,17 @@
       player.play().catch(() => {});
     }
 
+    player.oncanplay = function () {
+      if (currentSession !== activePreviewSessionId) return;
+      const lEl = document.getElementById('preview-video-loader');
+      const errEl = document.getElementById('preview-video-error');
+      if (lEl) lEl.style.display = 'none';
+      if (errEl) errEl.style.display = 'none';
+      player.style.opacity = '1';
+    };
+
     player.onerror = function (e) {
+      if (currentSession !== activePreviewSessionId) return;
       console.warn('Source playback failed, falling back to next candidate:', player.src);
       loadNextSource();
     };
@@ -1058,12 +1095,22 @@
   };
 
   window.closePreviewModal = function () {
+    activePreviewSessionId++; // Invalidate any running session
     const modal = document.getElementById('modal-preview');
     const player = document.getElementById('preview-player');
     if (player) {
       player.pause();
-      player.src = '';
+      player.onerror = null; // Detach error listener to prevent re-triggering loadNextSource
+      player.oncanplay = null;
+      player.onloadeddata = null;
+      player.removeAttribute('src');
+      player.load();
+      player.style.opacity = '0';
     }
+    const loader = document.getElementById('preview-video-loader');
+    const errorEl = document.getElementById('preview-video-error');
+    if (loader) loader.style.display = 'none';
+    if (errorEl) errorEl.style.display = 'none';
     if (modal) modal.classList.remove('open');
     selectedClip = null;
   };
@@ -1104,8 +1151,11 @@
   }
 
   function approveClip(clip) {
+    const captionEl = document.getElementById('preview-caption-edit');
+    const newCaption = captionEl ? captionEl.value : clip.caption;
+    clip.caption = newCaption;
     clip.approval_status = 'approved';
-    updateGitHubClipMetadata(clip, { approval_status: 'approved' });
+    updateGitHubClipMetadata(clip, { approval_status: 'approved', caption: newCaption });
     renderPipelineQueue();
     renderCalendar();
     alert(`Clip "${clip.title}" approved and prioritized for next upload.`);
@@ -1309,19 +1359,32 @@
                   (meta.target && meta.target.toLowerCase().includes('trial'))
                 );
 
+                const durSec = meta.duration_sec || 35;
+                const durMinStr = `${Math.floor(durSec / 60)}:${String(durSec % 60).padStart(2, '0')}`;
+
+                let assignedAcc = 'ig1';
+                if (meta.account) {
+                  assignedAcc = meta.account === 'yt' ? 'youtube' : meta.account;
+                } else if (meta.target) {
+                  const tLower = meta.target.toLowerCase();
+                  if (tLower.includes('loopablez') || tLower.includes('slot 2')) assignedAcc = 'ig2';
+                  else if (tLower.includes('solvikz') || tLower.includes('slot 1')) assignedAcc = 'ig1';
+                  else if (tLower.includes('youtube') || tLower.includes('shorts')) assignedAcc = 'youtube';
+                }
+
                 realPipeline.push({
                   id: `real_${baseName}`,
                   filename: mp4.name,
                   streamer: meta.streamer || meta.username || 'Stream Highlight',
                   title: meta.title || baseName.replace(/_/g, ' '),
                   caption: meta.caption || `${meta.title} #gaming #reels`,
-                  duration: meta.duration_sec ? `0:${String(meta.duration_sec).padStart(2, '0')}` : '0:35',
-                  durationSec: meta.duration_sec || 35,
+                  duration: durMinStr,
+                  durationSec: durSec,
                   sigma: meta.z_score ? `${Number(meta.z_score).toFixed(1)} σ` : '3.2 σ',
                   motion: 'Active Motion Detected',
-                  layout: 'Dual Stack 9:16',
+                  layout: meta.layout || 'Dual Stack 9:16',
                   target: meta.target || 'Instagram & YouTube',
-                  account: (meta.target && meta.target.includes('loopablez')) ? 'ig2' : (meta.target && meta.target.includes('YouTube')) ? 'youtube' : 'ig1',
+                  account: assignedAcc,
                   isTrial: isTrial,
                   status: 'staged',
                   videoUrl: rawVideoUrl,
