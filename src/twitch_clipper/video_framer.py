@@ -118,12 +118,14 @@ def frame_to_portrait(
     input_mp4: str,
     output_mp4: str,
     ass_subtitle_path: str = None,
+    banner_png: str = None,
     layout: str = "auto_stacked",
 ) -> str:
     """
     Renders a 1080x1920 solid-black background portrait clip.
     - auto_stacked: detects facecam -> stacked cam (top) + gameplay (bottom); else centered gameplay.
     - centered: forces centered gameplay on black background.
+    - banner_png: transparent PNG overlay placed in the top safe area (above facecam).
     """
     os.makedirs(os.path.dirname(os.path.abspath(output_mp4)), exist_ok=True)
     w, h, _ = get_video_dimensions(input_mp4)
@@ -138,27 +140,46 @@ def frame_to_portrait(
         escaped_ass = ass_subtitle_path.replace("\\", "/").replace(":", "\\:")
         sub_filter = f",ass='{escaped_ass}'"
 
+    cmd = ["ffmpeg", "-y", "-i", input_mp4]
+    has_banner = banner_png and os.path.exists(banner_png)
+    if has_banner:
+        cmd.extend(["-i", banner_png])
+
     if facecam:
         # Top: Facecam scaled to 1080x680 placed at y=240
         # Bottom: Gameplay scaled to 1080x608 placed at y=930 via pad (preserves exact FPS & duration)
         # Canvas: 1080x1920 solid black (#000000)
         cx, cy, cw, ch = facecam["x"], facecam["y"], facecam["w"], facecam["h"]
-        filter_complex = (
-            f"[0:v]split=2[vcam][vgame];"
-            f"[vcam]crop={cw}:{ch}:{cx}:{cy},scale=1080:680:force_original_aspect_ratio=increase,crop=1080:680[cam];"
-            f"[vgame]scale=1080:608:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:930:black[canvas];"
-            f"[canvas][cam]overlay=(W-w)/2:240:shortest=1{sub_filter}[vout]"
-        )
+        if has_banner:
+            filter_complex = (
+                f"[0:v]split=2[vcam][vgame];"
+                f"[vcam]crop={cw}:{ch}:{cx}:{cy},scale=1080:680:force_original_aspect_ratio=increase,crop=1080:680[cam];"
+                f"[vgame]scale=1080:608:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:930:black[canvas];"
+                f"[canvas][cam]overlay=(W-w)/2:240:shortest=1[with_cam];"
+                f"[with_cam][1:v]overlay=(W-w)/2:20{sub_filter}[vout]"
+            )
+        else:
+            filter_complex = (
+                f"[0:v]split=2[vcam][vgame];"
+                f"[vcam]crop={cw}:{ch}:{cx}:{cy},scale=1080:680:force_original_aspect_ratio=increase,crop=1080:680[cam];"
+                f"[vgame]scale=1080:608:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:930:black[canvas];"
+                f"[canvas][cam]overlay=(W-w)/2:240:shortest=1{sub_filter}[vout]"
+            )
     else:
         # No facecam -> Clean centered 16:9 gameplay on solid black background
-        filter_complex = (
-            f"[0:v]scale=1080:608:force_original_aspect_ratio=decrease,"
-            f"pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black{sub_filter}[vout]"
-        )
+        if has_banner:
+            filter_complex = (
+                f"[0:v]scale=1080:608:force_original_aspect_ratio=decrease,"
+                f"pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black[canvas];"
+                f"[canvas][1:v]overlay=(W-w)/2:20{sub_filter}[vout]"
+            )
+        else:
+            filter_complex = (
+                f"[0:v]scale=1080:608:force_original_aspect_ratio=decrease,"
+                f"pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black{sub_filter}[vout]"
+            )
 
-    cmd = [
-        "ffmpeg", "-y",
-        "-i", input_mp4,
+    cmd.extend([
         "-filter_complex", filter_complex,
         "-map", "[vout]",
         "-map", "0:a?",
@@ -171,7 +192,7 @@ def frame_to_portrait(
         "-b:a", "192k",
         "-shortest",
         output_mp4,
-    ]
+    ])
 
     print(f"[*] Framing 9:16 portrait ({'stacked facecam + gameplay' if facecam else 'centered gameplay'} on black)...")
     res = subprocess.run(cmd, capture_output=True, text=True)

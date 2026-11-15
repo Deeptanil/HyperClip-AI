@@ -24,6 +24,7 @@ from src.twitch_clipper.downloader import download_chat, download_video_segment
 from src.twitch_clipper.hype_detector import detect_hype_moments
 from src.twitch_clipper.captioner import generate_clip_captions
 from src.twitch_clipper.video_framer import frame_to_portrait
+from src.twitch_clipper.hook_generator import generate_hook_text, render_hook_banner, slugify_hook
 from src.uploaders.youtube_uploader import upload_short
 from src.uploaders.instagram_uploader import upload_reel_direct
 
@@ -152,10 +153,8 @@ def harvest_clips(config: dict, max_total_new: int = 4) -> list:
 
             raw_clip = os.path.join(TEMP_DIR, f"raw_{vod_id}_{peak}.mp4")
             ass_path = os.path.join(TEMP_DIR, f"subs_{vod_id}_{peak}.ass")
+            banner_path = os.path.join(TEMP_DIR, f"banner_{vod_id}_{peak}.png")
             date_str = datetime.now(IST).strftime("%Y-%m-%d")
-            slug = slugify(f"{target['username']}_{vod_id}_{peak}")
-            out_mp4 = os.path.join(TWITCH_PIPELINE_DIR, f"{date_str}-{slug}.mp4")
-            out_json = os.path.join(TWITCH_PIPELINE_DIR, f"{date_str}-{slug}.json")
 
             try:
                 download_video_segment(vod_id, m["start_sec"], m["end_sec"], raw_clip)
@@ -166,17 +165,31 @@ def harvest_clips(config: dict, max_total_new: int = 4) -> list:
                         raw_clip, ass_path, model_size=tc.get("whisper_model", "tiny.en")
                     )
 
+                hook_headline = generate_hook_text(
+                    streamer=target["display_name"],
+                    game=target.get("game", "Stream"),
+                    stream_title=target.get("title", ""),
+                    sample_chat=m.get("sample_chat", []),
+                )
+                render_hook_banner(hook_headline, banner_path)
+
+                hook_slug = slugify_hook(hook_headline)
+                out_mp4 = os.path.join(TWITCH_PIPELINE_DIR, f"{date_str}-{hook_slug}.mp4")
+                out_json = os.path.join(TWITCH_PIPELINE_DIR, f"{date_str}-{hook_slug}.json")
+
                 frame_to_portrait(
                     raw_clip,
                     out_mp4,
                     ass_subtitle_path=sub_file,
+                    banner_png=banner_path,
                     layout=tc.get("layout", "auto_stacked"),
                 )
 
                 game_tag = slugify(target.get("game", "gaming")).replace("_", "")
                 hashtags = tc.get("default_hashtags", "#twitch #gaming #shorts #reels")
-                clip_title = f"{target['display_name']} Insane {target.get('game', 'Stream')} Moment!"
+                clip_title = hook_headline
                 clip_caption = (
+                    f"{hook_headline}\n\n"
                     f"{target['display_name']} goes crazy on {target.get('game', 'stream')}! "
                     f"#{target['username']} #{game_tag} {hashtags}"
                 )
@@ -191,16 +204,17 @@ def harvest_clips(config: dict, max_total_new: int = 4) -> list:
                     "z_score": m["z_score"],
                     "title": clip_title,
                     "caption": clip_caption,
+                    "hook": hook_headline,
                     "created_at": datetime.now(timezone.utc).isoformat(),
                 }
                 _save_json(out_json, meta)
                 already_clipped.append(peak)
                 staged_clips.append(out_mp4)
-                print(f"[+] Staged Twitch clip: {out_mp4} (z={m['z_score']}, msgs={m['msg_count_15s']})")
+                print(f"[+] Staged Twitch clip: {out_mp4} (hook='{hook_headline}', z={m['z_score']})")
             except Exception as e:
                 print(f"[-] Failed processing clip {vod_id}@{peak}s: {e}")
             finally:
-                for tmp in (raw_clip, ass_path):
+                for tmp in (raw_clip, ass_path, banner_path):
                     if os.path.exists(tmp):
                         try:
                             os.remove(tmp)
