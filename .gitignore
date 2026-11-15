@@ -21,5 +21,6 @@ output/pipeline/*.json
 output/posted/*.json
 output/stream_pipeline/
 output/stream_posted/
+dashboard/media/
 posted_twitch_log.json
 clipper_state.json

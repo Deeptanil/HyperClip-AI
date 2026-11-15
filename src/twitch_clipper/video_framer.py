@@ -7,6 +7,7 @@
 
 import os
 import json
+import shutil
 import subprocess
 
 
@@ -120,12 +121,14 @@ def frame_to_portrait(
     ass_subtitle_path: str = None,
     banner_png: str = None,
     layout: str = "auto_stacked",
+    outro_mp4: str = "assets/outro_bleep.mp4",
 ) -> str:
     """
     Renders a 1080x1920 solid-black background portrait clip.
     - auto_stacked: detects facecam -> stacked cam (top) + gameplay (bottom); else centered gameplay.
     - centered: forces centered gameplay on black background.
     - banner_png: transparent PNG overlay placed in the top safe area (above facecam).
+    - outro_mp4: appends retro NO SIGNAL glitch outro with censor bleep for the final 2 seconds.
     """
     os.makedirs(os.path.dirname(os.path.abspath(output_mp4)), exist_ok=True)
     w, h, _ = get_video_dimensions(input_mp4)
@@ -180,6 +183,7 @@ def frame_to_portrait(
                 f"pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black{sub_filter}[vout]"
             )
 
+    temp_framed = output_mp4 + ".tmp_framed.mp4"
     cmd.extend([
         "-filter_complex", filter_complex,
         "-map", "[vout]",
@@ -192,12 +196,52 @@ def frame_to_portrait(
         "-c:a", "aac",
         "-b:a", "192k",
         "-shortest",
-        output_mp4,
+        temp_framed,
     ])
 
     print(f"[*] Framing 9:16 portrait ({'stacked facecam + gameplay' if facecam else 'centered gameplay'} on black)...")
     res = subprocess.run(cmd, capture_output=True, text=True)
     if res.returncode != 0:
+        if os.path.exists(temp_framed):
+            try:
+                os.remove(temp_framed)
+            except Exception:
+                pass
         raise RuntimeError(f"FFmpeg portrait framing failed: {res.stderr}")
+
+    # Seamlessly append 2s retro glitch outro if asset is available
+    if outro_mp4 and os.path.exists(outro_mp4):
+        print(f"[*] Appending 2s retro glitch outro ({outro_mp4})...")
+        concat_cmd = [
+            "ffmpeg", "-y",
+            "-i", temp_framed,
+            "-i", outro_mp4,
+            "-filter_complex",
+            "[0:v]fps=30,scale=1080:1920,setsar=1[v0];"
+            "[0:a]aformat=sample_rates=44100:channel_layouts=stereo[a0];"
+            "[1:v]fps=30,scale=1080:1920,setsar=1[v1];"
+            "[1:a]aformat=sample_rates=44100:channel_layouts=stereo[a1];"
+            "[v0][a0][v1][a1]concat=n=2:v=1:a=1[vout][aout]",
+            "-map", "[vout]",
+            "-map", "[aout]",
+            "-c:v", "libx264",
+            "-preset", "fast",
+            "-crf", "22",
+            "-pix_fmt", "yuv420p",
+            "-c:a", "aac",
+            "-b:a", "192k",
+            output_mp4,
+        ]
+        concat_res = subprocess.run(concat_cmd, capture_output=True, text=True)
+        if os.path.exists(temp_framed):
+            try:
+                os.remove(temp_framed)
+            except Exception:
+                pass
+        if concat_res.returncode != 0:
+            print(f"[!] Warning: Outro concat failed, using framed video without outro: {concat_res.stderr}")
+            shutil.move(temp_framed, output_mp4)
+    else:
+        shutil.move(temp_framed, output_mp4)
 
     return output_mp4

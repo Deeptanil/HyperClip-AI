@@ -74,55 +74,58 @@
   // --- Demo Dataset (No Emojis, Real Streamer Clips) ---
   const DEMO_PIPELINE = [
     {
-      id: 'clip_speed_1',
-      filename: '2026-11-15-ishowspeed_gta6_heist_clutch.mp4',
-      streamer: 'IShowSpeed',
-      title: 'IShowSpeed Reacts to GTA 6',
-      caption: 'Speed cannot believe this just happened live on stream! #ishowspeed #gta6 #gaming #reels #shorts',
-      duration: '0:15',
-      durationSec: 15,
-      sigma: '3.8 σ',
-      motion: 'Delta 18.4% (High Action)',
-      layout: 'Dual Stack 9:16',
-      target: 'Instagram (solvikz) [Trial Reel] & YouTube',
-      account: 'ig1',
-      isTrial: true,
-      status: 'staged',
-      videoUrl: 'https://raw.githubusercontent.com/Deeptanil/HyperClip-AI/content/output/stream_pipeline/2026-11-15-ishowspeed_gta6_heist_clutch.mp4'
-    },
-    {
-      id: 'clip_xqc_1',
-      filename: '2026-11-15-xqc_among_us_nuclear_rage.mp4',
+      id: 'clip_xqc_cs',
+      filename: '2026-11-15-xqc_cs_1v3_clutch.mp4',
+      path: 'output/stream_pipeline/2026-11-15-xqc_cs_1v3_clutch.mp4',
       streamer: 'xQc',
-      title: 'xQc Nuclear Impostor Rage',
-      caption: 'Classic juicer rage moment live on stream. #xqc #twitchclips #streamer #reels #shorts',
-      duration: '0:15',
-      durationSec: 15,
-      sigma: '4.5 σ',
-      motion: 'Delta 14.2% (Active)',
+      title: 'xQc 1v3 Counter-Strike Clutch',
+      caption: 'xQc clutches insane 1v3 live in Counter-Strike! #xqc #cs2 #gaming #twitchclips #shorts',
+      duration: '0:38',
+      durationSec: 38,
+      sigma: '4.8 σ',
+      motion: 'Delta 24.1% (High Action)',
       layout: 'Dual Stack 9:16',
       target: 'Instagram (loopablez)',
       account: 'ig2',
       isTrial: false,
       status: 'staged',
-      videoUrl: 'https://raw.githubusercontent.com/Deeptanil/HyperClip-AI/content/output/stream_pipeline/2026-11-15-xqc_among_us_nuclear_rage.mp4'
+      videoUrl: 'https://raw.githubusercontent.com/Deeptanil/HyperClip-AI/content/output/stream_pipeline/2026-11-15-xqc_cs_1v3_clutch.mp4'
     },
     {
-      id: 'clip_kai_1',
-      filename: '2026-11-15-kai_cenat_warzone_impossible_clutch.mp4',
+      id: 'clip_kai_phone',
+      filename: '2026-11-15-kai_cenat_travis_scott_call.mp4',
+      path: 'output/stream_pipeline/2026-11-15-kai_cenat_travis_scott_call.mp4',
       streamer: 'Kai Cenat',
-      title: 'Kai Cenat Warzone Clutch',
-      caption: 'He pulled this off live with 10 HP left! #kaicenat #gaming #shorts #reels',
-      duration: '0:15',
-      durationSec: 15,
-      sigma: '4.2 σ',
-      motion: 'Delta 22.0% (Intense)',
+      title: 'Travis Scott Calls Kai on Stream',
+      caption: 'Travis Scott facetimed Kai live during Elden Ring marathon! #kaicenat #travisscott #eldenring #viral #shorts #reels',
+      duration: '0:31',
+      durationSec: 31,
+      sigma: '4.7 σ',
+      motion: 'Delta 18.5% (High Energy)',
+      layout: 'Portrait 9:16',
+      target: 'Instagram (solvikz) [Trial Reel]',
+      account: 'ig1',
+      isTrial: true,
+      status: 'staged',
+      videoUrl: 'https://raw.githubusercontent.com/Deeptanil/HyperClip-AI/content/output/stream_pipeline/2026-11-15-kai_cenat_travis_scott_call.mp4'
+    },
+    {
+      id: 'clip_caseoh_terror',
+      filename: '2026-11-15-caseoh_lethal_company_scream.mp4',
+      path: 'output/stream_pipeline/2026-11-15-caseoh_lethal_company_scream.mp4',
+      streamer: 'CaseOh',
+      title: 'CaseOh Terrified on Lethal Company',
+      caption: 'CaseOh cannot survive 5 minutes in Lethal Company facility! #caseoh #lethalcompany #gaming #twitchclips #shorts',
+      duration: '0:32',
+      durationSec: 32,
+      sigma: '4.5 σ',
+      motion: 'Delta 21.0% (Terrified)',
       layout: 'Dual Stack 9:16',
       target: 'YouTube Shorts',
       account: 'youtube',
       isTrial: false,
       status: 'staged',
-      videoUrl: 'https://raw.githubusercontent.com/Deeptanil/HyperClip-AI/content/output/stream_pipeline/2026-11-15-kai_cenat_warzone_impossible_clutch.mp4'
+      videoUrl: 'https://raw.githubusercontent.com/Deeptanil/HyperClip-AI/content/output/stream_pipeline/2026-11-15-caseoh_lethal_company_scream.mp4'
     }
   ];
 
@@ -273,13 +276,32 @@
       }
     }
 
-    // 2. YouTube Shorts Slots: Spaced across 24h, staggered from IG slots
+    // 2. YouTube Shorts Slots: Spaced across 24h, intelligently staggered from IG slots
     if (ytCount > 0) {
       const stepYt = Math.floor((24 * 60) / ytCount);
-      const ytOffset = Math.floor(stepYt / 2); // Offset to avoid overlapping IG slots
+      const igMinutes = scheduledSlots.map(s => s.timeMinutes);
+
+      // Find an offset that maximizes circular distance to all existing Instagram slots
+      let bestOffset = Math.floor(stepYt / 2);
+      let maxMinDist = -1;
+      for (let candOffset = 15; candOffset < stepYt; candOffset += 15) {
+        let minDist = 9999;
+        for (let j = 0; j < ytCount; j++) {
+          const ytM = (j * stepYt + candOffset) % (24 * 60);
+          for (const igM of igMinutes) {
+            const diff = Math.abs(ytM - igM);
+            const circDist = Math.min(diff, 1440 - diff);
+            if (circDist < minDist) minDist = circDist;
+          }
+        }
+        if (minDist > maxMinDist) {
+          maxMinDist = minDist;
+          bestOffset = candOffset;
+        }
+      }
 
       for (let j = 0; j < ytCount; j++) {
-        const totalMinutes = (j * stepYt + ytOffset) % (24 * 60);
+        const totalMinutes = (j * stepYt + bestOffset) % (24 * 60);
         const h = Math.floor(totalMinutes / 60) % 24;
         const m = totalMinutes % 60;
 
@@ -622,19 +644,27 @@
           // Handle multi-lane side-by-side positioning for overlapping cards
           if (evt.totalLanes > 1) {
             const lanePct = 100 / evt.totalLanes;
-            card.style.left = `calc(${evt.lane * lanePct}% + 1px)`;
-            card.style.width = `calc(${lanePct}% - 2px)`;
-            card.style.right = 'auto';
+            card.classList.add('compact-lane');
+            card.style.setProperty('left', `calc(${evt.lane * lanePct}% + 1px)`, 'important');
+            card.style.setProperty('width', `calc(${lanePct}% - 2px)`, 'important');
+            card.style.setProperty('right', 'auto', 'important');
+            card.style.setProperty('z-index', `${10 + evt.lane}`);
           } else {
-            card.style.left = '3px';
-            card.style.width = 'calc(100% - 6px)';
-            card.style.right = 'auto';
+            card.style.setProperty('left', '3px', 'important');
+            card.style.setProperty('width', 'calc(100% - 6px)', 'important');
+            card.style.setProperty('right', 'auto', 'important');
+            card.style.setProperty('z-index', '10');
           }
 
+          const isCompact = evt.totalLanes > 1;
           const tagClass = acc === 'ig1' ? 'tag-ig1' : acc === 'ig2' ? 'tag-ig2' : 'tag-yt';
-          const tagText = acc === 'ig1' ? '@solvikz' : acc === 'ig2' ? '@loopablez' : 'YouTube Shorts';
+          const tagText = isCompact
+            ? (acc === 'ig1' ? '@solvikz' : acc === 'ig2' ? '@loop' : 'YT Shorts')
+            : (acc === 'ig1' ? '@solvikz' : acc === 'ig2' ? '@loopablez' : 'YouTube Shorts');
           const statusIcon = evt.status === 'posted' ? ICONS.check : evt.status === 'staged' ? ICONS.play : ICONS.clock;
           const timeStr = `${String(evt.hour).padStart(2, '0')}:${String(evt.minute || 0).padStart(2, '0')}`;
+
+          card.title = `${evt.title} // ${acc === 'ig1' ? '@solvikz' : acc === 'ig2' ? '@loopablez' : 'YouTube Shorts'} (${timeStr})`;
 
           card.innerHTML = `
             <div class="event-title">
@@ -978,7 +1008,6 @@
 
     // Secure streaming loader: If authenticated to GitHub, stream binary via Blob URL
     // This allows private repository MP4s to play seamlessly in HTML5 <video> without auth blocks!
-    let streamUrl = clip.videoUrl;
     if (auth.pat && !auth.isDemo && clip.path) {
       try {
         if (!clip._blobUrl) {
@@ -993,21 +1022,39 @@
             clip._blobUrl = URL.createObjectURL(blob);
           }
         }
-        if (clip._blobUrl) {
-          streamUrl = clip._blobUrl;
-        }
       } catch (err) {
         console.warn('Blob stream fallback to direct URL:', err);
       }
     }
 
+    // Build candidate source list with local and remote fallbacks
+    const candidates = [];
+    if (clip._blobUrl) candidates.push(clip._blobUrl);
+    if (clip.filename) {
+      candidates.push(`media/${clip.filename}`);
+      candidates.push(`../output/stream_pipeline/${clip.filename}`);
+      candidates.push(`output/stream_pipeline/${clip.filename}`);
+    }
+    if (clip.videoUrl) candidates.push(clip.videoUrl);
+
+    let candidateIdx = 0;
+    function loadNextSource() {
+      if (candidateIdx >= candidates.length) {
+        console.warn('All playback sources exhausted for clip:', clip.title);
+        return;
+      }
+      const nextSrc = candidates[candidateIdx++];
+      player.src = nextSrc;
+      player.load();
+      player.play().catch(() => {});
+    }
+
     player.onerror = function (e) {
-      console.warn('Video failed to stream directly:', e);
+      console.warn('Source playback failed, falling back to next candidate:', player.src);
+      loadNextSource();
     };
 
-    player.src = streamUrl || '';
-    player.load();
-    player.play().catch(() => {});
+    loadNextSource();
   };
 
   window.closePreviewModal = function () {

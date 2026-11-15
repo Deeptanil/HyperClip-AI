@@ -662,7 +662,37 @@ body {
 
 .event-card:hover {
   transform: translateY(-1px);
-  z-index: 15;
+  z-index: 25;
+}
+
+/* Multi-Lane Compact Overlap Display */
+.event-card.compact-lane {
+  padding: 4px 6px;
+  min-width: 0;
+}
+
+.event-card.compact-lane .event-title {
+  font-size: 10px;
+  gap: 3px;
+}
+
+.event-card.compact-lane .event-account-tag {
+  font-size: 8.5px;
+  padding: 1px 4px;
+}
+
+.event-card.compact-lane .event-footer-right {
+  font-size: 9px;
+  gap: 3px;
+}
+
+/* Hover expansion: raises above sibling lanes with full clarity */
+.event-card.compact-lane:hover {
+  z-index: 60 !important;
+  left: 3px !important;
+  width: calc(100% - 6px) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.95), 0 0 14px rgba(250, 204, 21, 0.4);
+  transition: width 0.16s cubic-bezier(0.16, 1, 0.3, 1), left 0.16s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.16s ease;
 }
 
 /* Event Status Base Classes */
