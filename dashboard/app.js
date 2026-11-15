@@ -928,7 +928,8 @@
           <div class="clip-caption">${clip.caption}</div>
           <div class="clip-metrics">
             <span>Spike: ${clip.sigma}</span> • 
-            <span>${clip.motion}</span>
+            <span>${clip.motion}</span> • 
+            <span>${clip.post_to_yt ? '<strong style="color:#ffffff">IG + YouTube</strong>' : '<span style="color:var(--text-muted)">Instagram Only (YT Skipped)</span>'}</span>
             ${isTrial ? ' • <span style="color:var(--yellow);font-weight:700">Trial Reel (Non-Followers)</span>' : ''}
           </div>
         </div>
@@ -1279,7 +1280,7 @@
                 for (const [k, v] of Object.entries(uploads)) {
                   if (typeof v === 'string' && !v.toLowerCase().startsWith('failed')) {
                     const isIg1 = k.includes('instagram_1');
-                    const isIg2 = k.includes('instagram_2') || k.includes('instagram_');
+                    const isIg2 = k.includes('instagram_2') || (!isIg1 && k.includes('instagram'));
                     const isYt = k.includes('youtube');
 
                     realPosted.push({
@@ -1288,6 +1289,7 @@
                       account: isIg1 ? 'ig1' : isIg2 ? 'ig2' : 'youtube',
                       platform: isIg1 ? 'Instagram (@solvikz)' : isIg2 ? 'Instagram (@loopablez)' : 'YouTube Shorts',
                       date: entry.timestamp,
+                      timestamp: entry.timestamp,
                       url: v,
                       status: 'posted',
                       cname: cname
@@ -1383,7 +1385,10 @@
                   sigma: meta.z_score ? `${Number(meta.z_score).toFixed(1)} σ` : '3.2 σ',
                   motion: 'Active Motion Detected',
                   layout: meta.layout || 'Dual Stack 9:16',
-                  target: meta.target || 'Instagram & YouTube',
+                  target: meta.target || (meta.post_to_yt ? 'Instagram & YouTube' : 'Instagram Only'),
+                  post_to_yt: Boolean(meta.post_to_yt || (meta.target && meta.target.toLowerCase().includes('youtube'))),
+                  posted_to_instagram: Boolean(meta.posted_to_instagram),
+                  posted_to_youtube: Boolean(meta.posted_to_youtube),
                   account: assignedAcc,
                   isTrial: isTrial,
                   status: 'staged',
@@ -1467,7 +1472,10 @@
       if (ig2ValEl) ig2ValEl.innerHTML = `${ig2Count} / ${settings.ig2Posts} <small class="text-dim-unit">today</small>`;
       if (ytValEl) ytValEl.innerHTML = `${ytCount} / ${settings.ytPosts} <small class="text-dim-unit">today</small>`;
       if (storageValEl) storageValEl.innerHTML = `${totalMb} MB <small class="text-dim-unit">/ 1500 MB</small>`;
-      if (storageDescEl) storageDescEl.innerText = `${storagePct}% used • Unposted clips protected`;
+      if (storageDescEl) storageDescEl.innerText = `${storagePct}% used • Completed clips deleted automatically`;
+
+      // Update Live Cooldown Timers from exact ISO timestamps
+      updateCooldownDisplays();
 
       // Update Calendar & Queue with real GitHub data
       calculateDynamicSpacing();
@@ -1491,6 +1499,77 @@
       const trial = typeof settings.ig1TrialPosts !== 'undefined' ? settings.ig1TrialPosts : 2;
       const reg = Math.max(0, total - trial);
       descEl.innerText = `${trial} of ${total} posts will test with non-followers (${reg} standard reel${reg === 1 ? '' : 's'})`;
+    }
+  }
+
+  function updateCooldownDisplays() {
+    const now = new Date();
+
+    let lastIg1Ts = null;
+    let lastIg2Ts = null;
+    let lastYtTs = null;
+
+    postedClips.forEach(p => {
+      const rawDate = p.timestamp || p.date;
+      if (!rawDate) return;
+      const t = new Date(rawDate).getTime();
+      if (isNaN(t)) return;
+
+      if (p.account === 'ig1') {
+        if (!lastIg1Ts || t > lastIg1Ts) lastIg1Ts = t;
+      } else if (p.account === 'ig2') {
+        if (!lastIg2Ts || t > lastIg2Ts) lastIg2Ts = t;
+      } else if (p.account === 'youtube') {
+        if (!lastYtTs || t > lastYtTs) lastYtTs = t;
+      }
+    });
+
+    const ig1MinGap = (parseFloat(settings.clipSpacing) || 3.0) * 60; // in minutes
+    const ig2MinGap = (parseFloat(settings.clipSpacing) || 3.0) * 60; // in minutes
+    const ytMinGap = 180; // 3.0h in minutes
+
+    function computeDesc(lastTs, gapMinutes, prefix = '') {
+      if (!lastTs) {
+        return { text: prefix ? `${prefix} • Cooldown: Ready` : 'Cooldown: Ready', isReady: true };
+      }
+      const elapsedMinutes = Math.floor((now.getTime() - lastTs) / (1000 * 60));
+      if (elapsedMinutes >= gapMinutes) {
+        const agoStr = elapsedMinutes < 60 ? `${elapsedMinutes}m ago` : `${Math.floor(elapsedMinutes / 60)}h ${elapsedMinutes % 60}m ago`;
+        return { text: prefix ? `${prefix} • Ready (Last: ${agoStr})` : `Cooldown: Ready (Last: ${agoStr})`, isReady: true };
+      }
+      const remMinutes = Math.ceil(gapMinutes - elapsedMinutes);
+      const remH = Math.floor(remMinutes / 60);
+      const remM = remMinutes % 60;
+      const remStr = remH > 0 ? `${remH}h ${remM}m` : `${remM}m`;
+      const agoStr = elapsedMinutes < 60 ? `${elapsedMinutes}m ago` : `${Math.floor(elapsedMinutes / 60)}h ${elapsedMinutes % 60}m ago`;
+      return { text: `Posted ${agoStr} • Cooldown: ${remStr} remaining`, isReady: false };
+    }
+
+    const ig1DescEl = document.getElementById('ig1-stat-desc');
+    const ig2DescEl = document.getElementById('ig2-stat-desc');
+    const ytDescEl = document.getElementById('yt-stat-desc');
+
+    if (ig1DescEl) {
+      const trial = typeof settings.ig1TrialPosts !== 'undefined' ? settings.ig1TrialPosts : 1;
+      const prefix = trial > 0 ? 'Trial Eligible' : 'Regular Reels';
+      const info = computeDesc(lastIg1Ts, ig1MinGap, prefix);
+      ig1DescEl.innerText = info.text;
+      if (info.isReady) ig1DescEl.classList.add('highlight');
+      else ig1DescEl.classList.remove('highlight');
+    }
+
+    if (ig2DescEl) {
+      const info = computeDesc(lastIg2Ts, ig2MinGap, 'Regular Reels');
+      ig2DescEl.innerText = info.text;
+      if (info.isReady) ig2DescEl.classList.add('highlight');
+      else ig2DescEl.classList.remove('highlight');
+    }
+
+    if (ytDescEl) {
+      const info = computeDesc(lastYtTs, ytMinGap, 'YouTube Shorts');
+      ytDescEl.innerText = info.text;
+      if (info.isReady) ytDescEl.classList.add('highlight');
+      else ytDescEl.classList.remove('highlight');
     }
   }
 
@@ -2023,6 +2102,8 @@
     } else {
       syncWithGitHub();
     }
+    // Live real-time cooldown countdown ticker
+    setInterval(updateCooldownDisplays, 30000);
   }
 
   if (document.readyState === 'loading') {

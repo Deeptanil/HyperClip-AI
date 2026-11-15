@@ -353,12 +353,18 @@ async def run_pipeline(platforms=None, force=False):
 
     save_log_entry(results)
 
-    # Move posted video and metadata to output/posted/
-    posted_dest_mp4 = os.path.join(POSTED_DIR, os.path.basename(video_to_post))
-    shutil.move(video_to_post, posted_dest_mp4)
+    # Delete posted video and metadata to prevent storage clutter (URLs recorded in logs)
+    if os.path.exists(video_to_post):
+        try:
+            os.remove(video_to_post)
+        except Exception:
+            pass
     if os.path.exists(json_path):
-        shutil.move(json_path, os.path.join(POSTED_DIR, os.path.basename(json_path)))
-    print(f"[+] Archived posted video to: {posted_dest_mp4}")
+        try:
+            os.remove(json_path)
+        except Exception:
+            pass
+    print(f"[+] Posted video and metadata deleted from pipeline (Storage freed).")
 
     # Ensure pipeline has the NEXT video staged and ready
     remaining = get_queued_videos()

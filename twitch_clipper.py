@@ -339,6 +339,19 @@ def harvest_clips(config: dict, max_total_new: int = 4) -> list:
                         f"#{target['username']} #{game_tag} {hashtags}"
                     )
 
+                # Smart YouTube allocation:
+                # 2 Instagrams (~5-6 posts/day) vs 1 YouTube (3 posts/day).
+                # Assign YouTube to ~50% of clips (highest hype / alternating) so YouTube doesn't backlog and storage stays clean!
+                current_yt_queued = 0
+                for f in os.listdir(STREAM_PIPELINE_DIR):
+                    if f.endswith(".json"):
+                        cm = _load_json(os.path.join(STREAM_PIPELINE_DIR, f), {})
+                        if cm.get("post_to_yt", False) and not cm.get("posted_to_youtube", False):
+                            current_yt_queued += 1
+
+                schedule_for_yt = (current_yt_queued < 2) or (float(m.get("z_score", 0)) >= 3.8 and current_yt_queued < 3)
+                target_label = "Instagram & YouTube" if schedule_for_yt else "Instagram Only"
+
                 meta = {
                     "streamer": target["display_name"],
                     "username": target["username"],
@@ -350,7 +363,13 @@ def harvest_clips(config: dict, max_total_new: int = 4) -> list:
                     "title": clip_title,
                     "caption": clip_caption,
                     "hook": hook_headline,
+                    "post_to_yt": schedule_for_yt,
+                    "post_to_ig": True,
+                    "posted_to_instagram": False,
+                    "posted_to_youtube": False,
+                    "target": target_label,
                     "created_at": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 }
                 _save_json(out_json, meta)
                 already_clipped.append(peak)
@@ -626,23 +645,33 @@ def publish_next_clip(
         "clips_used": [],
     }
 
-    clip_idx = 0
-
-    def _next_clip():
-        nonlocal clip_idx
-        while clip_idx < len(queued):
-            cname = queued[clip_idx]
-            clip_idx += 1
+    def _next_clip(for_platform="instagram", ig_slot=None):
+        for cname in queued:
             cpath = os.path.join(STREAM_PIPELINE_DIR, cname)
             mpath = os.path.splitext(cpath)[0] + ".json"
             meta = _load_json(mpath, {})
 
-            # Denied clips are never published (approval is optional, but denial is respected)
+            # Denied clips are never published
             if meta.get("approval_status") == "denied" or meta.get("status") == "denied":
-                print(f"[-] Skipping explicitly denied clip: {cname}")
                 continue
 
-            return (cname, cpath, mpath), meta
+            target_str = str(meta.get("target", "")).lower()
+            is_assigned_yt = meta.get("post_to_yt", False) or ("youtube" in target_str)
+
+            if for_platform == "youtube":
+                # YouTube only posts clips explicitly assigned for YouTube
+                if not is_assigned_yt:
+                    continue
+                if meta.get("posted_to_youtube", False):
+                    continue
+                return (cname, cpath, mpath), meta
+
+            elif for_platform == "instagram":
+                # Instagram posts all clips (unless already posted to IG)
+                if meta.get("posted_to_instagram", False):
+                    continue
+                return (cname, cpath, mpath), meta
+
         return (None, None, None), {}
 
     # 1. YouTube Shorts
@@ -664,7 +693,7 @@ def publish_next_clip(
         else:
             yt_ok = True
         if yt_ok:
-            clip_info, meta = _next_clip()
+            clip_info, meta = _next_clip(for_platform="youtube")
             if clip_info[0]:
                 cname, cpath, _ = clip_info
                 title = meta.get("title", cname.replace(".mp4", "").replace("_", " ").title())
@@ -683,6 +712,8 @@ def publish_next_clip(
                 except Exception as e:
                     print(f"[-] YouTube upload error: {e}")
                     results["uploads"]["youtube"] = f"Failed: {e}"
+            else:
+                print("[-] No queued clips currently scheduled for YouTube Shorts. Skipping YouTube.")
 
     # 2. Instagram Accounts (Slot 1 & Slot 2, Regular & Trial Reels, spaced safely)
     if "instagram" in platforms:
@@ -716,8 +747,9 @@ def publish_next_clip(
             if not action_kind:
                 continue
 
-            clip_info, meta = _next_clip()
+            clip_info, meta = _next_clip(for_platform="instagram", ig_slot=slot)
             if not clip_info[0]:
+                print(f"[-] No queued clips available for Instagram Slot {slot}.")
                 break
             cname, cpath, _ = clip_info
             title = meta.get("title", cname.replace(".mp4", "").replace("_", " ").title())
@@ -736,14 +768,64 @@ def publish_next_clip(
     if any(isinstance(v, str) and not v.lower().startswith("failed") for v in results["uploads"].values()):
         logs.append(results)
         _save_json(TWITCH_LOG_FILE, logs)
+
+        yt_posted_cnames = [c for c in results.get("clips_used", []) if "youtube" in results.get("uploads", {})]
+        ig_posted_cnames = [c for c in results.get("clips_used", []) if any(k.startswith("instagram_") for k in results.get("uploads", {}))]
+
         for cname in set(results["clips_used"]):
-            src_mp4 = os.path.join(STREAM_PIPELINE_DIR, cname)
-            src_json = os.path.splitext(src_mp4)[0] + ".json"
-            if os.path.exists(src_mp4):
-                shutil.move(src_mp4, os.path.join(STREAM_POSTED_DIR, cname))
-            if os.path.exists(src_json):
-                shutil.move(src_json, os.path.join(STREAM_POSTED_DIR, os.path.basename(src_json)))
-        print(f"[+] Archived {len(set(results['clips_used']))} posted clip(s) to {STREAM_POSTED_DIR}")
+            cpath = os.path.join(STREAM_PIPELINE_DIR, cname)
+            mpath = os.path.splitext(cpath)[0] + ".json"
+            meta = _load_json(mpath, {})
+
+            if cname in yt_posted_cnames:
+                meta["posted_to_youtube"] = True
+                meta["youtube_url"] = results["uploads"].get("youtube", "")
+
+            if cname in ig_posted_cnames:
+                meta["posted_to_instagram"] = True
+                for k, url in results["uploads"].items():
+                    if k.startswith("instagram_"):
+                        meta["instagram_url"] = url
+
+            _save_json(mpath, meta)
+
+            target_str = str(meta.get("target", "")).lower()
+            needs_yt = meta.get("post_to_yt", False) or ("youtube" in target_str)
+            needs_ig = meta.get("post_to_ig", True)
+
+            finished_yt = meta.get("posted_to_youtube", False) or not needs_yt
+            finished_ig = meta.get("posted_to_instagram", False) or not needs_ig
+
+            # Once clip has finished all assigned destinations, DELETE both .mp4 and .json immediately!
+            if finished_ig and finished_yt:
+                if os.path.exists(cpath):
+                    try:
+                        os.remove(cpath)
+                    except Exception as e:
+                        print(f"[!] Error deleting {cpath}: {e}")
+                if os.path.exists(mpath):
+                    try:
+                        os.remove(mpath)
+                    except Exception as e:
+                        print(f"[!] Error deleting {mpath}: {e}")
+                print(f"[+] Clip '{cname}' and metadata DELETED: completed all assigned destinations (Storage freed).")
+            else:
+                remaining = []
+                if needs_yt and not meta.get("posted_to_youtube", False):
+                    remaining.append("YouTube Shorts")
+                if needs_ig and not meta.get("posted_to_instagram", False):
+                    remaining.append("Instagram")
+                print(f"[*] Clip '{cname}' retained in pipeline: awaiting remaining destination ({', '.join(remaining)}).")
+
+        # Purge any lingering binary MP4s in stream_posted to keep storage lean
+        if os.path.exists(STREAM_POSTED_DIR):
+            for pf in os.listdir(STREAM_POSTED_DIR):
+                if pf.endswith(".mp4"):
+                    try:
+                        os.remove(os.path.join(STREAM_POSTED_DIR, pf))
+                        print(f"[*] Cleaned up posted binary MP4 from storage archive: {pf}")
+                    except Exception:
+                        pass
     else:
         print("[*] No eligible publishing slots right now (cooldown/daily cap active).")
 

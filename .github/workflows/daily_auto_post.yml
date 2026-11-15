@@ -79,9 +79,5 @@ jobs:
           # Switch exclusively to content branch (master is never modified by actions)
           git checkout -B content origin/content
           mkdir -p output/stream_pipeline output/stream_posted output/pipeline output/posted
-          for p in posted_log.json posted_twitch_log.json clipper_state.json output/pipeline output/posted output/stream_pipeline output/stream_posted; do
-            if [ -e "$p" ]; then
-              git add -f "$p"
-            fi
-          done
+          git add -A posted_log.json posted_twitch_log.json clipper_state.json output/pipeline output/posted output/stream_pipeline output/stream_posted
           git diff --quiet && git diff --staged --quiet || (git commit -m "chore(content): automated check and archive update [skip ci]" && git pull --rebase origin content && git push origin content)
