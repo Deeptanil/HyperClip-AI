@@ -2,17 +2,14 @@ __pycache__/
 *.pyc
 temp_build/
 temp_story_build/
+temp_twitch/
+tools/bin/
 client_secrets.json
 cookies.txt
 ig_session.json
-.env
+ig_session_2.json
+.env*
 *.png
 *.wav
-
-# Ignore all generated media on master branch (managed exclusively on 'content' branch)
-*.mp4
-output/*.mp4
-output/pipeline/*.mp4
-output/posted/*.mp4
-output/pipeline/*.json
-output/posted/*.json
+*.pdb
+*.exe
