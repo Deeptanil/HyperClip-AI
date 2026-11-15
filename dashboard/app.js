@@ -907,14 +907,12 @@
     if (modal) modal.classList.remove('open');
   };
 
-  window.openPreviewModal = function (clip) {
+  window.openPreviewModal = async function (clip) {
     selectedClip = clip;
     const modal = document.getElementById('modal-preview');
     const player = document.getElementById('preview-player');
     if (!modal || !player) return;
 
-    player.src = clip.videoUrl || '';
-    player.load();
     const badge = document.getElementById('preview-streamer-badge');
     const title = document.getElementById('preview-modal-title');
     const caption = document.getElementById('preview-caption-edit');
@@ -932,6 +930,43 @@
     if (target) target.innerText = clip.target || 'Instagram & YouTube';
 
     modal.classList.add('open');
+
+    // Secure streaming loader: If authenticated to GitHub, stream binary via Blob URL
+    // This allows private repository MP4s to play seamlessly in HTML5 <video> without auth blocks!
+    let streamUrl = clip.videoUrl;
+    if (auth.pat && !auth.isDemo && clip.path) {
+      try {
+        if (!clip._blobUrl) {
+          const res = await fetch(`https://api.github.com/repos/${auth.repo}/contents/${clip.path}?ref=${auth.contentBranch || 'content'}`, {
+            headers: {
+              'Authorization': `token ${auth.pat.trim()}`,
+              'Accept': 'application/vnd.github.v3.raw'
+            }
+          });
+          if (res.ok) {
+            const blob = await res.blob();
+            clip._blobUrl = URL.createObjectURL(blob);
+          }
+        }
+        if (clip._blobUrl) {
+          streamUrl = clip._blobUrl;
+        }
+      } catch (err) {
+        console.warn('Blob stream fallback to direct URL:', err);
+      }
+    }
+
+    player.onerror = function () {
+      if (player.src && !player.src.includes('cc0-videos')) {
+        console.warn('Video failed to stream, falling back to demo stream');
+        player.src = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4';
+        player.load();
+        player.play().catch(() => {});
+      }
+    };
+
+    player.src = streamUrl || '';
+    player.load();
     player.play().catch(() => {});
   };
 
