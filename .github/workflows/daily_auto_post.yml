@@ -43,8 +43,8 @@ jobs:
       - name: Sync Media Queue from Content Branch
         run: |
           git fetch origin content
-          # Populate output/ and posted_log.json from dedicated content branch
-          git checkout origin/content -- output/ posted_log.json 2>/dev/null || true
+          # Populate output/ and state logs from dedicated content branch
+          git checkout origin/content -- output/ posted_log.json posted_twitch_log.json clipper_state.json 2>/dev/null || true
 
       - name: Run Intelligent Pipeline
         env:
@@ -53,10 +53,13 @@ jobs:
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
           
-          # Instagram Secrets (Direct login, session & Meta Graph)
+          # Instagram Secrets (Direct login, session & Meta Graph for Slot 1 and Slot 2)
           INSTA_USERNAME: ${{ secrets.INSTA_USERNAME }}
           INSTA_PASSWORD: ${{ secrets.INSTA_PASSWORD }}
           INSTA_SESSION_DATA: ${{ secrets.INSTA_SESSION_DATA }}
+          INSTA_USERNAME_2: ${{ secrets.INSTA_USERNAME_2 }}
+          INSTA_PASSWORD_2: ${{ secrets.INSTA_PASSWORD_2 }}
+          INSTA_SESSION_DATA_2: ${{ secrets.INSTA_SESSION_DATA_2 }}
           INSTAGRAM_ACCOUNT_ID: ${{ secrets.INSTAGRAM_ACCOUNT_ID }}
           META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
           
@@ -75,5 +78,10 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           # Switch exclusively to content branch (master is never modified by actions)
           git checkout -B content origin/content
-          git add -f posted_log.json output/pipeline output/posted
-          git diff --quiet && git diff --staged --quiet || (git commit -m "chore(content): automated 6x daily check and archive update [skip ci]" && git push origin content)
+          mkdir -p output/stream_pipeline output/stream_posted output/pipeline output/posted
+          for p in posted_log.json posted_twitch_log.json clipper_state.json output/pipeline output/posted output/stream_pipeline output/stream_posted; do
+            if [ -e "$p" ]; then
+              git add -f "$p"
+            fi
+          done
+          git diff --quiet && git diff --staged --quiet || (git commit -m "chore(content): automated check and archive update [skip ci]" && git push origin content)
