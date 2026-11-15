@@ -84,4 +84,4 @@ jobs:
               git add -f "$p"
             fi
           done
-          git diff --quiet && git diff --staged --quiet || (git commit -m "chore(content): automated check and archive update [skip ci]" && git push origin content)
+          git diff --quiet && git diff --staged --quiet || (git commit -m "chore(content): automated check and archive update [skip ci]" && git pull --rebase origin content && git push origin content)
