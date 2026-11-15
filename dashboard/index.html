@@ -488,7 +488,10 @@
         <div class="preview-details-pane">
           <div class="modal-header">
             <div>
-              <div class="status-pill" id="preview-streamer-badge" style="color:var(--yellow);margin-bottom:6px">Streamer // Highlight</div>
+              <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
+                <div class="status-pill" id="preview-streamer-badge" style="color:var(--yellow)">Streamer // Highlight</div>
+                <span id="preview-trial-pill" class="clip-trial-tag" style="display:none">TRIAL REEL</span>
+              </div>
               <h3 class="modal-title" id="preview-modal-title">Clip Title</h3>
             </div>
             <button class="modal-close" id="btn-close-preview" onclick="window.closePreviewModal && window.closePreviewModal()" aria-label="Close">&times;</button>
@@ -504,6 +507,7 @@
             <div class="diag-row"><span class="diag-label">Visual Motion Score:</span><span class="diag-val" id="preview-motion">High Delta (Active)</span></div>
             <div class="diag-row"><span class="diag-label">Facecam Framing:</span><span class="diag-val" id="preview-layout">Dual Stack 9:16</span></div>
             <div class="diag-row"><span class="diag-label">Target Platform:</span><span class="diag-val" id="preview-target">Instagram & YouTube</span></div>
+            <div class="diag-row"><span class="diag-label">Format / Strategy:</span><span class="diag-val" id="preview-post-format">Standard Feed Reel</span></div>
           </div>
 
           <div style="display:flex;gap:8px;margin-top:auto">

@@ -84,8 +84,9 @@
       sigma: '3.8 σ',
       motion: 'Delta 18.4% (High Action)',
       layout: 'Dual Stack 9:16',
-      target: 'Instagram (solvikz) & YouTube',
+      target: 'Instagram (solvikz) [Trial Reel] & YouTube',
       account: 'ig1',
+      isTrial: true,
       status: 'staged',
       videoUrl: 'https://raw.githubusercontent.com/Deeptanil/HyperClip-AI/content/output/stream_pipeline/2026-11-15-ishowspeed_gta6_heist_clutch.mp4'
     },
@@ -102,6 +103,7 @@
       layout: 'Dual Stack 9:16',
       target: 'Instagram (loopablez)',
       account: 'ig2',
+      isTrial: false,
       status: 'staged',
       videoUrl: 'https://raw.githubusercontent.com/Deeptanil/HyperClip-AI/content/output/stream_pipeline/2026-11-15-xqc_among_us_nuclear_rage.mp4'
     },
@@ -118,6 +120,7 @@
       layout: 'Dual Stack 9:16',
       target: 'YouTube Shorts',
       account: 'youtube',
+      isTrial: false,
       status: 'staged',
       videoUrl: 'https://raw.githubusercontent.com/Deeptanil/HyperClip-AI/content/output/stream_pipeline/2026-11-15-kai_cenat_warzone_impossible_clutch.mp4'
     }
@@ -225,7 +228,9 @@
     if (totalIg > 0) {
       const stepMinutes = Math.floor((24 * 60) / totalIg);
       let ig1Allocated = 0;
+      let ig1TrialAllocated = 0;
       let ig2Allocated = 0;
+      const ig1TrialTarget = Math.max(0, parseInt(settings.ig1TrialPosts, 10) || 0);
 
       for (let i = 0; i < totalIg; i++) {
         const totalMinutes = i * stepMinutes;
@@ -241,8 +246,16 @@
           acc = 'ig2';
         }
 
-        if (acc === 'ig1') ig1Allocated++;
-        else ig2Allocated++;
+        let isTrial = false;
+        if (acc === 'ig1') {
+          ig1Allocated++;
+          if (ig1TrialAllocated < ig1TrialTarget) {
+            isTrial = true;
+            ig1TrialAllocated++;
+          }
+        } else {
+          ig2Allocated++;
+        }
 
         const isIg1 = acc === 'ig1';
         scheduledSlots.push({
@@ -253,8 +266,9 @@
           timeStr: `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`,
           account: acc,
           platform: isIg1 ? 'Instagram (@solvikz)' : 'Instagram (@loopablez)',
-          title: `Scheduled Reel (${isIg1 ? 'solvikz' : 'loopablez'})`,
-          status: 'scheduled'
+          title: isTrial ? `Scheduled Trial Reel (${isIg1 ? 'solvikz' : 'loopablez'})` : `Scheduled Reel (${isIg1 ? 'solvikz' : 'loopablez'})`,
+          status: 'scheduled',
+          isTrial: isTrial
         });
       }
     }
@@ -630,6 +644,7 @@
             <div class="event-footer">
               <span class="event-account-tag ${tagClass}">${tagText}</span>
               <div class="event-footer-right">
+                ${evt.isTrial ? '<span class="badge-trial">TRIAL</span>' : ''}
                 ${evt.isNext ? '<span class="badge-next">NEXT</span>' : ''}
                 <span class="event-time">${timeStr}</span>
               </div>
@@ -720,6 +735,7 @@
                 <strong class="title-text">${evt.title}</strong>
               </div>
               <div style="display:flex;align-items:center;gap:6px;">
+                ${evt.isTrial ? '<span class="badge-trial">TRIAL REEL</span>' : ''}
                 ${evt.isNext ? '<span class="badge-next">NEXT UP</span>' : ''}
                 <span style="font-size:11px;font-family:var(--font-mono);color:var(--text-dim);">${timeStr}</span>
               </div>
@@ -798,7 +814,7 @@
             const icon = e.status === 'posted' ? ICONS.check : e.status === 'staged' ? ICONS.play : ICONS.clock;
             return `
               <div class="event-card ${e.status} account-${acc}" style="position:static;padding:2px 5px;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;">
-                ${icon} ${e.title}
+                ${icon} ${e.isTrial ? '<span style="color:var(--yellow);font-weight:800">[TRIAL]</span> ' : ''}${e.title}
               </div>
             `;
           }).join('')}
@@ -843,7 +859,20 @@
       return;
     }
 
+    let ig1TrialUsed = 0;
+    const ig1TrialLimit = Math.max(0, parseInt(settings.ig1TrialPosts, 10) || 0);
+
     pipelineClips.forEach(clip => {
+      const isIg1 = clip.account === 'ig1' || (clip.target && clip.target.toLowerCase().includes('solvikz'));
+      let isTrial = Boolean(clip.isTrial || clip.post_kind === 'trial' || clip.trial || (clip.target && clip.target.toLowerCase().includes('trial')));
+      if (!isTrial && isIg1 && ig1TrialUsed < ig1TrialLimit) {
+        isTrial = true;
+      }
+      if (isTrial && isIg1) {
+        ig1TrialUsed++;
+      }
+      clip.isTrial = isTrial;
+
       const card = document.createElement('div');
       card.className = 'clip-card';
 
@@ -853,19 +882,24 @@
           <div class="clip-overlay-badge">
             <span>${clip.streamer}</span>
           </div>
+          ${isTrial ? '<div style="position:absolute;bottom:8px;left:8px;z-index:2;"><span class="clip-trial-tag">TRIAL REEL</span></div>' : ''}
           <div class="clip-duration-badge">${clip.duration}</div>
         </div>
         <div class="clip-body">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;">
             <div class="clip-title">${clip.title}</div>
-            <span class="status-pill" style="font-size:9px;white-space:nowrap;${clip.approval_status === 'approved' ? 'color:var(--success);border-color:rgba(34,197,94,0.4);' : clip.approval_status === 'denied' ? 'color:var(--danger);border-color:rgba(239,68,68,0.4);' : 'color:var(--yellow);'}">
-              ${clip.approval_status === 'approved' ? 'Approved' : clip.approval_status === 'denied' ? 'Denied' : 'Pending (Auto)'}
-            </span>
+            <div style="display:flex;gap:4px;align-items:center;">
+              ${isTrial ? '<span class="clip-trial-tag">TRIAL REEL</span>' : ''}
+              <span class="status-pill" style="font-size:9px;white-space:nowrap;${clip.approval_status === 'approved' ? 'color:var(--success);border-color:rgba(34,197,94,0.4);' : clip.approval_status === 'denied' ? 'color:var(--danger);border-color:rgba(239,68,68,0.4);' : 'color:var(--yellow);'}">
+                ${clip.approval_status === 'approved' ? 'Approved' : clip.approval_status === 'denied' ? 'Denied' : 'Pending (Auto)'}
+              </span>
+            </div>
           </div>
           <div class="clip-caption">${clip.caption}</div>
           <div class="clip-metrics">
             <span>Spike: ${clip.sigma}</span> • 
             <span>${clip.motion}</span>
+            ${isTrial ? ' • <span style="color:var(--yellow);font-weight:700">Trial Reel (Non-Followers)</span>' : ''}
           </div>
         </div>
         <div class="clip-actions">
@@ -928,6 +962,17 @@
     if (motion) motion.innerText = clip.motion || 'High Action Active';
     if (layout) layout.innerText = clip.layout || 'Dual Stack 9:16';
     if (target) target.innerText = clip.target || 'Instagram & YouTube';
+
+    const trialPill = document.getElementById('preview-trial-pill');
+    const postFormat = document.getElementById('preview-post-format');
+    if (trialPill) {
+      trialPill.style.display = clip.isTrial ? 'inline-flex' : 'none';
+    }
+    if (postFormat) {
+      postFormat.innerHTML = clip.isTrial 
+        ? '<span class="clip-trial-tag" style="margin-right:4px;">TRIAL REEL</span> Tests reach with non-followers'
+        : 'Standard Feed Reel (Followers & Explore)';
+    }
 
     modal.classList.add('open');
 
@@ -1215,6 +1260,13 @@
                 // Raw GitHub URL for video playback
                 const rawVideoUrl = mp4.download_url || `https://raw.githubusercontent.com/${auth.repo}/${cBranch}/${mp4.path}`;
 
+                const isTrial = Boolean(
+                  meta.trial ||
+                  meta.is_trial ||
+                  meta.post_kind === 'trial' ||
+                  (meta.target && meta.target.toLowerCase().includes('trial'))
+                );
+
                 realPipeline.push({
                   id: `real_${baseName}`,
                   filename: mp4.name,
@@ -1226,8 +1278,9 @@
                   sigma: meta.z_score ? `${Number(meta.z_score).toFixed(1)} σ` : '3.2 σ',
                   motion: 'Active Motion Detected',
                   layout: 'Dual Stack 9:16',
-                  target: 'Instagram & YouTube',
-                  account: 'ig1',
+                  target: meta.target || 'Instagram & YouTube',
+                  account: (meta.target && meta.target.includes('loopablez')) ? 'ig2' : (meta.target && meta.target.includes('YouTube')) ? 'youtube' : 'ig1',
+                  isTrial: isTrial,
                   status: 'staged',
                   videoUrl: rawVideoUrl,
                   path: mp4.path,
@@ -1584,6 +1637,7 @@
         safeSetStorage(STORAGE_KEY_SETTINGS, settings);
         calculateDynamicSpacing();
         renderCalendar();
+        renderPipelineQueue();
       });
     }
 
@@ -1601,6 +1655,7 @@
         safeSetStorage(STORAGE_KEY_SETTINGS, settings);
         calculateDynamicSpacing();
         renderCalendar();
+        renderPipelineQueue();
       });
     }
 
