@@ -103,6 +103,7 @@ def render_hook_banner(hook_text: str, output_png: str) -> str:
     """
     Renders a 1080x220 transparent PNG banner with the hook text and color emojis.
     Uses Pilmoji to guarantee full-color cross-platform emoji rendering.
+    Automatically scales font size to ensure text and emojis stay within safe margins.
     """
     os.makedirs(os.path.dirname(os.path.abspath(output_png)), exist_ok=True)
     img = Image.new("RGBA", (1080, 220), (0, 0, 0, 0))
@@ -116,22 +117,37 @@ def render_hook_banner(hook_text: str, output_png: str) -> str:
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
         "C:/Windows/Fonts/arialbd.ttf"
     ]
-    font = None
+
+    base_font_path = None
     for fc in font_candidates:
         try:
-            font = ImageFont.truetype(fc, 52)
+            _ = ImageFont.truetype(fc, 48)
+            base_font_path = fc
             break
         except Exception:
             pass
 
-    if font is None:
-        font = ImageFont.load_default()
-
+    font_size = 46
     with Pilmoji(img) as p:
-        bbox = font.getbbox(hook_text)
-        tw = bbox[2] - bbox[0]
+        while font_size >= 30:
+            if base_font_path:
+                font = ImageFont.truetype(base_font_path, font_size)
+            else:
+                font = ImageFont.load_default()
+
+            try:
+                tw, th = p.getsize(hook_text, font=font)
+            except Exception:
+                bbox = font.getbbox(hook_text)
+                tw = bbox[2] - bbox[0]
+                th = bbox[3] - bbox[1]
+
+            if tw <= 920 or font_size <= 30:
+                break
+            font_size -= 2
+
         tx = max(40, (1080 - tw) // 2)
-        ty = 80
+        ty = max(40, (220 - th) // 2)
         p.text((tx, ty), hook_text, fill=(255, 255, 255, 255), font=font)
 
     img.save(output_png)
