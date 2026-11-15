@@ -1001,13 +1001,8 @@
       }
     }
 
-    player.onerror = function () {
-      if (player.src && !player.src.includes('cc0-videos')) {
-        console.warn('Video failed to stream, falling back to demo stream');
-        player.src = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4';
-        player.load();
-        player.play().catch(() => {});
-      }
+    player.onerror = function (e) {
+      console.warn('Video failed to stream directly:', e);
     };
 
     player.src = streamUrl || '';
