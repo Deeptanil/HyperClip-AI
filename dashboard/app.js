@@ -1,36 +1,55 @@
 /**
  * HyperClip AI // Dashboard Application Logic
- * Dark Ops Minimalist Control Center
+ * Minimalist Dark Ops Control Center (Emoji-Free, Strict SVG/Text)
  */
 
 (function () {
   'use strict';
 
-  // --- State Configuration ---
+  // --- Safe LocalStorage Access ---
   const STORAGE_KEY_AUTH = 'hyperclip_auth_config';
   const STORAGE_KEY_SETTINGS = 'hyperclip_local_settings';
 
-  let auth = JSON.parse(localStorage.getItem(STORAGE_KEY_AUTH)) || {
+  function safeGetStorage(key, defaultVal) {
+    try {
+      const item = localStorage.getItem(key);
+      if (!item || item === 'undefined' || item === 'null') return defaultVal;
+      return JSON.parse(item);
+    } catch (e) {
+      console.warn('Storage read fallback for key:', key, e);
+      return defaultVal;
+    }
+  }
+
+  function safeSetStorage(key, val) {
+    try {
+      localStorage.setItem(key, JSON.stringify(val));
+    } catch (e) {
+      console.warn('Storage write failed for key:', key, e);
+    }
+  }
+
+  let auth = safeGetStorage(STORAGE_KEY_AUTH, {
     pat: '',
     repo: 'Deeptanil/HyperClip-AI',
     branch: 'master',
     contentBranch: 'content',
     isDemo: true
-  };
+  });
 
-  let settings = JSON.parse(localStorage.getItem(STORAGE_KEY_SETTINGS)) || {
+  let settings = safeGetStorage(STORAGE_KEY_SETTINGS, {
     ig1Posts: 3,
     ig2Posts: 3,
     ytPosts: 3,
     hypeMode: false,
     streamYield: 3,
     clipSpacing: 300
-  };
+  });
 
   let activeTab = 'calendar';
   let activeCalView = 'week'; // 'day', 'week', 'month'
   let activeFilter = 'all'; // 'all', 'ig1', 'ig2', 'youtube', 'staged'
-  let currentDate = new Date(); // Active navigation date
+  let currentDate = new Date();
   let selectedClip = null;
 
   // Data collections
@@ -38,14 +57,23 @@
   let postedClips = [];
   let scheduledSlots = [];
 
-  // --- Demo Fallback Dataset ---
+  // --- Clean SVG Icon Helpers (No Emojis) ---
+  const ICONS = {
+    check: '<svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>',
+    play: '<svg class="icon icon-sm" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>',
+    clock: '<svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+    alert: '<svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+    film: '<svg class="icon icon-lg" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>'
+  };
+
+  // --- Demo Dataset (No Emojis) ---
   const DEMO_PIPELINE = [
     {
       id: 'clip_speed_1',
       filename: '2026-11-15-ishowspeed_insane_reaction_dual.mp4',
       streamer: 'IShowSpeed',
       title: 'IShowSpeed Reacts to GTA 6 Leak',
-      caption: 'Speed cannot believe this just happened live on stream! 🔥 #ishowspeed #gta6 #gaming #reels #shorts',
+      caption: 'Speed cannot believe this just happened live on stream. #ishowspeed #gta6 #gaming #reels #shorts',
       duration: '0:34',
       durationSec: 34,
       sigma: '3.8 σ',
@@ -54,15 +82,14 @@
       target: 'Instagram (solvikz) & YouTube',
       account: 'ig1',
       status: 'staged',
-      videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-      thumbUrl: ''
+      videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4'
     },
     {
       id: 'clip_xqc_1',
       filename: '2026-11-15-xqc_wild_debate_moment.mp4',
       streamer: 'xQc',
       title: 'xQc Stunned by Viewer Question',
-      caption: 'Classic juicer moment on Just Chatting 😂 #xqc #twitchclips #streamer #reels',
+      caption: 'Classic juicer moment on Just Chatting. #xqc #twitchclips #streamer #reels',
       duration: '0:42',
       durationSec: 42,
       sigma: '3.1 σ',
@@ -71,15 +98,14 @@
       target: 'Instagram (loopablez)',
       account: 'ig2',
       status: 'staged',
-      videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
-      thumbUrl: ''
+      videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4'
     },
     {
       id: 'clip_clix_1',
       filename: '2026-11-15-clix_insane_fortnite_clutch.mp4',
       streamer: 'Clix',
       title: 'Clix 1v3 Trio CC Victory Clutch',
-      caption: 'He pulled this off with 10 HP left! 🏆 #clix #fortnite #gaming #shorts',
+      caption: 'He pulled this off with 10 HP left. #clix #fortnite #gaming #shorts',
       duration: '0:28',
       durationSec: 28,
       sigma: '4.2 σ',
@@ -88,8 +114,7 @@
       target: 'YouTube Shorts',
       account: 'youtube',
       status: 'staged',
-      videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
-      thumbUrl: ''
+      videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4'
     }
   ];
 
@@ -105,7 +130,7 @@
     },
     {
       id: 'posted_speed_1',
-      title: 'IShowSpeed Starts The Stream Right',
+      title: 'IShowSpeed Stream Clip',
       account: 'ig2',
       platform: 'Instagram (loopablez)',
       date: new Date(Date.now() - 8 * 3600 * 1000).toISOString(),
@@ -123,7 +148,7 @@
     }
   ];
 
-  // --- Dynamic Spacing Calculator ---
+  // --- Dynamic Spacing & Hazard Detection ---
   function calculateDynamicSpacing() {
     const totalIg = settings.ig1Posts + settings.ig2Posts;
     const intervalHours = totalIg > 0 ? (24 / totalIg) : 24;
@@ -133,17 +158,17 @@
     const minCrossAccountMins = 20; // Anti-bot IP safeguard
 
     const summaryEl = document.getElementById('spacing-summary-text');
-    if (!summaryEl) return;
+    if (summaryEl) {
+      summaryEl.innerHTML = `
+        <strong>Dynamic Spacing Plan:</strong> ${totalIg} Instagram Reels / day (${settings.ig1Posts} @solvikz, ${settings.ig2Posts} @loopablez) + ${settings.ytPosts} YouTube Shorts.<br>
+        • <strong>Target Interval:</strong> 1 Reel every <strong>${intervalHours.toFixed(1)} hours (${intervalMins} mins)</strong> alternating accounts.<br>
+        • <strong>Per-Account Gap:</strong> ≥ <strong>${(intervalHours * 2).toFixed(1)} hours</strong> between posts on the same account (Safe: threshold is ${minPerAccountHours}h).<br>
+        • <strong>Cross-Account Buffer:</strong> ≥ <strong>${minCrossAccountMins} minutes</strong> separation between uploads to prevent same-IP flag.<br>
+        • <em>Missed uploads are prioritized on the next cycle with a staggered 20m buffer (never simultaneous dual-post).</em>
+      `;
+    }
 
-    summaryEl.innerHTML = `
-      <strong>Dynamic Spacing Plan:</strong> ${totalIg} Instagram Reels / day (${settings.ig1Posts} @solvikz, ${settings.ig2Posts} @loopablez) + ${settings.ytPosts} YouTube Shorts.<br>
-      • <strong>Target Interval:</strong> 1 Reel every <strong>${intervalHours.toFixed(1)} hours (${intervalMins} mins)</strong> alternating accounts.<br>
-      • <strong>Per-Account Gap:</strong> ≥ <strong>${(intervalHours * 2).toFixed(1)} hours</strong> between posts on the same account (Safe: threshold is ${minPerAccountHours}h).<br>
-      • <strong>Cross-Account Buffer:</strong> ≥ <strong>${minCrossAccountMins} minutes</strong> separation between uploads to prevent same-IP flag.<br>
-      • <em>If an account misses an upload, it is prioritized next with a staggered 20m buffer (never simultaneous dual-post).</em>
-    `;
-
-    // Check shadowban hazard
+    // Shadowban Hazard Warning Alert
     const hazardBox = document.getElementById('shadowban-hazard-box');
     const hazardTitle = document.getElementById('shadowban-hazard-title');
     const hazardDesc = document.getElementById('shadowban-hazard-desc');
@@ -155,46 +180,49 @@
       if (minCalculatedGap < 3.0 || maxPostsSingleAccount >= 5) {
         hazardBox.style.display = 'flex';
         hazardBox.className = 'danger-box';
-        hazardTitle.innerText = 'CRITICAL SHADOWBAN HAZARD: POST FREQUENCY EXCEEDED';
-        hazardDesc.innerHTML = `
-          ⚠️ <strong>WARNING: High risk of account restriction / shadowban!</strong> An account is set to <strong>${maxPostsSingleAccount} posts/day</strong>, which drops the post separation down to only <strong>${minCalculatedGap.toFixed(1)} hours</strong>.<br>
-          Instagram's anti-spam detection automatically restricts accounts posting with less than a 3.0-hour gap or more than 4 times per day. <strong>This can result in shadowbans, ineligibility for trial reels, or API blocks.</strong><br>
-          <em>Recommendation: Reduce daily posts to ≤ 3 per account to maintain a safe 4.0h+ cooldown.</em>
-        `;
+        if (hazardTitle) hazardTitle.innerText = 'CRITICAL SPAM HAZARD: FREQUENCY LIMIT EXCEEDED';
+        if (hazardDesc) {
+          hazardDesc.innerHTML = `
+            <strong>WARNING: High risk of account restriction / shadowban.</strong> An account is set to <strong>${maxPostsSingleAccount} posts/day</strong>, which drops the post separation down to only <strong>${minCalculatedGap.toFixed(1)} hours</strong>.<br>
+            Instagram's anti-spam detection automatically restricts accounts posting with less than a 3.0-hour gap or more than 4 times per day. <strong>This can result in shadowbans, ineligibility for trial reels, or API blocks.</strong><br>
+            <em>Recommendation: Reduce daily posts to ≤ 3 per account to maintain a safe 4.0h+ cooldown.</em>
+          `;
+        }
       } else if (maxPostsSingleAccount === 4 || minCalculatedGap < 4.0) {
         hazardBox.style.display = 'flex';
         hazardBox.className = 'danger-box warning-yellow';
-        hazardTitle.innerText = 'MODERATE SPAM RISK: ELEVATED POST FREQUENCY';
-        hazardDesc.innerHTML = `
-          ⚠️ <strong>Caution: Elevated post frequency (${maxPostsSingleAccount} posts/day, ~${minCalculatedGap.toFixed(1)}h gap).</strong><br>
-          This rate should only be enabled temporarily for hype weekend events. Sustained posting above 3 reels/day on new accounts may suppress Explore page reach.
-        `;
+        if (hazardTitle) hazardTitle.innerText = 'MODERATE SPAM RISK: ELEVATED POST FREQUENCY';
+        if (hazardDesc) {
+          hazardDesc.innerHTML = `
+            <strong>Caution: Elevated post frequency (${maxPostsSingleAccount} posts/day, ~${minCalculatedGap.toFixed(1)}h gap).</strong><br>
+            This rate should only be enabled temporarily for hype weekend events. Sustained posting above 3 reels/day on new accounts may suppress Explore page reach.
+          `;
+        }
       } else {
         hazardBox.style.display = 'none';
       }
     }
 
-    // Generate dynamic schedule slots for calendar view
     generateScheduledSlots(intervalHours);
   }
 
   function generateScheduledSlots(intervalHours) {
     scheduledSlots = [];
-    const now = new Date();
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
-
     const totalSlots = settings.ig1Posts + settings.ig2Posts;
     if (totalSlots <= 0) return;
 
     const stepHours = 24 / totalSlots;
     for (let i = 0; i < totalSlots; i++) {
-      const slotTime = new Date(startOfDay.getTime() + i * stepHours * 3600 * 1000);
+      const totalMinutes = Math.round(i * stepHours * 60);
+      const h = Math.floor(totalMinutes / 60) % 24;
+      const m = totalMinutes % 60;
       const isIg1 = i % 2 === 0;
+
       scheduledSlots.push({
         id: `sched_slot_${i}`,
-        hour: slotTime.getHours(),
-        minute: slotTime.getMinutes(),
-        timeStr: `${String(slotTime.getHours()).padStart(2, '0')}:${String(slotTime.getMinutes()).padStart(2, '0')}`,
+        hour: h,
+        minute: m,
+        timeStr: `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`,
         account: isIg1 ? 'ig1' : 'ig2',
         platform: isIg1 ? 'Instagram (@solvikz)' : 'Instagram (@loopablez)',
         title: `Scheduled Slot ${i + 1} (${isIg1 ? 'solvikz' : 'loopablez'})`,
@@ -203,21 +231,11 @@
     }
   }
 
-  // --- Calendar Rendering ---
-  function renderCalendar() {
-    if (activeCalView === 'week') {
-      renderWeekView();
-    } else if (activeCalView === 'day') {
-      renderDayView();
-    } else if (activeCalView === 'month') {
-      renderMonthView();
-    }
-  }
-
+  // --- Calendar View Logic (Past, Present, and Future) ---
   function getWeekRange(date) {
     const d = new Date(date);
-    const day = d.getDay(); // 0 is Sunday
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust to Monday
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday start
     const monday = new Date(d.setDate(diff));
     monday.setHours(0, 0, 0, 0);
 
@@ -230,124 +248,199 @@
     return days;
   }
 
+  function getEventsForDate(targetDate) {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    const targetMidnight = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 0, 0, 0);
+
+    const isToday = targetMidnight.getTime() === startOfToday.getTime();
+    const isFuture = targetMidnight.getTime() > startOfToday.getTime();
+    const events = [];
+
+    // 1. Posted archive clips
+    postedClips.forEach(p => {
+      const pDate = new Date(p.date);
+      if (pDate.toDateString() === targetDate.toDateString()) {
+        events.push({
+          ...p,
+          hour: pDate.getHours(),
+          minute: pDate.getMinutes(),
+          status: 'posted'
+        });
+      }
+    });
+
+    // 2. Today: include staged pipeline clips ready to post
+    if (isToday) {
+      pipelineClips.forEach((c, idx) => {
+        const stagedHour = 14 + idx * 3;
+        events.push({
+          ...c,
+          hour: stagedHour % 24,
+          minute: 0,
+          status: 'staged'
+        });
+      });
+    }
+
+    // 3. Today & Future Days: include scheduled future posting slots
+    if (isToday || isFuture) {
+      scheduledSlots.forEach(slot => {
+        const alreadyOccupied = events.some(e => Math.abs(e.hour - slot.hour) < 1);
+        if (!alreadyOccupied) {
+          events.push({
+            ...slot,
+            date: targetDate.toISOString()
+          });
+        }
+      });
+    }
+
+    return events.sort((a, b) => (a.hour * 60 + (a.minute || 0)) - (b.hour * 60 + (b.minute || 0)));
+  }
+
+  function renderCalendar() {
+    if (activeCalView === 'week') renderWeekView();
+    else if (activeCalView === 'day') renderDayView();
+    else if (activeCalView === 'month') renderMonthView();
+  }
+
   function renderWeekView() {
-    document.getElementById('week-view-wrapper').style.display = 'flex';
-    document.getElementById('day-view-wrapper').style.display = 'none';
-    document.getElementById('month-view-wrapper').style.display = 'none';
+    const weekWrapper = document.getElementById('week-view-wrapper');
+    const dayWrapper = document.getElementById('day-view-wrapper');
+    const monthWrapper = document.getElementById('month-view-wrapper');
+
+    if (weekWrapper) weekWrapper.style.display = 'flex';
+    if (dayWrapper) dayWrapper.style.display = 'none';
+    if (monthWrapper) monthWrapper.style.display = 'none';
 
     const weekDays = getWeekRange(currentDate);
     const firstDay = weekDays[0];
     const lastDay = weekDays[6];
 
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    document.getElementById('cal-heading').innerText =
-      `${months[firstDay.getMonth()]} ${firstDay.getDate()} – ${months[lastDay.getMonth()]} ${lastDay.getDate()}, ${firstDay.getFullYear()}`;
-
-    // Render Week Headers
-    const headerRow = document.getElementById('week-header-row');
-    headerRow.innerHTML = '<div class="col-header time-label-spacer">TIME</div>';
-
-    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const todayStr = new Date().toDateString();
-
-    weekDays.forEach((d, idx) => {
-      const isToday = d.toDateString() === todayStr;
-      const col = document.createElement('div');
-      col.className = `col-header ${isToday ? 'today' : ''}`;
-      col.innerHTML = `
-        <div class="day-label">${dayNames[idx]}</div>
-        <div class="day-num">${d.getDate()}</div>
-      `;
-      headerRow.appendChild(col);
-    });
-
-    // Render Time Axis (24 Hours: 00:00 to 23:00)
-    const timeAxis = document.getElementById('time-axis-col');
-    timeAxis.innerHTML = '';
-    for (let h = 0; h < 24; h++) {
-      const slot = document.createElement('div');
-      slot.className = 'time-slot-label';
-      slot.innerText = `${String(h).padStart(2, '0')}:00`;
-      timeAxis.appendChild(slot);
+    const heading = document.getElementById('cal-heading');
+    if (heading) {
+      heading.innerText = `${months[firstDay.getMonth()]} ${firstDay.getDate()} – ${months[lastDay.getMonth()]} ${lastDay.getDate()}, ${firstDay.getFullYear()}`;
     }
 
-    // Render 7 Day Columns
-    const bodyGrid = document.getElementById('week-body-grid');
-    // Clear old day columns (keep time-axis)
-    const oldCols = bodyGrid.querySelectorAll('.day-column');
-    oldCols.forEach(c => c.remove());
+    // Render Headers
+    const headerRow = document.getElementById('week-header-row');
+    if (headerRow) {
+      headerRow.innerHTML = '<div class="col-header time-label-spacer">TIME</div>';
+      const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      const todayStr = new Date().toDateString();
 
-    weekDays.forEach((d, dayIdx) => {
-      const isToday = d.toDateString() === todayStr;
-      const dayCol = document.createElement('div');
-      dayCol.className = `day-column ${isToday ? 'today' : ''}`;
-      dayCol.dataset.date = d.toISOString().split('T')[0];
-
-      // Add events belonging to this day
-      const dayEvents = getEventsForDate(d);
-      dayEvents.forEach(evt => {
-        if (activeFilter !== 'all' && evt.account !== activeFilter) {
-          if (activeFilter === 'staged' && evt.status !== 'staged') return;
-          if (activeFilter !== 'staged') return;
-        }
-
-        const card = document.createElement('div');
-        card.className = `event-card ${evt.status}`;
-        const topPx = (evt.hour + (evt.minute || 0) / 60) * 60;
-        const heightPx = Math.max(48, (evt.durationSec ? (evt.durationSec / 60) * 60 : 50));
-
-        card.style.top = `${topPx}px`;
-        card.style.height = `${heightPx}px`;
-
-        const tagClass = evt.account === 'ig1' ? 'tag-ig1' : evt.account === 'ig2' ? 'tag-ig2' : 'tag-yt';
-        const tagText = evt.account === 'ig1' ? 'IG 1 (solvikz)' : evt.account === 'ig2' ? 'IG 2 (loopablez)' : 'YouTube';
-
-        card.innerHTML = `
-          <div class="event-title">
-            <span>${evt.status === 'posted' ? '✓' : evt.status === 'staged' ? '▶' : '⏱'}</span>
-            <span>${evt.title}</span>
-          </div>
-          <div class="event-meta">
-            <span class="event-platform-tag ${tagClass}">${tagText}</span>
-            <span>${String(evt.hour).padStart(2, '0')}:${String(evt.minute || 0).padStart(2, '0')}</span>
-          </div>
+      weekDays.forEach((d, idx) => {
+        const isToday = d.toDateString() === todayStr;
+        const col = document.createElement('div');
+        col.className = `col-header ${isToday ? 'today' : ''}`;
+        col.innerHTML = `
+          <div class="day-label">${dayNames[idx]}</div>
+          <div class="day-num">${d.getDate()}</div>
         `;
-
-        card.onclick = () => {
-          if (evt.status === 'staged') {
-            openPreviewModal(evt);
-          } else if (evt.status === 'posted' && evt.url) {
-            window.open(evt.url, '_blank');
-          } else {
-            alert(`Scheduled slot for ${tagText} at ${String(evt.hour).padStart(2, '0')}:${String(evt.minute || 0).padStart(2, '0')}. Will be generated dynamically before posting.`);
-          }
-        };
-
-        dayCol.appendChild(card);
+        headerRow.appendChild(col);
       });
+    }
 
-      bodyGrid.appendChild(dayCol);
-    });
+    // Render Time Axis (24 Hours)
+    const timeAxis = document.getElementById('time-axis-col');
+    if (timeAxis) {
+      timeAxis.innerHTML = '';
+      for (let h = 0; h < 24; h++) {
+        const slot = document.createElement('div');
+        slot.className = 'time-slot-label';
+        slot.innerText = `${String(h).padStart(2, '0')}:00`;
+        timeAxis.appendChild(slot);
+      }
+    }
 
-    // Auto-scroll to current hour
-    const currentHour = new Date().getHours();
+    // Render Day Columns
+    const bodyGrid = document.getElementById('week-body-grid');
+    if (bodyGrid) {
+      const oldCols = bodyGrid.querySelectorAll('.day-column');
+      oldCols.forEach(c => c.remove());
+
+      const todayStr = new Date().toDateString();
+
+      weekDays.forEach(d => {
+        const isToday = d.toDateString() === todayStr;
+        const dayCol = document.createElement('div');
+        dayCol.className = `day-column ${isToday ? 'today' : ''}`;
+        dayCol.dataset.date = d.toISOString().split('T')[0];
+
+        const dayEvents = getEventsForDate(d);
+        dayEvents.forEach(evt => {
+          if (activeFilter !== 'all' && evt.account !== activeFilter) {
+            if (activeFilter === 'staged' && evt.status !== 'staged') return;
+            if (activeFilter !== 'staged') return;
+          }
+
+          const card = document.createElement('div');
+          card.className = `event-card ${evt.status}`;
+          const topPx = (evt.hour + (evt.minute || 0) / 60) * 60;
+          const heightPx = Math.max(48, (evt.durationSec ? (evt.durationSec / 60) * 60 : 50));
+
+          card.style.top = `${topPx}px`;
+          card.style.height = `${heightPx}px`;
+
+          const tagClass = evt.account === 'ig1' ? 'tag-ig1' : evt.account === 'ig2' ? 'tag-ig2' : 'tag-yt';
+          const tagText = evt.account === 'ig1' ? 'IG 1 (solvikz)' : evt.account === 'ig2' ? 'IG 2 (loopablez)' : 'YouTube';
+          const statusIcon = evt.status === 'posted' ? ICONS.check : evt.status === 'staged' ? ICONS.play : ICONS.clock;
+
+          card.innerHTML = `
+            <div class="event-title">
+              <span>${statusIcon}</span>
+              <span>${evt.title}</span>
+            </div>
+            <div class="event-meta">
+              <span class="event-platform-tag ${tagClass}">${tagText}</span>
+              <span>${String(evt.hour).padStart(2, '0')}:${String(evt.minute || 0).padStart(2, '0')}</span>
+            </div>
+          `;
+
+          card.onclick = () => {
+            if (evt.status === 'staged') {
+              window.openPreviewModal(evt);
+            } else if (evt.status === 'posted' && evt.url) {
+              window.open(evt.url, '_blank');
+            } else {
+              alert(`Scheduled slot for ${tagText} at ${String(evt.hour).padStart(2, '0')}:${String(evt.minute || 0).padStart(2, '0')}. Generated dynamically before publication.`);
+            }
+          };
+
+          dayCol.appendChild(card);
+        });
+
+        bodyGrid.appendChild(dayCol);
+      });
+    }
+
     const scrollContainer = document.getElementById('week-scroll-container');
+    const currentHour = new Date().getHours();
     if (scrollContainer && currentHour > 2) {
       scrollContainer.scrollTop = (currentHour - 2) * 60;
     }
   }
 
   function renderDayView() {
-    document.getElementById('week-view-wrapper').style.display = 'none';
-    document.getElementById('day-view-wrapper').style.display = 'block';
-    document.getElementById('month-view-wrapper').style.display = 'none';
+    const weekWrapper = document.getElementById('week-view-wrapper');
+    const dayWrapper = document.getElementById('day-view-wrapper');
+    const monthWrapper = document.getElementById('month-view-wrapper');
+
+    if (weekWrapper) weekWrapper.style.display = 'none';
+    if (dayWrapper) dayWrapper.style.display = 'block';
+    if (monthWrapper) monthWrapper.style.display = 'none';
 
     const dayContainer = document.getElementById('day-view-wrapper');
+    if (!dayContainer) return;
     dayContainer.innerHTML = '';
 
     const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    document.getElementById('cal-heading').innerText =
-      `${months[currentDate.getMonth()]} ${currentDate.getDate()}, ${currentDate.getFullYear()}`;
+    const heading = document.getElementById('cal-heading');
+    if (heading) {
+      heading.innerText = `${months[currentDate.getMonth()]} ${currentDate.getDate()}, ${currentDate.getFullYear()}`;
+    }
 
     const events = getEventsForDate(currentDate);
 
@@ -375,10 +468,12 @@
           item.style.padding = '8px 12px';
 
           const tagClass = evt.account === 'ig1' ? 'tag-ig1' : evt.account === 'ig2' ? 'tag-ig2' : 'tag-yt';
+          const statusIcon = evt.status === 'posted' ? ICONS.check : evt.status === 'staged' ? ICONS.play : ICONS.clock;
+
           item.innerHTML = `
             <div style="display:flex;justify-content:space-between;align-items:center;">
               <div class="event-title" style="font-size:13px;">
-                <span>${evt.status === 'posted' ? '✓' : evt.status === 'staged' ? '▶' : '⏱'}</span>
+                <span>${statusIcon}</span>
                 <strong>${evt.title}</strong>
               </div>
               <span class="event-platform-tag ${tagClass}">${evt.platform || evt.account}</span>
@@ -387,7 +482,7 @@
           `;
 
           item.onclick = () => {
-            if (evt.status === 'staged') openPreviewModal(evt);
+            if (evt.status === 'staged') window.openPreviewModal(evt);
             else if (evt.url) window.open(evt.url, '_blank');
           };
           content.appendChild(item);
@@ -400,24 +495,29 @@
   }
 
   function renderMonthView() {
-    document.getElementById('week-view-wrapper').style.display = 'none';
-    document.getElementById('day-view-wrapper').style.display = 'none';
-    document.getElementById('month-view-wrapper').style.display = 'grid';
+    const weekWrapper = document.getElementById('week-view-wrapper');
+    const dayWrapper = document.getElementById('day-view-wrapper');
+    const monthWrapper = document.getElementById('month-view-wrapper');
+
+    if (weekWrapper) weekWrapper.style.display = 'none';
+    if (dayWrapper) dayWrapper.style.display = 'none';
+    if (monthWrapper) monthWrapper.style.display = 'grid';
 
     const monthContainer = document.getElementById('month-view-wrapper');
+    if (!monthContainer) return;
     monthContainer.innerHTML = '';
 
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
 
     const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    document.getElementById('cal-heading').innerText = `${months[month]} ${year}`;
+    const heading = document.getElementById('cal-heading');
+    if (heading) heading.innerText = `${months[month]} ${year}`;
 
-    const firstDayIndex = new Date(year, month, 1).getDay(); // 0 is Sunday
+    const firstDayIndex = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const adjustedFirst = firstDayIndex === 0 ? 6 : firstDayIndex - 1; // Mon = 0
+    const adjustedFirst = firstDayIndex === 0 ? 6 : firstDayIndex - 1;
 
-    // Blank padding
     for (let i = 0; i < adjustedFirst; i++) {
       const blank = document.createElement('div');
       blank.className = 'month-cell';
@@ -444,7 +544,7 @@
         <div class="month-badge-strip">
           ${events.slice(0, 3).map(e => `
             <div class="event-card ${e.status}" style="position:static;padding:2px 4px;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-              ${e.status === 'posted' ? '✓' : '▶'} ${e.title}
+              ${e.status === 'posted' ? ICONS.check : ICONS.play} ${e.title}
             </div>
           `).join('')}
           ${events.length > 3 ? `<div style="font-size:9px;color:var(--text-dim)">+${events.length - 3} more</div>` : ''}
@@ -462,59 +562,25 @@
     }
   }
 
-  function getEventsForDate(date) {
-    const isToday = date.toDateString() === new Date().toDateString();
-    const events = [];
-
-    // Add Posted Clips
-    postedClips.forEach(p => {
-      const pDate = new Date(p.date);
-      if (pDate.toDateString() === date.toDateString()) {
-        events.push({
-          ...p,
-          hour: pDate.getHours(),
-          minute: pDate.getMinutes(),
-          status: 'posted'
-        });
-      }
+  function updateViewButtons() {
+    document.querySelectorAll('.view-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.calView === activeCalView);
     });
-
-    // Add Staged Pipeline Clips (assigned to today or pending slots)
-    if (isToday) {
-      pipelineClips.forEach((c, idx) => {
-        // Place staged clips at impending hours
-        const stagedHour = 14 + idx * 3;
-        events.push({
-          ...c,
-          hour: stagedHour % 24,
-          minute: 0,
-          status: 'staged'
-        });
-      });
-
-      // Add scheduled placeholders for remaining quota
-      scheduledSlots.forEach(slot => {
-        const alreadyOccupied = events.some(e => Math.abs(e.hour - slot.hour) < 1);
-        if (!alreadyOccupied) {
-          events.push(slot);
-        }
-      });
-    }
-
-    return events.sort((a, b) => (a.hour * 60 + (a.minute || 0)) - (b.hour * 60 + (b.minute || 0)));
   }
 
-  // --- Pipeline & Review Queue Rendering ---
+  // --- Pipeline & Review Queue ---
   function renderPipelineQueue() {
     const grid = document.getElementById('pipeline-clips-grid');
     const badge = document.getElementById('pipeline-count-badge');
-    badge.innerText = pipelineClips.length;
+    if (badge) badge.innerText = pipelineClips.length;
 
+    if (!grid) return;
     grid.innerHTML = '';
+
     if (pipelineClips.length === 0) {
       grid.innerHTML = `
         <div style="grid-column:1/-1;text-align:center;padding:60px 20px;border:1px dashed var(--border);border-radius:var(--radius-md);background:var(--bg-surface)">
-          <div style="font-size:32px;margin-bottom:10px">🎬</div>
+          <div style="margin-bottom:12px;color:var(--text-dim)">${ICONS.film}</div>
           <div style="font-size:16px;font-weight:700;color:#ffffff">No Staged Clips in Pipeline</div>
           <div style="font-size:12px;color:var(--text-muted);margin-top:4px">All harvested clips have been published. Click "Scan Live Streams" to stage new moments.</div>
         </div>
@@ -530,7 +596,7 @@
         <div class="clip-preview-container">
           <video src="${clip.videoUrl}" preload="metadata" muted playsinline></video>
           <div class="clip-overlay-badge">
-            <span>⚡ ${clip.streamer}</span>
+            <span>${clip.streamer}</span>
           </div>
           <div class="clip-duration-badge">${clip.duration}</div>
         </div>
@@ -543,13 +609,13 @@
           </div>
         </div>
         <div class="clip-actions">
-          <button class="btn btn-yellow btn-sm btn-preview" style="flex:1;justify-content:center">▶ Preview</button>
-          <button class="btn btn-sm btn-approve" style="color:var(--success)">✓ Accept</button>
-          <button class="btn btn-danger btn-sm btn-decline">✕ Decline</button>
+          <button class="btn btn-yellow btn-sm btn-preview" style="flex:1;justify-content:center">Preview</button>
+          <button class="btn btn-sm btn-approve" style="color:var(--success)">Accept</button>
+          <button class="btn btn-danger btn-sm btn-decline">Decline</button>
         </div>
       `;
 
-      card.querySelector('.btn-preview').onclick = () => openPreviewModal(clip);
+      card.querySelector('.btn-preview').onclick = () => window.openPreviewModal(clip);
       card.querySelector('.btn-approve').onclick = () => approveClip(clip);
       card.querySelector('.btn-decline').onclick = () => declineClip(clip);
 
@@ -557,37 +623,67 @@
     });
   }
 
-  // --- Preview Modal ---
-  function openPreviewModal(clip) {
+  // --- Modal Controllers (Exposed Globally) ---
+  window.openSetupModal = function () {
+    const modal = document.getElementById('modal-setup');
+    if (!modal) return;
+    const patEl = document.getElementById('setup-pat');
+    const repoEl = document.getElementById('setup-repo');
+    const branchEl = document.getElementById('setup-branch');
+
+    if (patEl) patEl.value = auth.pat || '';
+    if (repoEl) repoEl.value = auth.repo || 'Deeptanil/HyperClip-AI';
+    if (branchEl) branchEl.value = auth.branch || 'master';
+
+    modal.classList.add('open');
+  };
+
+  window.closeSetupModal = function () {
+    const modal = document.getElementById('modal-setup');
+    if (modal) modal.classList.remove('open');
+  };
+
+  window.openPreviewModal = function (clip) {
     selectedClip = clip;
     const modal = document.getElementById('modal-preview');
     const player = document.getElementById('preview-player');
+    if (!modal || !player) return;
 
     player.src = clip.videoUrl;
-    document.getElementById('preview-streamer-badge').innerText = `${clip.streamer} // Stream Highlight`;
-    document.getElementById('preview-modal-title').innerText = clip.title;
-    document.getElementById('preview-caption-edit').value = clip.caption;
-    document.getElementById('preview-sigma').innerText = clip.sigma || '3.5 σ';
-    document.getElementById('preview-motion').innerText = clip.motion || 'High Motion Active';
-    document.getElementById('preview-layout').innerText = clip.layout || 'Dual Stack 9:16';
-    document.getElementById('preview-target').innerText = clip.target || 'Instagram & YouTube';
+    const badge = document.getElementById('preview-streamer-badge');
+    const title = document.getElementById('preview-modal-title');
+    const caption = document.getElementById('preview-caption-edit');
+    const sigma = document.getElementById('preview-sigma');
+    const motion = document.getElementById('preview-motion');
+    const layout = document.getElementById('preview-layout');
+    const target = document.getElementById('preview-target');
+
+    if (badge) badge.innerText = `${clip.streamer} // Highlight`;
+    if (title) title.innerText = clip.title;
+    if (caption) caption.value = clip.caption;
+    if (sigma) sigma.innerText = clip.sigma || '3.5 σ';
+    if (motion) motion.innerText = clip.motion || 'High Action Active';
+    if (layout) layout.innerText = clip.layout || 'Dual Stack 9:16';
+    if (target) target.innerText = clip.target || 'Instagram & YouTube';
 
     modal.classList.add('open');
     player.play().catch(() => {});
-  }
+  };
 
-  function closePreviewModal() {
+  window.closePreviewModal = function () {
     const modal = document.getElementById('modal-preview');
     const player = document.getElementById('preview-player');
-    player.pause();
-    player.src = '';
-    modal.classList.remove('open');
+    if (player) {
+      player.pause();
+      player.src = '';
+    }
+    if (modal) modal.classList.remove('open');
     selectedClip = null;
-  }
+  };
 
   function approveClip(clip) {
-    alert(`Clip "${clip.title}" approved! Prioritized as next to publish for ${clip.target}.`);
-    closePreviewModal();
+    alert(`Clip "${clip.title}" approved. Prioritized for next publication slot.`);
+    window.closePreviewModal();
   }
 
   function declineClip(clip) {
@@ -595,8 +691,7 @@
     pipelineClips = pipelineClips.filter(c => c.id !== clip.id);
     renderPipelineQueue();
     renderCalendar();
-    closePreviewModal();
-    alert(`Purged "${clip.title}" from stream_pipeline queue.`);
+    window.closePreviewModal();
   }
 
   // --- GitHub REST API Integration ---
@@ -605,17 +700,16 @@
     const dot = document.getElementById('conn-dot');
 
     if (!auth.pat || auth.isDemo) {
-      dot.className = 'dot yellow';
-      statusText.innerText = 'Demo Mode (Read-Only)';
+      if (dot) dot.className = 'dot yellow';
+      if (statusText) statusText.innerText = 'Demo Mode (Read-Only)';
       loadDemoData();
       return;
     }
 
     try {
-      statusText.innerText = 'Syncing...';
-      dot.className = 'dot yellow';
+      if (statusText) statusText.innerText = 'Syncing...';
+      if (dot) dot.className = 'dot yellow';
 
-      // 1. Validate Repo Access
       const repoRes = await fetch(`https://api.github.com/repos/${auth.repo}`, {
         headers: {
           'Authorization': `Bearer ${auth.pat}`,
@@ -623,11 +717,8 @@
         }
       });
 
-      if (!repoRes.ok) {
-        throw new Error(`GitHub Repo error: ${repoRes.statusText}`);
-      }
+      if (!repoRes.ok) throw new Error(`GitHub Repo error: ${repoRes.statusText}`);
 
-      // 2. Read config.json from master branch
       const configRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json?ref=${auth.branch}`, {
         headers: {
           'Authorization': `Bearer ${auth.pat}`,
@@ -642,12 +733,12 @@
         applyRemoteConfig(configJson);
       }
 
-      dot.className = 'dot online';
-      statusText.innerText = `Connected: ${auth.repo}`;
+      if (dot) dot.className = 'dot online';
+      if (statusText) statusText.innerText = `Connected: ${auth.repo}`;
     } catch (err) {
-      console.warn('GitHub sync failed, falling back to local/demo data:', err);
-      dot.className = 'dot danger';
-      statusText.innerText = 'API Error (Using Cache)';
+      console.warn('GitHub sync fallback:', err);
+      if (dot) dot.className = 'dot danger';
+      if (statusText) statusText.innerText = 'API Error (Using Cache)';
       loadDemoData();
     }
   }
@@ -659,22 +750,28 @@
     const ig1 = igAccounts.find(a => a.slot === 1);
     if (ig1) {
       settings.ig1Posts = ig1.regular_per_day + (ig1.trial_per_day || 0);
-      document.getElementById('slider-ig1').value = settings.ig1Posts;
-      document.getElementById('val-ig1').innerText = settings.ig1Posts;
+      const s1 = document.getElementById('slider-ig1');
+      const v1 = document.getElementById('val-ig1');
+      if (s1) s1.value = settings.ig1Posts;
+      if (v1) v1.innerText = settings.ig1Posts;
     }
 
     const ig2 = igAccounts.find(a => a.slot === 2);
     if (ig2) {
       settings.ig2Posts = ig2.regular_per_day + (ig2.trial_per_day || 0);
-      document.getElementById('slider-ig2').value = settings.ig2Posts;
-      document.getElementById('val-ig2').innerText = settings.ig2Posts;
+      const s2 = document.getElementById('slider-ig2');
+      const v2 = document.getElementById('val-ig2');
+      if (s2) s2.value = settings.ig2Posts;
+      if (v2) v2.innerText = settings.ig2Posts;
     }
 
     const yt = sched.youtube || {};
     if (yt) {
       settings.ytPosts = yt.shorts_per_day || 3;
-      document.getElementById('slider-yt').value = settings.ytPosts;
-      document.getElementById('val-yt').innerText = settings.ytPosts;
+      const sy = document.getElementById('slider-yt');
+      const vy = document.getElementById('val-yt');
+      if (sy) sy.value = settings.ytPosts;
+      if (vy) vy.innerText = settings.ytPosts;
     }
 
     calculateDynamicSpacing();
@@ -688,9 +785,9 @@
     renderPipelineQueue();
   }
 
-  // --- Event Listeners & UI Binding ---
+  // --- Initializer & Event Binding ---
   function initUI() {
-    // Tab switching
+    // 1. Navigation Tabs
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -698,14 +795,15 @@
 
         btn.classList.add('active');
         activeTab = btn.dataset.tab;
-        document.getElementById(`view-${activeTab}`).classList.add('active');
+        const targetView = document.getElementById(`view-${activeTab}`);
+        if (targetView) targetView.classList.add('active');
 
         if (activeTab === 'calendar') renderCalendar();
         if (activeTab === 'pipeline') renderPipelineQueue();
       });
     });
 
-    // Calendar view switcher
+    // 2. Calendar View Switchers
     document.querySelectorAll('.view-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
@@ -715,27 +813,43 @@
       });
     });
 
-    // Calendar navigation
-    document.getElementById('cal-prev').addEventListener('click', () => {
-      if (activeCalView === 'week') currentDate.setDate(currentDate.getDate() - 7);
-      else if (activeCalView === 'day') currentDate.setDate(currentDate.getDate() - 1);
-      else if (activeCalView === 'month') currentDate.setMonth(currentDate.getMonth() - 1);
-      renderCalendar();
-    });
+    // 3. Calendar Date Navigation
+    const calPrev = document.getElementById('cal-prev');
+    const calNext = document.getElementById('cal-next');
+    const calToday = document.getElementById('cal-today');
 
-    document.getElementById('cal-next').addEventListener('click', () => {
-      if (activeCalView === 'week') currentDate.setDate(currentDate.getDate() + 7);
-      else if (activeCalView === 'day') currentDate.setDate(currentDate.getDate() + 1);
-      else if (activeCalView === 'month') currentDate.setMonth(currentDate.getMonth() + 1);
-      renderCalendar();
-    });
+    if (calPrev) {
+      calPrev.addEventListener('click', () => {
+        if (activeCalView === 'week') currentDate.setDate(currentDate.getDate() - 7);
+        else if (activeCalView === 'day') currentDate.setDate(currentDate.getDate() - 1);
+        else if (activeCalView === 'month') {
+          currentDate.setDate(1);
+          currentDate.setMonth(currentDate.getMonth() - 1);
+        }
+        renderCalendar();
+      });
+    }
 
-    document.getElementById('cal-today').addEventListener('click', () => {
-      currentDate = new Date();
-      renderCalendar();
-    });
+    if (calNext) {
+      calNext.addEventListener('click', () => {
+        if (activeCalView === 'week') currentDate.setDate(currentDate.getDate() + 7);
+        else if (activeCalView === 'day') currentDate.setDate(currentDate.getDate() + 1);
+        else if (activeCalView === 'month') {
+          currentDate.setDate(1);
+          currentDate.setMonth(currentDate.getMonth() + 1);
+        }
+        renderCalendar();
+      });
+    }
 
-    // Filter pills
+    if (calToday) {
+      calToday.addEventListener('click', () => {
+        currentDate = new Date();
+        renderCalendar();
+      });
+    }
+
+    // 4. Filter Pills
     document.querySelectorAll('.filter-pills .pill').forEach(pill => {
       pill.addEventListener('click', () => {
         document.querySelectorAll('.filter-pills .pill').forEach(p => p.classList.remove('active'));
@@ -745,60 +859,106 @@
       });
     });
 
-    // Setup Modal
+    // 5. Setup & Auth Modal Trigger Bindings
+    const btnOpenSetup = document.getElementById('btn-open-setup');
+    if (btnOpenSetup) {
+      btnOpenSetup.onclick = (e) => {
+        e.preventDefault();
+        window.openSetupModal();
+      };
+    }
+
+    const connStatusPill = document.getElementById('conn-status-pill');
+    if (connStatusPill) {
+      connStatusPill.onclick = () => window.openSetupModal();
+    }
+
+    const btnCloseSetup = document.getElementById('btn-close-setup');
+    if (btnCloseSetup) {
+      btnCloseSetup.onclick = () => window.closeSetupModal();
+    }
+
     const modalSetup = document.getElementById('modal-setup');
-    document.getElementById('btn-open-setup').addEventListener('click', () => {
-      document.getElementById('setup-pat').value = auth.pat || '';
-      document.getElementById('setup-repo').value = auth.repo || 'Deeptanil/HyperClip-AI';
-      document.getElementById('setup-branch').value = auth.branch || 'master';
-      modalSetup.classList.add('open');
-    });
+    if (modalSetup) {
+      modalSetup.onclick = (e) => {
+        if (e.target === modalSetup) window.closeSetupModal();
+      };
+    }
 
-    document.getElementById('btn-close-setup').addEventListener('click', () => {
-      modalSetup.classList.remove('open');
-    });
+    const btnSavePat = document.getElementById('btn-save-pat');
+    if (btnSavePat) {
+      btnSavePat.addEventListener('click', () => {
+        const pat = (document.getElementById('setup-pat')?.value || '').trim();
+        const repo = (document.getElementById('setup-repo')?.value || '').trim();
+        const branch = (document.getElementById('setup-branch')?.value || '').trim();
 
-    document.getElementById('btn-save-pat').addEventListener('click', () => {
-      const pat = document.getElementById('setup-pat').value.trim();
-      const repo = document.getElementById('setup-repo').value.trim();
-      const branch = document.getElementById('setup-branch').value.trim();
+        if (!pat) {
+          alert('Please enter a GitHub Personal Access Token or choose Explore with Demo Data.');
+          return;
+        }
 
-      if (!pat) {
-        alert('Please enter a GitHub Personal Access Token or choose Explore with Demo Data.');
-        return;
+        auth = { pat, repo, branch, isDemo: false };
+        safeSetStorage(STORAGE_KEY_AUTH, auth);
+        window.closeSetupModal();
+        syncWithGitHub();
+      });
+    }
+
+    const btnUseDemo = document.getElementById('btn-use-demo');
+    if (btnUseDemo) {
+      btnUseDemo.addEventListener('click', () => {
+        auth.isDemo = true;
+        auth.pat = '';
+        safeSetStorage(STORAGE_KEY_AUTH, auth);
+        window.closeSetupModal();
+        loadDemoData();
+      });
+    }
+
+    // 6. Preview Modal Backdrop & Escape Key Handlers
+    const modalPreview = document.getElementById('modal-preview');
+    if (modalPreview) {
+      modalPreview.onclick = (e) => {
+        if (e.target === modalPreview) window.closePreviewModal();
+      };
+    }
+
+    const btnClosePreview = document.getElementById('btn-close-preview');
+    if (btnClosePreview) {
+      btnClosePreview.onclick = () => window.closePreviewModal();
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        window.closeSetupModal();
+        window.closePreviewModal();
       }
-
-      auth = { pat, repo, branch, isDemo: false };
-      localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(auth));
-      modalSetup.classList.remove('open');
-      syncWithGitHub();
     });
 
-    document.getElementById('btn-use-demo').addEventListener('click', () => {
-      auth.isDemo = true;
-      auth.pat = '';
-      localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(auth));
-      modalSetup.classList.remove('open');
-      loadDemoData();
-    });
+    const btnApproveClip = document.getElementById('btn-approve-clip');
+    if (btnApproveClip) {
+      btnApproveClip.addEventListener('click', () => {
+        if (selectedClip) approveClip(selectedClip);
+      });
+    }
 
-    // Preview Modal
-    document.getElementById('btn-close-preview').addEventListener('click', closePreviewModal);
-    document.getElementById('btn-approve-clip').addEventListener('click', () => {
-      if (selectedClip) approveClip(selectedClip);
-    });
-    document.getElementById('btn-decline-clip').addEventListener('click', () => {
-      if (selectedClip) declineClip(selectedClip);
-    });
+    const btnDeclineClip = document.getElementById('btn-decline-clip');
+    if (btnDeclineClip) {
+      btnDeclineClip.addEventListener('click', () => {
+        if (selectedClip) declineClip(selectedClip);
+      });
+    }
 
-    // Settings Sliders
+    // 7. Settings Sliders
     const bindSlider = (id, valId, key, suffix = '') => {
       const el = document.getElementById(id);
       const valEl = document.getElementById(valId);
+      if (!el || !valEl) return;
+
       el.addEventListener('input', () => {
         valEl.innerText = `${el.value}${suffix}`;
         settings[key] = parseInt(el.value, 10);
-        localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(settings));
+        safeSetStorage(STORAGE_KEY_SETTINGS, settings);
         calculateDynamicSpacing();
         renderCalendar();
       });
@@ -810,60 +970,81 @@
     bindSlider('slider-stream-yield', 'val-stream-yield', 'streamYield');
     bindSlider('slider-clip-spacing', 'val-clip-spacing', 'clipSpacing', 's');
 
-    // Hype Mode Toggle
+    // 8. Hype Mode Toggle
     const hypeToggle = document.getElementById('toggle-hype');
-    hypeToggle.addEventListener('change', () => {
-      settings.hypeMode = hypeToggle.checked;
-      if (settings.hypeMode) {
-        settings.ig1Posts = 4;
-        settings.ig2Posts = 4;
-        document.getElementById('slider-ig1').value = 4;
-        document.getElementById('val-ig1').innerText = '4';
-        document.getElementById('slider-ig2').value = 4;
-        document.getElementById('val-ig2').innerText = '4';
-      } else {
-        settings.ig1Posts = 3;
-        settings.ig2Posts = 3;
-        document.getElementById('slider-ig1').value = 3;
-        document.getElementById('val-ig1').innerText = '3';
-        document.getElementById('slider-ig2').value = 3;
-        document.getElementById('val-ig2').innerText = '3';
-      }
-      localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(settings));
-      calculateDynamicSpacing();
-      renderCalendar();
-    });
+    if (hypeToggle) {
+      hypeToggle.addEventListener('change', () => {
+        settings.hypeMode = hypeToggle.checked;
+        if (settings.hypeMode) {
+          settings.ig1Posts = 4;
+          settings.ig2Posts = 4;
+        } else {
+          settings.ig1Posts = 3;
+          settings.ig2Posts = 3;
+        }
 
-    // Save Settings Button
-    document.getElementById('btn-save-settings').addEventListener('click', () => {
-      localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(settings));
-      alert('✓ Settings saved! Future scheduled slots dynamically adjusted. Staged pipeline clips preserved.');
-    });
+        const s1 = document.getElementById('slider-ig1');
+        const v1 = document.getElementById('val-ig1');
+        const s2 = document.getElementById('slider-ig2');
+        const v2 = document.getElementById('val-ig2');
 
-    // Diagnostics / Actions
-    document.getElementById('btn-sync').addEventListener('click', syncWithGitHub);
-    document.getElementById('btn-run-action').addEventListener('click', () => {
-      alert('🚀 Triggered automated clipping & publishing cycle via GitHub Actions!');
-    });
-    document.getElementById('btn-test-diag').addEventListener('click', () => {
-      alert('🛡️ Live diagnostic check initiated! Accounts @solvikz, @loopablez, and YouTube Shorts verified.');
-    });
-    document.getElementById('btn-harvest-fresh').addEventListener('click', () => {
-      alert('⚡ Scanning Twitch & YouTube streams (IShowSpeed, Kai Cenat, xQc, Clix, CaseOh) for viral peaks...');
-    });
+        if (s1) s1.value = settings.ig1Posts;
+        if (v1) v1.innerText = settings.ig1Posts;
+        if (s2) s2.value = settings.ig2Posts;
+        if (v2) v2.innerText = settings.ig2Posts;
+
+        safeSetStorage(STORAGE_KEY_SETTINGS, settings);
+        calculateDynamicSpacing();
+        renderCalendar();
+      });
+    }
+
+    // 9. Save Settings Button
+    const btnSaveSettings = document.getElementById('btn-save-settings');
+    if (btnSaveSettings) {
+      btnSaveSettings.addEventListener('click', () => {
+        safeSetStorage(STORAGE_KEY_SETTINGS, settings);
+        alert('Settings saved. Future scheduled slots adjusted. Staged pipeline clips preserved.');
+      });
+    }
+
+    // 10. Diagnostics and Action Triggers
+    const btnSync = document.getElementById('btn-sync');
+    if (btnSync) btnSync.addEventListener('click', syncWithGitHub);
+
+    const btnRunAction = document.getElementById('btn-run-action');
+    if (btnRunAction) {
+      btnRunAction.addEventListener('click', () => {
+        alert('Triggered automated clipping and publishing cycle via GitHub Actions.');
+      });
+    }
+
+    const btnTestDiag = document.getElementById('btn-test-diag');
+    if (btnTestDiag) {
+      btnTestDiag.addEventListener('click', () => {
+        alert('Live diagnostic check initiated: Accounts @solvikz, @loopablez, and YouTube Shorts verified.');
+      });
+    }
+
+    const btnHarvestFresh = document.getElementById('btn-harvest-fresh');
+    if (btnHarvestFresh) {
+      btnHarvestFresh.addEventListener('click', () => {
+        alert('Scanning Twitch and YouTube live streams for viral peaks.');
+      });
+    }
   }
 
-  function updateViewButtons() {
-    document.querySelectorAll('.view-btn').forEach(b => {
-      b.classList.toggle('active', b.dataset.calView === activeCalView);
-    });
-  }
-
-  // --- Initial Startup ---
-  window.addEventListener('DOMContentLoaded', () => {
+  // --- Initial Startup Execution (Race-Condition Free) ---
+  function startApp() {
     initUI();
     loadDemoData();
     syncWithGitHub();
-  });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startApp);
+  } else {
+    startApp();
+  }
 
 })();
