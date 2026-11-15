@@ -432,6 +432,78 @@ body {
   gap: 10px;
 }
 
+.btn-icon-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.icon-nav-arrow {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  fill: none;
+  display: inline-block;
+}
+
+/* Current Time Horizontal Line Across the Entire Week Grid */
+.current-time-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #EF4444;
+  z-index: 28;
+  pointer-events: none;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.7);
+  transition: top 0.3s ease;
+}
+
+.current-time-dot {
+  position: absolute;
+  left: 56px;
+  top: -4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #EF4444;
+  box-shadow: 0 0 10px #EF4444;
+}
+
+.current-time-badge {
+  position: absolute;
+  left: 6px;
+  top: -8px;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  font-weight: 800;
+  color: #EF4444;
+  background: #000000;
+  padding: 1px 4px;
+  border-radius: 3px;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+/* Smooth Week Animation */
+.week-anim-slide {
+  animation: weekSlideFade 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes weekSlideFade {
+  0% {
+    opacity: 0.65;
+    transform: translateY(5px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .date-heading {
   font-size: 16px;
   font-weight: 700;

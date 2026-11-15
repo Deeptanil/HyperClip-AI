@@ -505,13 +505,20 @@ def publish_next_clip(
 
     def _next_clip():
         nonlocal clip_idx
-        if clip_idx >= len(queued):
-            return (None, None, None), {}
-        cname = queued[clip_idx]
-        clip_idx += 1
-        cpath = os.path.join(STREAM_PIPELINE_DIR, cname)
-        mpath = os.path.splitext(cpath)[0] + ".json"
-        return (cname, cpath, mpath), _load_json(mpath, {})
+        while clip_idx < len(queued):
+            cname = queued[clip_idx]
+            clip_idx += 1
+            cpath = os.path.join(STREAM_PIPELINE_DIR, cname)
+            mpath = os.path.splitext(cpath)[0] + ".json"
+            meta = _load_json(mpath, {})
+
+            # Denied clips are never published (approval is optional, but denial is respected)
+            if meta.get("approval_status") == "denied" or meta.get("status") == "denied":
+                print(f"[-] Skipping explicitly denied clip: {cname}")
+                continue
+
+            return (cname, cpath, mpath), meta
+        return (None, None, None), {}
 
     # 1. YouTube Shorts
     yt_cfg = sched.get("youtube", {"enabled": True, "shorts_per_day": 3, "min_gap_hours": 3.0, "hard_daily_ceiling": 3})

@@ -2,8 +2,23 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
   <title>HyperClip AI // Command Center</title>
+  <meta name="description" content="Autonomous AI stream clipping, dual-stack 9:16 portrait rendering, and intelligent anti-shadowban publisher for gaming live streams.">
+  <meta name="keywords" content="hyperclip, ai clipping, autonomous stream clipper, twitch clips, youtube shorts, instagram reels, gta 6, gaming highlights">
+  <meta name="author" content="HyperClip AI">
+  <meta name="theme-color" content="#000000">
+  <meta name="color-scheme" content="dark">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="HyperClip AI">
+  <meta property="og:title" content="HyperClip AI // Command Center">
+  <meta property="og:description" content="Autonomous AI stream clipping, dual-stack portrait rendering, and intelligent anti-shadowban publisher.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="HyperClip AI">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="HyperClip AI // Command Center">
+  <meta name="twitter:description" content="Autonomous AI stream clipping, dual-stack portrait rendering, and intelligent anti-shadowban publisher.">
   <link rel="stylesheet" href="styles.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23FACC15'><polygon points='13 2 3 14 12 14 11 22 21 10 12 10 13 2'/></svg>">
 </head>
@@ -103,15 +118,21 @@
       <div class="calendar-bar">
         <div class="view-switchers">
           <button class="view-btn" data-cal-view="day">Day</button>
-          <button class="view-btn active" data-cal-view="week">Week (24h)</button>
+          <button class="view-btn active" data-cal-view="week">Week</button>
           <button class="view-btn" data-cal-view="month">Month</button>
         </div>
 
         <div class="cal-nav">
-          <button class="btn btn-sm" id="cal-prev">‹ Prev</button>
+          <button class="btn btn-sm btn-icon-nav" id="cal-prev" title="Previous Week">
+            <svg class="icon icon-nav-arrow" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+            <span>Prev</span>
+          </button>
           <div class="date-heading" id="cal-heading">Loading...</div>
           <button class="btn btn-sm" id="cal-today">Today</button>
-          <button class="btn btn-sm" id="cal-next">Next ›</button>
+          <button class="btn btn-sm btn-icon-nav" id="cal-next" title="Next Week">
+            <span>Next</span>
+            <svg class="icon icon-nav-arrow" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
         </div>
 
         <div class="filter-pills">
@@ -131,6 +152,11 @@
         </div>
         <div class="week-grid-scroll" id="week-scroll-container">
           <div class="week-grid-body" id="week-body-grid">
+            <!-- Full-week current time horizontal line -->
+            <div class="current-time-line" id="cal-current-time-line">
+              <span class="current-time-badge" id="cal-current-time-badge">--:--</span>
+              <span class="current-time-dot"></span>
+            </div>
             <div class="time-axis" id="time-axis-col">
               <!-- 24 hours 00:00 - 23:00 -->
             </div>
@@ -481,13 +507,17 @@
           </div>
 
           <div style="display:flex;gap:8px;margin-top:auto">
-            <button class="btn btn-yellow" id="btn-approve-clip" style="flex:1;justify-content:center">
+            <button class="btn btn-yellow" id="btn-approve-clip" style="flex:1;justify-content:center" title="Mark approved and prioritize for next upload slot (Optional: unapproved clips will still post automatically)">
               <svg class="icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-              Approve & Prioritize
+              Approve
             </button>
-            <button class="btn btn-danger" id="btn-decline-clip" style="flex:1;justify-content:center">
+            <button class="btn btn-warning" id="btn-deny-clip" style="flex:1;justify-content:center" title="Deny clip: removes from publishing pipeline so it will never post">
               <svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="18" x2="18" y2="18"/></svg>
-              Decline & Delete
+              Deny
+            </button>
+            <button class="btn btn-danger" id="btn-delete-clip" style="flex:1;justify-content:center" title="Permanently delete clip from storage">
+              <svg class="icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              Delete
             </button>
           </div>
         </div>

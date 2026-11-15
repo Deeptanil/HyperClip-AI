@@ -287,21 +287,80 @@
     scheduledSlots.sort((a, b) => a.timeMinutes - b.timeMinutes);
   }
 
-  // --- Calendar View Logic (Past, Present, and Future) ---
-  function getWeekRange(date) {
-    const d = new Date(date);
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday start
-    const monday = new Date(d.setDate(diff));
-    monday.setHours(0, 0, 0, 0);
+  // --- Calendar View Logic (Rolling 7-Day View: Today in Second Column) ---
+  function getWeekRange(anchorDate) {
+    // Column 0 = anchorDate - 1 day (Yesterday)
+    // Column 1 = anchorDate (Today, second column)
+    // Columns 2..6 = anchorDate + 1..5 days (Next 5 days)
+    const base = new Date(anchorDate.getFullYear(), anchorDate.getMonth(), anchorDate.getDate(), 0, 0, 0);
 
     const days = [];
-    for (let i = 0; i < 7; i++) {
-      const nextDay = new Date(monday);
-      nextDay.setDate(monday.getDate() + i);
-      days.push(nextDay);
+    for (let offset = -1; offset <= 5; offset++) {
+      const d = new Date(base);
+      d.setDate(base.getDate() + offset);
+      days.push(d);
     }
     return days;
+  }
+
+  // --- Dynamic Multi-Lane Clustering for Overlapping Events ---
+  function layoutEventsWithLanes(events) {
+    events.forEach(e => {
+      e.startMinutes = e.hour * 60 + (e.minute || 0);
+      const durMins = Math.max(54, e.durationSec ? Math.ceil(e.durationSec / 60) : 54);
+      e.endMinutes = e.startMinutes + durMins;
+    });
+
+    const sorted = [...events].sort((a, b) => a.startMinutes - b.startMinutes || (b.endMinutes - b.startMinutes) - (a.endMinutes - a.startMinutes));
+
+    // Group overlapping events into clusters
+    const clusters = [];
+    let curCluster = [];
+    let curEnd = -1;
+
+    sorted.forEach(ev => {
+      if (curCluster.length === 0) {
+        curCluster.push(ev);
+        curEnd = ev.endMinutes;
+      } else if (ev.startMinutes < curEnd) {
+        curCluster.push(ev);
+        curEnd = Math.max(curEnd, ev.endMinutes);
+      } else {
+        clusters.push(curCluster);
+        curCluster = [ev];
+        curEnd = ev.endMinutes;
+      }
+    });
+    if (curCluster.length > 0) {
+      clusters.push(curCluster);
+    }
+
+    // Allocate lane columns in each cluster
+    clusters.forEach(cluster => {
+      const laneEndTimes = [];
+      cluster.forEach(ev => {
+        let placed = false;
+        for (let l = 0; l < laneEndTimes.length; l++) {
+          if (laneEndTimes[l] <= ev.startMinutes) {
+            laneEndTimes[l] = ev.endMinutes;
+            ev.lane = l;
+            placed = true;
+            break;
+          }
+        }
+        if (!placed) {
+          ev.lane = laneEndTimes.length;
+          laneEndTimes.push(ev.endMinutes);
+        }
+      });
+
+      const totalLanes = Math.max(1, laneEndTimes.length);
+      cluster.forEach(ev => {
+        ev.totalLanes = totalLanes;
+      });
+    });
+
+    return sorted;
   }
 
   function getEventsForDate(targetDate) {
@@ -449,6 +508,21 @@
     else if (activeCalView === 'month') renderMonthView();
   }
 
+  function updateCurrentTimeIndicator() {
+    const timeLine = document.getElementById('cal-current-time-line');
+    const badge = document.getElementById('cal-current-time-badge');
+    if (!timeLine) return;
+
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    timeLine.style.top = `${currentMinutes}px`;
+    timeLine.style.display = 'block';
+
+    if (badge) {
+      badge.innerText = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    }
+  }
+
   function renderWeekView() {
     const weekWrapper = document.getElementById('week-view-wrapper');
     const dayWrapper = document.getElementById('day-view-wrapper');
@@ -468,19 +542,19 @@
       heading.innerText = `${months[firstDay.getMonth()]} ${firstDay.getDate()} – ${months[lastDay.getMonth()]} ${lastDay.getDate()}, ${firstDay.getFullYear()}`;
     }
 
-    // Render Headers
+    // Render Headers (Rolling 7-day: Col 0 = Yesterday, Col 1 = Today, Cols 2..6 = Next 5 days)
     const headerRow = document.getElementById('week-header-row');
     if (headerRow) {
       headerRow.innerHTML = '<div class="col-header time-label-spacer">TIME</div>';
-      const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       const todayStr = new Date().toDateString();
 
-      weekDays.forEach((d, idx) => {
+      weekDays.forEach(d => {
         const isToday = d.toDateString() === todayStr;
         const col = document.createElement('div');
         col.className = `col-header ${isToday ? 'today' : ''}`;
         col.innerHTML = `
-          <div class="day-label">${dayNames[idx]}</div>
+          <div class="day-label">${dayNames[d.getDay()]}</div>
           <div class="day-num">${d.getDate()}</div>
         `;
         headerRow.appendChild(col);
@@ -499,9 +573,14 @@
       }
     }
 
-    // Render Day Columns
+    // Render Day Columns with Overlapping Multi-Lane Layout & Smooth Slide
     const bodyGrid = document.getElementById('week-body-grid');
     if (bodyGrid) {
+      // Trigger smooth slide transition
+      bodyGrid.classList.remove('week-anim-slide');
+      void bodyGrid.offsetWidth; // Force reflow
+      bodyGrid.classList.add('week-anim-slide');
+
       const oldCols = bodyGrid.querySelectorAll('.day-column');
       oldCols.forEach(c => c.remove());
 
@@ -513,10 +592,10 @@
         dayCol.className = `day-column ${isToday ? 'today' : ''}`;
         dayCol.dataset.date = d.toISOString().split('T')[0];
 
-        const dayEvents = getEventsForDate(d);
-        dayEvents.forEach(evt => {
-          if (!matchesFilter(evt)) return;
+        const rawEvents = getEventsForDate(d).filter(matchesFilter);
+        const dayEvents = layoutEventsWithLanes(rawEvents);
 
+        dayEvents.forEach(evt => {
           const acc = (evt.account === 'yt') ? 'youtube' : (evt.account || 'ig1');
           const card = document.createElement('div');
           card.className = `event-card ${evt.status} account-${acc} ${evt.isNext ? 'is-next' : ''}`;
@@ -525,6 +604,18 @@
 
           card.style.top = `${topPx}px`;
           card.style.height = `${heightPx}px`;
+
+          // Handle multi-lane side-by-side positioning for overlapping cards
+          if (evt.totalLanes > 1) {
+            const lanePct = 100 / evt.totalLanes;
+            card.style.left = `calc(${evt.lane * lanePct}% + 1px)`;
+            card.style.width = `calc(${lanePct}% - 2px)`;
+            card.style.right = 'auto';
+          } else {
+            card.style.left = '3px';
+            card.style.width = 'calc(100% - 6px)';
+            card.style.right = 'auto';
+          }
 
           const tagClass = acc === 'ig1' ? 'tag-ig1' : acc === 'ig2' ? 'tag-ig2' : 'tag-yt';
           const tagText = acc === 'ig1' ? '@solvikz' : acc === 'ig2' ? '@loopablez' : 'YouTube Shorts';
@@ -561,6 +652,8 @@
         bodyGrid.appendChild(dayCol);
       });
     }
+
+    updateCurrentTimeIndicator();
 
     const scrollContainer = document.getElementById('week-scroll-container');
     const currentHour = new Date().getHours();
@@ -763,7 +856,12 @@
           <div class="clip-duration-badge">${clip.duration}</div>
         </div>
         <div class="clip-body">
-          <div class="clip-title">${clip.title}</div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;">
+            <div class="clip-title">${clip.title}</div>
+            <span class="status-pill" style="font-size:9px;white-space:nowrap;${clip.approval_status === 'approved' ? 'color:var(--success);border-color:rgba(34,197,94,0.4);' : clip.approval_status === 'denied' ? 'color:var(--danger);border-color:rgba(239,68,68,0.4);' : 'color:var(--yellow);'}">
+              ${clip.approval_status === 'approved' ? 'Approved' : clip.approval_status === 'denied' ? 'Denied' : 'Pending (Auto)'}
+            </span>
+          </div>
           <div class="clip-caption">${clip.caption}</div>
           <div class="clip-metrics">
             <span>Spike: ${clip.sigma}</span> • 
@@ -772,14 +870,16 @@
         </div>
         <div class="clip-actions">
           <button class="btn btn-yellow btn-sm btn-preview" style="flex:1;justify-content:center">Preview</button>
-          <button class="btn btn-sm btn-approve" style="color:var(--success)">Accept</button>
-          <button class="btn btn-danger btn-sm btn-decline">Decline</button>
+          <button class="btn btn-sm btn-approve" style="color:var(--success)" title="Approve & prioritize">Approve</button>
+          <button class="btn btn-warning btn-sm btn-deny" title="Deny clip (removes from pipeline)">Deny</button>
+          <button class="btn btn-danger btn-sm btn-delete" title="Permanently delete clip">Delete</button>
         </div>
       `;
 
       card.querySelector('.btn-preview').onclick = () => window.openPreviewModal(clip);
       card.querySelector('.btn-approve').onclick = () => approveClip(clip);
-      card.querySelector('.btn-decline').onclick = () => declineClip(clip);
+      card.querySelector('.btn-deny').onclick = () => denyClip(clip);
+      card.querySelector('.btn-delete').onclick = () => deleteClip(clip);
 
       grid.appendChild(card);
     });
@@ -845,13 +945,62 @@
     selectedClip = null;
   };
 
+  async function updateGitHubClipMetadata(clip, updates) {
+    if (!auth.pat || auth.isDemo || !clip.jsonPath || !clip.jsonSha) return;
+    try {
+      const headers = {
+        'Authorization': `token ${auth.pat.trim()}`,
+        'Accept': 'application/vnd.github.v3+json'
+      };
+      const cBranch = auth.contentBranch || 'content';
+      const getRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/${clip.jsonPath}?ref=${cBranch}`, { headers });
+      if (!getRes.ok) return;
+      const getData = await getRes.json();
+      const currentContent = JSON.parse(decodeURIComponent(escape(atob(getData.content))));
+
+      const merged = { ...currentContent, ...updates };
+      const newBase64 = btoa(unescape(encodeURIComponent(JSON.stringify(merged, null, 2))));
+
+      const putRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/${clip.jsonPath}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({
+          message: `chore: update clip status to ${updates.approval_status} for ${clip.filename}`,
+          content: newBase64,
+          sha: getData.sha,
+          branch: cBranch
+        })
+      });
+      if (putRes.ok) {
+        const putData = await putRes.json();
+        clip.jsonSha = putData.content.sha;
+      }
+    } catch (e) {
+      console.warn('Failed to update GitHub clip metadata:', e);
+    }
+  }
+
   function approveClip(clip) {
-    alert(`Clip "${clip.title}" approved. Prioritized for next publication slot.`);
+    clip.approval_status = 'approved';
+    updateGitHubClipMetadata(clip, { approval_status: 'approved' });
+    renderPipelineQueue();
+    renderCalendar();
+    alert(`Clip "${clip.title}" approved and prioritized for next upload.`);
     window.closePreviewModal();
   }
 
-  async function declineClip(clip) {
-    if (!confirm(`Are you sure you want to decline and purge "${clip.title}"?`)) return;
+  function denyClip(clip) {
+    clip.approval_status = 'denied';
+    updateGitHubClipMetadata(clip, { approval_status: 'denied' });
+    pipelineClips = pipelineClips.filter(c => c.id !== clip.id);
+    renderPipelineQueue();
+    renderCalendar();
+    alert(`Clip "${clip.title}" denied. It has been removed from the publishing queue.`);
+    window.closePreviewModal();
+  }
+
+  async function deleteClip(clip) {
+    if (!confirm(`Are you sure you want to permanently delete "${clip.title}" from storage?`)) return;
 
     if (auth.pat && !auth.isDemo && clip.path && clip.sha) {
       try {
@@ -866,7 +1015,7 @@
           method: 'DELETE',
           headers,
           body: JSON.stringify({
-            message: `chore: purge rejected clip ${clip.filename} via dashboard`,
+            message: `chore: purge clip ${clip.filename} via dashboard`,
             sha: clip.sha,
             branch: cBranch
           })
@@ -1339,12 +1488,22 @@
       });
     }
 
-    const btnDeclineClip = document.getElementById('btn-decline-clip');
-    if (btnDeclineClip) {
-      btnDeclineClip.addEventListener('click', () => {
-        if (selectedClip) declineClip(selectedClip);
+    const btnDenyClip = document.getElementById('btn-deny-clip');
+    if (btnDenyClip) {
+      btnDenyClip.addEventListener('click', () => {
+        if (selectedClip) denyClip(selectedClip);
       });
     }
+
+    const btnDeleteClip = document.getElementById('btn-delete-clip');
+    if (btnDeleteClip) {
+      btnDeleteClip.addEventListener('click', () => {
+        if (selectedClip) deleteClip(selectedClip);
+      });
+    }
+
+    // Start Real-Time Current Time Indicator Loop
+    setInterval(updateCurrentTimeIndicator, 30000);
 
     // 7. Settings Sliders
     const bindSlider = (id, valId, key, suffix = '') => {
