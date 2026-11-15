@@ -166,12 +166,13 @@ def frame_to_portrait(
                 f"[canvas][cam]overlay=(W-w)/2:240:shortest=1{sub_filter}[vout]"
             )
     else:
-        # No facecam -> Clean centered 16:9 gameplay on solid black background
+        # No facecam -> Clean centered 16:9 gameplay on solid black background (starts at y=656)
+        # Place banner_png at y=490 so the headline sits directly above the clip
         if has_banner:
             filter_complex = (
                 f"[0:v]scale=1080:608:force_original_aspect_ratio=decrease,"
                 f"pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black[canvas];"
-                f"[canvas][1:v]overlay=(W-w)/2:20{sub_filter}[vout]"
+                f"[canvas][1:v]overlay=(W-w)/2:490{sub_filter}[vout]"
             )
         else:
             filter_complex = (

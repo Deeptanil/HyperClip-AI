@@ -2,7 +2,10 @@ name: HyperClip AI - Twitch Hype Clipper
 
 on:
   schedule:
-    - cron: '*/30 * * * *'  # Checks every 30 mins for live streams (>= 30m) & stages/publishes hype clips
+    # Off-peak staggered 15-min runs (:07, :22, :37, :52) + backup :14/:44 triggers
+    # Ensures reliable posting & retry if GitHub delays/skips a top-of-hour cron.
+    - cron: '7,22,37,52 * * * *'
+    - cron: '14,44 * * * *'
   workflow_dispatch:
     inputs:
       force:
@@ -15,6 +18,10 @@ on:
         required: false
         type: boolean
         default: false
+
+concurrency:
+  group: hyperclip-twitch-pipeline
+  cancel-in-progress: false
 
 jobs:
   clip-and-publish:

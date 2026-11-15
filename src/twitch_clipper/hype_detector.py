@@ -28,9 +28,15 @@ def detect_hype_moments(
     min_spike_sigma: float = 2.0,
     min_messages_per_window: int = 12,
     bucket_sec: int = 5,
+    viewers: int = 0,
+    intro_skip_sec: int = 480,
 ) -> list:
     """
     Parses chat JSON and returns top distinct highlight moments sorted by score.
+    - Cuts out stream starting screens via `intro_skip_sec` (auto-scaled for shorter VODs).
+    - Scales chat velocity threshold dynamically based on live `viewers` count
+      (or stream baseline velocity if `viewers == 0`) so mega-chats and mid-size
+      creators are both judged fairly.
     """
     with open(chat_json_path, "r", encoding="utf-8") as f:
         data = json.load(f)
@@ -69,6 +75,11 @@ def detect_hype_moments(
     if max_offset < 30 or not buckets:
         return []
 
+    # Cut out "Stream Starting Soon" / intro screens:
+    # Full streams (>= 20m) skip `intro_skip_sec` (default 8 min); shorter VODs skip 15% (min 90s).
+    effective_intro_skip = intro_skip_sec if max_offset >= 1200 else min(intro_skip_sec, max(90, int(max_offset * 0.15)))
+    intro_bucket_cutoff = int(effective_intro_skip // bucket_sec)
+
     num_buckets = int(max_offset // bucket_sec) + 1
     # 3-bucket (15-second) rolling window
     rolling_scores = []
@@ -79,25 +90,40 @@ def detect_hype_moments(
         rolling_scores.append(s)
         rolling_counts.append(cnt)
 
-    active_scores = [s for s in rolling_scores if s > 0]
-    if len(active_scores) < 5:
+    # Compute baseline strictly from post-intro active windows
+    post_intro_scores = [rolling_scores[i] for i in range(intro_bucket_cutoff, num_buckets) if rolling_scores[i] > 0]
+    post_intro_counts = [rolling_counts[i] for i in range(intro_bucket_cutoff, num_buckets) if rolling_counts[i] > 0]
+    if len(post_intro_scores) < 5:
         return []
 
-    mean_score = sum(active_scores) / len(active_scores)
-    variance = sum((s - mean_score) ** 2 for s in active_scores) / len(active_scores)
+    mean_score = sum(post_intro_scores) / len(post_intro_scores)
+    mean_count = sum(post_intro_counts) / len(post_intro_counts)
+    variance = sum((s - mean_score) ** 2 for s in post_intro_scores) / len(post_intro_scores)
     std_score = math.sqrt(variance)
+
+    # Scale minimum messages per 15s window by viewer count (or baseline chat speed)
+    if viewers > 0:
+        if viewers < 3000:
+            viewer_floor = max(6, int(viewers * 0.0025))
+        elif viewers < 20000:
+            viewer_floor = max(10, int(viewers * 0.0018))
+        else:
+            viewer_floor = max(25, min(140, int(viewers * 0.0012)))
+        effective_min_msgs = max(viewer_floor, int(mean_count * 1.65))
+    else:
+        effective_min_msgs = max(min_messages_per_window, int(mean_count * 1.75))
 
     threshold = mean_score + (min_spike_sigma * std_score)
 
-    # Collect candidate peaks (local maxima above threshold and min message count)
+    # Collect candidate peaks (local maxima above threshold and viewer-scaled message count)
     candidates = []
-    for i in range(1, num_buckets - 1):
+    for i in range(max(1, intro_bucket_cutoff), num_buckets - 1):
         s = rolling_scores[i]
         cnt = rolling_counts[i]
-        if s >= threshold and cnt >= min_messages_per_window:
+        if s >= threshold and cnt >= effective_min_msgs:
             if s >= rolling_scores[i - 1] and s >= rolling_scores[i + 1]:
                 peak_sec = i * bucket_sec + (bucket_sec // 2)
-                if peak_sec < 15:
+                if peak_sec < effective_intro_skip:
                     continue
                 z_score = (s - mean_score) / std_score if std_score > 0 else 0.0
                 sample_msgs = buckets[i]["texts"] or buckets[max(0, i - 1)]["texts"]
@@ -108,6 +134,7 @@ def detect_hype_moments(
                     "score": round(s, 2),
                     "z_score": round(z_score, 2),
                     "msg_count_15s": int(cnt),
+                    "min_msgs_required": int(effective_min_msgs),
                     "sample_chat": sample_msgs[:4],
                 })
 

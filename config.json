@@ -35,6 +35,7 @@
     },
     "target_games": [],
     "min_stream_minutes": 30,
+    "intro_skip_sec": 480,
     "check_past_vods_if_offline": true,
     "past_vod_max_age_hours": 24,
     "clip_duration_sec": 35,
@@ -51,11 +52,11 @@
     "default_hashtags": "#gta6 #twitch #gaming #shorts #reels #clips #viral"
   },
   "publishing_schedule": {
-    "min_cross_account_gap_minutes": 20,
+    "min_cross_account_gap_minutes": 12,
     "youtube": {
       "enabled": true,
       "shorts_per_day": 3,
-      "min_gap_hours": 3.0
+      "min_gap_hours": 2.5
     },
     "instagram_accounts": [
       {
@@ -64,7 +65,7 @@
         "enabled": true,
         "regular_per_day": 2,
         "trial_per_day": 2,
-        "min_gap_hours": 3.0
+        "min_gap_hours": 2.5
       },
       {
         "slot": 2,
@@ -72,7 +73,7 @@
         "enabled": true,
         "regular_per_day": 2,
         "trial_per_day": 2,
-        "min_gap_hours": 3.0
+        "min_gap_hours": 2.5
       }
     ]
   },

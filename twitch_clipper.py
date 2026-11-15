@@ -130,6 +130,8 @@ def harvest_clips(config: dict, max_total_new: int = 4) -> list:
             min_spacing_sec=tc.get("min_clip_spacing_sec", 180),
             min_spike_sigma=tc.get("min_spike_sigma", 2.0),
             min_messages_per_window=tc.get("min_messages_per_window", 12),
+            viewers=target.get("viewers", 0),
+            intro_skip_sec=tc.get("intro_skip_sec", 480),
         )
 
         # Update last scanned offset
@@ -306,9 +308,9 @@ def publish_next_clip(config: dict, platforms: list = None, force: bool = False)
     prune_twitch_archive(days=7)
 
     queued = sorted([f for f in os.listdir(TWITCH_PIPELINE_DIR) if f.endswith(".mp4")])
-    if len(queued) < 2:
+    if len(queued) < 4:
         print("[*] Harvesting fresh hype clips to keep multi-account queue stocked...")
-        harvest_clips(config, max_total_new=3)
+        harvest_clips(config, max_total_new=4)
         queued = sorted([f for f in os.listdir(TWITCH_PIPELINE_DIR) if f.endswith(".mp4")])
 
     if not queued:
