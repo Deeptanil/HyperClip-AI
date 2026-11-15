@@ -576,15 +576,16 @@ body {
   left: 3px;
   right: 3px;
   border-radius: var(--radius-sm);
-  padding: 5px 8px;
+  padding: 6px 8px;
   font-size: 11px;
   cursor: pointer;
-  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
   overflow: hidden;
   z-index: 10;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  box-sizing: border-box;
 }
 
 .event-card:hover {
@@ -592,40 +593,104 @@ body {
   z-index: 15;
 }
 
-/* Event Types */
+/* Event Status Base Classes */
 .event-card.posted {
-  background: #0f1c12;
-  border-left: 3px solid var(--success);
-  border-top: 1px solid rgba(34, 197, 94, 0.2);
-  border-right: 1px solid rgba(34, 197, 94, 0.2);
-  border-bottom: 1px solid rgba(34, 197, 94, 0.2);
-  color: #e4e4e7;
-}
-
-.event-card.posted:hover {
-  box-shadow: 0 0 10px rgba(34, 197, 94, 0.3);
+  background: #0d1711;
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  color: #f4f4f5;
 }
 
 .event-card.staged {
-  background: #1c1809;
-  border-left: 3px solid var(--yellow);
-  border-top: 1px solid var(--yellow-border);
-  border-right: 1px solid var(--yellow-border);
-  border-bottom: 1px solid var(--yellow-border);
+  background: #191407;
+  border: 1px solid rgba(250, 204, 21, 0.35);
   color: #ffffff;
 }
 
-.event-card.staged:hover {
-  box-shadow: 0 0 12px var(--yellow-glow);
-}
-
 .event-card.scheduled {
-  background: rgba(24, 24, 27, 0.6);
+  background: rgba(18, 18, 20, 0.7);
   border: 1px dashed #3f3f46;
-  border-left: 3px dashed var(--yellow);
-  color: var(--text-muted);
+  color: #a1a1aa;
 }
 
+/* Color-Coding by Social Account: Instagram 1 (@solvikz - Yellow) */
+.event-card.account-ig1 {
+  border-left: 3px solid #FACC15 !important;
+}
+.event-card.account-ig1.scheduled {
+  background: rgba(250, 204, 21, 0.04);
+  border: 1px dashed rgba(250, 204, 21, 0.25);
+  border-left: 3px dashed #FACC15 !important;
+  color: #e4e4e7;
+}
+.event-card.account-ig1.staged {
+  background: rgba(250, 204, 21, 0.1);
+  border: 1px solid rgba(250, 204, 21, 0.4);
+  border-left: 3px solid #FACC15 !important;
+  color: #ffffff;
+}
+.event-card.account-ig1.posted {
+  background: rgba(250, 204, 21, 0.07);
+  border: 1px solid rgba(250, 204, 21, 0.3);
+  border-left: 3px solid #FACC15 !important;
+  color: #f4f4f5;
+}
+.event-card.account-ig1:hover {
+  box-shadow: 0 0 12px rgba(250, 204, 21, 0.28);
+}
+
+/* Color-Coding by Social Account: Instagram 2 (@loopablez - Purple) */
+.event-card.account-ig2 {
+  border-left: 3px solid #A855F7 !important;
+}
+.event-card.account-ig2.scheduled {
+  background: rgba(168, 85, 247, 0.04);
+  border: 1px dashed rgba(168, 85, 247, 0.25);
+  border-left: 3px dashed #A855F7 !important;
+  color: #e4e4e7;
+}
+.event-card.account-ig2.staged {
+  background: rgba(168, 85, 247, 0.1);
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  border-left: 3px solid #A855F7 !important;
+  color: #ffffff;
+}
+.event-card.account-ig2.posted {
+  background: rgba(168, 85, 247, 0.07);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  border-left: 3px solid #A855F7 !important;
+  color: #f4f4f5;
+}
+.event-card.account-ig2:hover {
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.28);
+}
+
+/* Color-Coding by Social Account: YouTube Shorts (Red / Crimson) */
+.event-card.account-youtube {
+  border-left: 3px solid #EF4444 !important;
+}
+.event-card.account-youtube.scheduled {
+  background: rgba(239, 68, 68, 0.04);
+  border: 1px dashed rgba(239, 68, 68, 0.25);
+  border-left: 3px dashed #EF4444 !important;
+  color: #e4e4e7;
+}
+.event-card.account-youtube.staged {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-left: 3px solid #EF4444 !important;
+  color: #ffffff;
+}
+.event-card.account-youtube.posted {
+  background: rgba(239, 68, 68, 0.07);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-left: 3px solid #EF4444 !important;
+  color: #f4f4f5;
+}
+.event-card.account-youtube:hover {
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.28);
+}
+
+/* Title & Status Icon */
 .event-title {
   font-weight: 700;
   white-space: nowrap;
@@ -633,39 +698,89 @@ body {
   text-overflow: ellipsis;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
+  font-size: 11px;
+  line-height: 1.25;
 }
 
-.event-meta {
-  font-size: 10px;
-  font-family: var(--font-mono);
-  color: var(--text-dim);
+.event-title .title-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.event-title .status-icon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Bottom Event Footer & Account Tag */
+.event-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-top: auto;
+  padding-top: 3px;
+  gap: 4px;
 }
 
-.event-platform-tag {
+.event-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+.event-account-tag {
   font-size: 9px;
-  font-weight: 800;
-  padding: 1px 4px;
-  border-radius: 2px;
-  text-transform: uppercase;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 3px;
+  text-transform: none;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
 }
 
 .tag-ig1 {
-  background: rgba(250, 204, 21, 0.2);
-  color: var(--yellow);
+  background: rgba(250, 204, 21, 0.15);
+  color: #FACC15;
+  border: 1px solid rgba(250, 204, 21, 0.3);
 }
 
 .tag-ig2 {
-  background: rgba(168, 85, 247, 0.2);
-  color: #c084fc;
+  background: rgba(168, 85, 247, 0.15);
+  color: #C084FC;
+  border: 1px solid rgba(168, 85, 247, 0.3);
 }
 
 .tag-yt {
-  background: rgba(239, 68, 68, 0.2);
-  color: #f87171;
+  background: rgba(239, 68, 68, 0.15);
+  color: #F87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.badge-next {
+  font-size: 8px;
+  font-weight: 800;
+  background: var(--yellow);
+  color: #000000;
+  padding: 1px 4px;
+  border-radius: 2px;
+  letter-spacing: 0.5px;
+  line-height: 1;
+}
+
+.event-card.is-next {
+  box-shadow: 0 0 10px rgba(250, 204, 21, 0.35);
+  animation: pulse-slot-glow 2.5s infinite ease-in-out;
+}
+
+@keyframes pulse-slot-glow {
+  0%, 100% { box-shadow: 0 0 6px rgba(250, 204, 21, 0.25); }
+  50% { box-shadow: 0 0 14px rgba(250, 204, 21, 0.5); }
 }
 
 /* Day View Timeline */

@@ -210,32 +210,81 @@
       }
     }
 
-    generateScheduledSlots(intervalHours);
+    generateScheduledSlots();
   }
 
-  function generateScheduledSlots(intervalHours) {
+  function generateScheduledSlots() {
     scheduledSlots = [];
-    const totalSlots = settings.ig1Posts + settings.ig2Posts;
-    if (totalSlots <= 0) return;
+    const ig1Count = Math.max(0, parseInt(settings.ig1Posts, 10) || 0);
+    const ig2Count = Math.max(0, parseInt(settings.ig2Posts, 10) || 0);
+    const ytCount = Math.max(0, parseInt(settings.ytPosts, 10) || 0);
 
-    const stepHours = 24 / totalSlots;
-    for (let i = 0; i < totalSlots; i++) {
-      const totalMinutes = Math.round(i * stepHours * 60);
-      const h = Math.floor(totalMinutes / 60) % 24;
-      const m = totalMinutes % 60;
-      const isIg1 = i % 2 === 0;
+    const totalIg = ig1Count + ig2Count;
 
-      scheduledSlots.push({
-        id: `sched_slot_${i}`,
-        hour: h,
-        minute: m,
-        timeStr: `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`,
-        account: isIg1 ? 'ig1' : 'ig2',
-        platform: isIg1 ? 'Instagram (@solvikz)' : 'Instagram (@loopablez)',
-        title: `Scheduled Slot ${i + 1} (${isIg1 ? 'solvikz' : 'loopablez'})`,
-        status: 'scheduled'
-      });
+    // 1. Instagram Slots: Interleave ig1 and ig2 spaced across 24h
+    if (totalIg > 0) {
+      const stepMinutes = Math.floor((24 * 60) / totalIg);
+      let ig1Allocated = 0;
+      let ig2Allocated = 0;
+
+      for (let i = 0; i < totalIg; i++) {
+        const totalMinutes = i * stepMinutes;
+        const h = Math.floor(totalMinutes / 60) % 24;
+        const m = totalMinutes % 60;
+
+        let acc = 'ig1';
+        if (ig1Allocated < ig1Count && ig2Allocated < ig2Count) {
+          acc = (i % 2 === 0) ? 'ig1' : 'ig2';
+        } else if (ig1Allocated < ig1Count) {
+          acc = 'ig1';
+        } else {
+          acc = 'ig2';
+        }
+
+        if (acc === 'ig1') ig1Allocated++;
+        else ig2Allocated++;
+
+        const isIg1 = acc === 'ig1';
+        scheduledSlots.push({
+          id: `sched_ig_${i}`,
+          hour: h,
+          minute: m,
+          timeMinutes: totalMinutes,
+          timeStr: `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`,
+          account: acc,
+          platform: isIg1 ? 'Instagram (@solvikz)' : 'Instagram (@loopablez)',
+          title: `Scheduled Reel (${isIg1 ? 'solvikz' : 'loopablez'})`,
+          status: 'scheduled'
+        });
+      }
     }
+
+    // 2. YouTube Shorts Slots: Spaced across 24h, staggered from IG slots
+    if (ytCount > 0) {
+      const stepYt = Math.floor((24 * 60) / ytCount);
+      const ytOffset = Math.floor(stepYt / 2); // Offset to avoid overlapping IG slots
+
+      for (let j = 0; j < ytCount; j++) {
+        const totalMinutes = (j * stepYt + ytOffset) % (24 * 60);
+        const h = Math.floor(totalMinutes / 60) % 24;
+        const m = totalMinutes % 60;
+
+        scheduledSlots.push({
+          id: `sched_yt_${j}`,
+          hour: h,
+          minute: m,
+          timeMinutes: totalMinutes,
+          timeStr: `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`,
+          account: 'youtube',
+          platform: 'YouTube Shorts',
+          title: `Scheduled YouTube Short ${j + 1}`,
+          status: 'scheduled'
+        });
+      }
+    }
+
+    // Sort chronologically
+    scheduledSlots.sort((a, b) => a.timeMinutes - b.timeMinutes);
   }
 
   // --- Calendar View Logic (Past, Present, and Future) ---
@@ -261,6 +310,7 @@
     const targetMidnight = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 0, 0, 0);
 
     const isToday = targetMidnight.getTime() === startOfToday.getTime();
+    const isPast = targetMidnight.getTime() < startOfToday.getTime();
     const isFuture = targetMidnight.getTime() > startOfToday.getTime();
     const events = [];
 
@@ -268,42 +318,129 @@
     postedClips.forEach(p => {
       const pDate = new Date(p.date);
       if (pDate.toDateString() === targetDate.toDateString()) {
+        const acc = (p.account === 'yt') ? 'youtube' : p.account;
         events.push({
           ...p,
+          account: acc,
           hour: pDate.getHours(),
           minute: pDate.getMinutes(),
+          timeMinutes: pDate.getHours() * 60 + pDate.getMinutes(),
           status: 'posted'
         });
       }
     });
 
-    // 2. Today: include staged pipeline clips ready to post
-    if (isToday) {
-      pipelineClips.forEach((c, idx) => {
-        const stagedHour = 14 + idx * 3;
-        events.push({
-          ...c,
-          hour: stagedHour % 24,
-          minute: 0,
-          status: 'staged'
-        });
-      });
+    // In the past: ONLY show real posted clips! Never show scheduled placeholder slots.
+    if (isPast) {
+      return events.sort((a, b) => a.timeMinutes - b.timeMinutes);
     }
 
-    // 3. Today & Future Days: include scheduled future posting slots
-    if (isToday || isFuture) {
+    // 2. Today:
+    if (isToday) {
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+      const todayPostedCount = { ig1: 0, ig2: 0, youtube: 0 };
+      const lastPostMinutes = { ig1: -9999, ig2: -9999, youtube: -9999 };
+
+      events.forEach(e => {
+        if (e.status === 'posted') {
+          const acc = (e.account === 'yt') ? 'youtube' : e.account;
+          todayPostedCount[acc] = (todayPostedCount[acc] || 0) + 1;
+          if (e.timeMinutes > lastPostMinutes[acc]) {
+            lastPostMinutes[acc] = e.timeMinutes;
+          }
+        }
+      });
+
+      // Filter upcoming slots that are valid:
+      // - Must not have already passed in time (skip missed / late slots)
+      // - Must not exceed daily limit for that account if already satisfied by real posts
+      // - Must not collide with a real post within 90 minutes
+      // - Must respect strict 3.0h anti-spam cooldown if account posted late
+      const upcomingSlots = [];
+
       scheduledSlots.forEach(slot => {
-        const alreadyOccupied = events.some(e => Math.abs(e.hour - slot.hour) < 1);
-        if (!alreadyOccupied) {
+        const slotMinutes = slot.hour * 60 + slot.minute;
+        const acc = (slot.account === 'yt') ? 'youtube' : slot.account;
+        const maxDaily = acc === 'ig1' ? settings.ig1Posts : acc === 'ig2' ? settings.ig2Posts : settings.ytPosts;
+
+        // Skip slot if its scheduled time has already passed today
+        if (slotMinutes < currentMinutes) {
+          return;
+        }
+
+        // Skip if daily quota for this account is already fulfilled by real posts
+        if (todayPostedCount[acc] >= maxDaily) {
+          return;
+        }
+
+        // If a real post on this account happened close to this slot, suppress the slot
+        const hasNearbyPost = events.some(e => e.status === 'posted' && e.account === acc && Math.abs(e.timeMinutes - slotMinutes) < 90);
+        if (hasNearbyPost) {
+          return;
+        }
+
+        // Strict anti-shadowban cooldown check (3.0h for Instagram, 1.0h for YouTube)
+        const minGap = (acc === 'youtube') ? 60 : 180;
+        if (lastPostMinutes[acc] >= 0 && slotMinutes < (lastPostMinutes[acc] + minGap)) {
+          // Account posted late and is still on mandatory cooldown. Skip this slot!
+          return;
+        }
+
+        upcomingSlots.push({ ...slot });
+      });
+
+      // Map staged pipeline clips onto the earliest upcoming slots
+      let stagedIdx = 0;
+      upcomingSlots.forEach(slot => {
+        if (stagedIdx < pipelineClips.length) {
+          const stagedClip = pipelineClips[stagedIdx];
+          events.push({
+            ...stagedClip,
+            account: slot.account,
+            platform: slot.platform,
+            hour: slot.hour,
+            minute: slot.minute,
+            timeMinutes: slot.hour * 60 + slot.minute,
+            status: 'staged'
+          });
+          stagedIdx++;
+        } else {
           events.push({
             ...slot,
+            timeMinutes: slot.hour * 60 + slot.minute,
             date: targetDate.toISOString()
           });
         }
       });
+
+      // Mark the immediate next upcoming event (staged or scheduled)
+      const upcomingEvents = events.filter(e => e.timeMinutes >= currentMinutes);
+      if (upcomingEvents.length > 0) {
+        upcomingEvents.sort((a, b) => a.timeMinutes - b.timeMinutes);
+        upcomingEvents[0].isNext = true;
+      }
     }
 
-    return events.sort((a, b) => (a.hour * 60 + (a.minute || 0)) - (b.hour * 60 + (b.minute || 0)));
+    // 3. Future Days:
+    if (isFuture) {
+      scheduledSlots.forEach(slot => {
+        events.push({
+          ...slot,
+          timeMinutes: slot.hour * 60 + slot.minute,
+          date: targetDate.toISOString()
+        });
+      });
+    }
+
+    return events.sort((a, b) => a.timeMinutes - b.timeMinutes);
+  }
+
+  function matchesFilter(evt) {
+    if (activeFilter === 'all') return true;
+    if (activeFilter === 'staged') return evt.status === 'staged';
+    const acc = (evt.account === 'yt') ? 'youtube' : evt.account;
+    return acc === activeFilter;
   }
 
   function renderCalendar() {
@@ -378,31 +515,33 @@
 
         const dayEvents = getEventsForDate(d);
         dayEvents.forEach(evt => {
-          if (activeFilter !== 'all' && evt.account !== activeFilter) {
-            if (activeFilter === 'staged' && evt.status !== 'staged') return;
-            if (activeFilter !== 'staged') return;
-          }
+          if (!matchesFilter(evt)) return;
 
+          const acc = (evt.account === 'yt') ? 'youtube' : (evt.account || 'ig1');
           const card = document.createElement('div');
-          card.className = `event-card ${evt.status}`;
+          card.className = `event-card ${evt.status} account-${acc} ${evt.isNext ? 'is-next' : ''}`;
           const topPx = (evt.hour + (evt.minute || 0) / 60) * 60;
-          const heightPx = Math.max(48, (evt.durationSec ? (evt.durationSec / 60) * 60 : 50));
+          const heightPx = Math.max(54, (evt.durationSec ? (evt.durationSec / 60) * 60 : 54));
 
           card.style.top = `${topPx}px`;
           card.style.height = `${heightPx}px`;
 
-          const tagClass = evt.account === 'ig1' ? 'tag-ig1' : evt.account === 'ig2' ? 'tag-ig2' : 'tag-yt';
-          const tagText = evt.account === 'ig1' ? 'IG 1 (solvikz)' : evt.account === 'ig2' ? 'IG 2 (loopablez)' : 'YouTube';
+          const tagClass = acc === 'ig1' ? 'tag-ig1' : acc === 'ig2' ? 'tag-ig2' : 'tag-yt';
+          const tagText = acc === 'ig1' ? '@solvikz' : acc === 'ig2' ? '@loopablez' : 'YouTube Shorts';
           const statusIcon = evt.status === 'posted' ? ICONS.check : evt.status === 'staged' ? ICONS.play : ICONS.clock;
+          const timeStr = `${String(evt.hour).padStart(2, '0')}:${String(evt.minute || 0).padStart(2, '0')}`;
 
           card.innerHTML = `
             <div class="event-title">
-              <span>${statusIcon}</span>
-              <span>${evt.title}</span>
+              <span class="status-icon">${statusIcon}</span>
+              <span class="title-text">${evt.title}</span>
             </div>
-            <div class="event-meta">
-              <span class="event-platform-tag ${tagClass}">${tagText}</span>
-              <span>${String(evt.hour).padStart(2, '0')}:${String(evt.minute || 0).padStart(2, '0')}</span>
+            <div class="event-footer">
+              <span class="event-account-tag ${tagClass}">${tagText}</span>
+              <div class="event-footer-right">
+                ${evt.isNext ? '<span class="badge-next">NEXT</span>' : ''}
+                <span class="event-time">${timeStr}</span>
+              </div>
             </div>
           `;
 
@@ -412,7 +551,7 @@
             } else if (evt.status === 'posted' && evt.url) {
               window.open(evt.url, '_blank');
             } else {
-              alert(`Scheduled slot for ${tagText} at ${String(evt.hour).padStart(2, '0')}:${String(evt.minute || 0).padStart(2, '0')}. Generated dynamically before publication.`);
+              alert(`Scheduled slot for ${tagText} at ${timeStr}. Will generate dynamically before publication.`);
             }
           };
 
@@ -463,34 +602,46 @@
       const content = document.createElement('div');
       content.className = 'hour-content';
 
-      const hourEvents = events.filter(e => e.hour === h);
+      const hourEvents = events.filter(e => e.hour === h && matchesFilter(e));
       if (hourEvents.length === 0) {
         content.innerHTML = '<span class="empty-slot">No posts scheduled</span>';
       } else {
         hourEvents.forEach(evt => {
+          const acc = (evt.account === 'yt') ? 'youtube' : (evt.account || 'ig1');
           const item = document.createElement('div');
-          item.className = `event-card ${evt.status}`;
+          item.className = `event-card ${evt.status} account-${acc} ${evt.isNext ? 'is-next' : ''}`;
           item.style.position = 'static';
           item.style.height = 'auto';
-          item.style.padding = '8px 12px';
+          item.style.padding = '10px 14px';
+          item.style.marginBottom = '6px';
 
-          const tagClass = evt.account === 'ig1' ? 'tag-ig1' : evt.account === 'ig2' ? 'tag-ig2' : 'tag-yt';
+          const tagClass = acc === 'ig1' ? 'tag-ig1' : acc === 'ig2' ? 'tag-ig2' : 'tag-yt';
+          const tagText = acc === 'ig1' ? '@solvikz' : acc === 'ig2' ? '@loopablez' : 'YouTube Shorts';
           const statusIcon = evt.status === 'posted' ? ICONS.check : evt.status === 'staged' ? ICONS.play : ICONS.clock;
+          const timeStr = `${String(evt.hour).padStart(2, '0')}:${String(evt.minute || 0).padStart(2, '0')}`;
 
           item.innerHTML = `
-            <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
               <div class="event-title" style="font-size:13px;">
-                <span>${statusIcon}</span>
-                <strong>${evt.title}</strong>
+                <span class="status-icon">${statusIcon}</span>
+                <strong class="title-text">${evt.title}</strong>
               </div>
-              <span class="event-platform-tag ${tagClass}">${evt.platform || evt.account}</span>
+              <div style="display:flex;align-items:center;gap:6px;">
+                ${evt.isNext ? '<span class="badge-next">NEXT UP</span>' : ''}
+                <span style="font-size:11px;font-family:var(--font-mono);color:var(--text-dim);">${timeStr}</span>
+              </div>
             </div>
-            ${evt.caption ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${evt.caption}</div>` : ''}
+            ${evt.caption ? `<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">${evt.caption}</div>` : ''}
+            <div class="event-footer">
+              <span class="event-account-tag ${tagClass}">${tagText}</span>
+              <span style="font-size:10px;color:var(--text-dim);text-transform:uppercase;font-family:var(--font-mono);">${evt.status}</span>
+            </div>
           `;
 
           item.onclick = () => {
             if (evt.status === 'staged') window.openPreviewModal(evt);
-            else if (evt.url) window.open(evt.url, '_blank');
+            else if (evt.status === 'posted' && evt.url) window.open(evt.url, '_blank');
+            else alert(`Scheduled slot for ${tagText} at ${timeStr}. Will generate dynamically before publication.`);
           };
           content.appendChild(item);
         });
@@ -541,7 +692,7 @@
       const cell = document.createElement('div');
       cell.className = `month-cell ${isToday ? 'today' : ''}`;
 
-      const events = getEventsForDate(cellDate);
+      const events = getEventsForDate(cellDate).filter(matchesFilter);
 
       cell.innerHTML = `
         <div class="month-cell-header">
@@ -549,11 +700,15 @@
           ${events.length > 0 ? `<small style="font-size:10px;color:var(--yellow);font-weight:800;">${events.length} posts</small>` : ''}
         </div>
         <div class="month-badge-strip">
-          ${events.slice(0, 3).map(e => `
-            <div class="event-card ${e.status}" style="position:static;padding:2px 4px;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-              ${e.status === 'posted' ? ICONS.check : ICONS.play} ${e.title}
-            </div>
-          `).join('')}
+          ${events.slice(0, 3).map(e => {
+            const acc = (e.account === 'yt') ? 'youtube' : (e.account || 'ig1');
+            const icon = e.status === 'posted' ? ICONS.check : e.status === 'staged' ? ICONS.play : ICONS.clock;
+            return `
+              <div class="event-card ${e.status} account-${acc}" style="position:static;padding:2px 5px;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;">
+                ${icon} ${e.title}
+              </div>
+            `;
+          }).join('')}
           ${events.length > 3 ? `<div style="font-size:9px;color:var(--text-dim)">+${events.length - 3} more</div>` : ''}
         </div>
       `;
@@ -1250,6 +1405,7 @@
         updateTrialDesc();
         safeSetStorage(STORAGE_KEY_SETTINGS, settings);
         calculateDynamicSpacing();
+        renderCalendar();
       });
     }
 
