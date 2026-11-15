@@ -1912,24 +1912,105 @@
     const btnSync = document.getElementById('btn-sync');
     if (btnSync) btnSync.addEventListener('click', syncWithGitHub);
 
-    const btnRunAction = document.getElementById('btn-run-action');
-    if (btnRunAction) {
-      btnRunAction.addEventListener('click', () => {
-        alert('Triggered automated clipping and publishing cycle via GitHub Actions.');
+    // Generic helper to dispatch GitHub Actions workflows via GitHub API
+    async function triggerGitHubWorkflow(workflowFile, inputs = {}) {
+      if (!auth.pat || auth.isDemo) {
+        alert('GitHub Personal Access Token required.\n\nPlease open Setup and enter a PAT with "repo" and "workflow" scopes.');
+        return false;
+      }
+      const repo = auth.repo || 'Deeptanil/HyperClip-AI';
+      const branch = auth.branch || 'master';
+      const headers = {
+        'Authorization': `token ${auth.pat.trim()}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json'
+      };
+      const res = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/${workflowFile}/dispatches`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          ref: branch,
+          inputs: inputs
+        })
       });
+      if (res.status === 204 || res.ok) {
+        return true;
+      }
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || `HTTP ${res.status}`);
     }
 
-    const btnTestDiag = document.getElementById('btn-test-diag');
-    if (btnTestDiag) {
-      btnTestDiag.addEventListener('click', () => {
-        alert('Live diagnostic check initiated: Accounts @solvikz, @loopablez, and YouTube Shorts verified.');
+    const btnRunAction = document.getElementById('btn-run-action');
+    if (btnRunAction) {
+      btnRunAction.addEventListener('click', async () => {
+        const origHtml = btnRunAction.innerHTML;
+        btnRunAction.disabled = true;
+        btnRunAction.innerHTML = `<span>Starting...</span>`;
+        try {
+          await triggerGitHubWorkflow('twitch_clipper.yml', { force: 'false' });
+          btnRunAction.innerHTML = `<span>Dispatched!</span>`;
+          alert('Successfully triggered Auto-Posting & Clipping cycle on GitHub Actions!\n\nThe runner is starting now. Click Sync in 1-2 minutes to see results.');
+          setTimeout(() => syncWithGitHub(), 15000);
+        } catch (err) {
+          console.error('Failed to trigger workflow:', err);
+          alert(`Failed to trigger GitHub Actions workflow: ${err.message}\n\nPlease verify that your PAT in Setup has the "workflow" scope enabled.`);
+        } finally {
+          setTimeout(() => {
+            btnRunAction.disabled = false;
+            btnRunAction.innerHTML = origHtml;
+          }, 3000);
+        }
       });
     }
 
     const btnHarvestFresh = document.getElementById('btn-harvest-fresh');
     if (btnHarvestFresh) {
-      btnHarvestFresh.addEventListener('click', () => {
-        alert('Scanning Twitch and YouTube live streams for viral peaks.');
+      btnHarvestFresh.addEventListener('click', async () => {
+        const origHtml = btnHarvestFresh.innerHTML;
+        btnHarvestFresh.disabled = true;
+        btnHarvestFresh.innerHTML = `<span>Scanning...</span>`;
+        try {
+          await triggerGitHubWorkflow('twitch_clipper.yml', { harvest_only: 'true' });
+          btnHarvestFresh.innerHTML = `<span>Started!</span>`;
+          alert('Successfully dispatched Live Stream Scanner on GitHub Actions!\n\nIt is harvesting live Twitch clips and staging them into the pipeline.');
+          setTimeout(() => syncWithGitHub(), 30000);
+        } catch (err) {
+          console.error('Failed to dispatch stream scanner:', err);
+          alert(`Failed to trigger stream scanner: ${err.message}\n\nPlease verify that your PAT in Setup has the "workflow" scope enabled.`);
+        } finally {
+          setTimeout(() => {
+            btnHarvestFresh.disabled = false;
+            btnHarvestFresh.innerHTML = origHtml;
+          }, 3000);
+        }
+      });
+    }
+
+    const btnTestDiag = document.getElementById('btn-test-diag');
+    if (btnTestDiag) {
+      btnTestDiag.addEventListener('click', async () => {
+        const origHtml = btnTestDiag.innerHTML;
+        btnTestDiag.disabled = true;
+        btnTestDiag.innerHTML = `<span>Testing...</span>`;
+        try {
+          if (!auth.pat || auth.isDemo) {
+            alert('Demo Mode: Enter your GitHub PAT in Setup to test live credentials.');
+            return;
+          }
+          const headers = {
+            'Authorization': `token ${auth.pat.trim()}`,
+            'Accept': 'application/vnd.github.v3+json'
+          };
+          const repoRes = await fetch(`https://api.github.com/repos/${auth.repo}`, { headers });
+          if (!repoRes.ok) throw new Error(`GitHub token error: ${repoRes.statusText}`);
+          const repoData = await repoRes.json();
+          alert(`GitHub Connected Successfully!\n\nRepository: ${repoData.full_name}\nDefault Branch: ${repoData.default_branch}\nPermissions: Push=${repoData.permissions?.push || false}, Admin=${repoData.permissions?.admin || false}\n\nAccounts @solvikz, @loopablez, and YouTube credentials are stored securely in GitHub Repository Secrets.`);
+        } catch (err) {
+          alert(`Credential Diagnostic Failed: ${err.message}`);
+        } finally {
+          btnTestDiag.disabled = false;
+          btnTestDiag.innerHTML = origHtml;
+        }
       });
     }
   }
