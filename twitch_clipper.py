@@ -569,11 +569,28 @@ def publish_next_clip(
     ensure_dirs()
     enforce_storage_limits(config)
 
-    queued = sorted([f for f in os.listdir(STREAM_PIPELINE_DIR) if f.endswith(".mp4")])
-    if len(queued) < 4:
-        print("[*] Harvesting fresh hype clips to keep multi-account queue stocked...")
-        harvest_clips(config, max_total_new=4)
-        queued = sorted([f for f in os.listdir(STREAM_PIPELINE_DIR) if f.endswith(".mp4")])
+    def _clip_sort_key(cname):
+        mpath = os.path.join(STREAM_PIPELINE_DIR, os.path.splitext(cname)[0] + ".json")
+        meta = _load_json(mpath, {})
+        # Approved clips come first (0), pending clips come second (1), denied come last (2)
+        status = meta.get("approval_status", meta.get("status", "pending"))
+        if status == "approved":
+            return (0, cname)
+        elif status == "denied":
+            return (2, cname)
+        return (1, cname)
+
+    queued = sorted([f for f in os.listdir(STREAM_PIPELINE_DIR) if f.endswith(".mp4")], key=_clip_sort_key)
+
+    # Only harvest fresh clips if pipeline is completely empty of publishable (approved or pending) clips
+    publishable = [
+        f for f in queued
+        if _load_json(os.path.join(STREAM_PIPELINE_DIR, os.path.splitext(f)[0] + ".json"), {}).get("approval_status") != "denied"
+    ]
+    if len(publishable) == 0:
+        print("[*] Pipeline empty of publishable clips. Harvesting fresh hype clips...")
+        harvest_clips(config, max_total_new=3)
+        queued = sorted([f for f in os.listdir(STREAM_PIPELINE_DIR) if f.endswith(".mp4")], key=_clip_sort_key)
 
     if not queued:
         return {"status": "empty", "reason": "No clips found in pipeline or live streams."}

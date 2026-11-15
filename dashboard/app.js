@@ -1387,6 +1387,7 @@
                   account: assignedAcc,
                   isTrial: isTrial,
                   status: 'staged',
+                  approval_status: meta.approval_status || meta.status || 'pending',
                   videoUrl: rawVideoUrl,
                   path: mp4.path,
                   sha: mp4.sha,
