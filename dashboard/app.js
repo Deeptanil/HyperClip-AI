@@ -143,6 +143,37 @@
       • <em>If an account misses an upload, it is prioritized next with a staggered 20m buffer (never simultaneous dual-post).</em>
     `;
 
+    // Check shadowban hazard
+    const hazardBox = document.getElementById('shadowban-hazard-box');
+    const hazardTitle = document.getElementById('shadowban-hazard-title');
+    const hazardDesc = document.getElementById('shadowban-hazard-desc');
+
+    const maxPostsSingleAccount = Math.max(settings.ig1Posts, settings.ig2Posts);
+    const minCalculatedGap = maxPostsSingleAccount > 0 ? (24 / maxPostsSingleAccount) : 24;
+
+    if (hazardBox) {
+      if (minCalculatedGap < 3.0 || maxPostsSingleAccount >= 5) {
+        hazardBox.style.display = 'flex';
+        hazardBox.className = 'danger-box';
+        hazardTitle.innerText = 'CRITICAL SHADOWBAN HAZARD: POST FREQUENCY EXCEEDED';
+        hazardDesc.innerHTML = `
+          ⚠️ <strong>WARNING: High risk of account restriction / shadowban!</strong> An account is set to <strong>${maxPostsSingleAccount} posts/day</strong>, which drops the post separation down to only <strong>${minCalculatedGap.toFixed(1)} hours</strong>.<br>
+          Instagram's anti-spam detection automatically restricts accounts posting with less than a 3.0-hour gap or more than 4 times per day. <strong>This can result in shadowbans, ineligibility for trial reels, or API blocks.</strong><br>
+          <em>Recommendation: Reduce daily posts to ≤ 3 per account to maintain a safe 4.0h+ cooldown.</em>
+        `;
+      } else if (maxPostsSingleAccount === 4 || minCalculatedGap < 4.0) {
+        hazardBox.style.display = 'flex';
+        hazardBox.className = 'danger-box warning-yellow';
+        hazardTitle.innerText = 'MODERATE SPAM RISK: ELEVATED POST FREQUENCY';
+        hazardDesc.innerHTML = `
+          ⚠️ <strong>Caution: Elevated post frequency (${maxPostsSingleAccount} posts/day, ~${minCalculatedGap.toFixed(1)}h gap).</strong><br>
+          This rate should only be enabled temporarily for hype weekend events. Sustained posting above 3 reels/day on new accounts may suppress Explore page reach.
+        `;
+      } else {
+        hazardBox.style.display = 'none';
+      }
+    }
+
     // Generate dynamic schedule slots for calendar view
     generateScheduledSlots(intervalHours);
   }

@@ -1020,6 +1020,57 @@ input:checked + .slider:before {
   color: var(--yellow);
 }
 
+/* Shadowban & Hazard Alert Box */
+.danger-box {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid var(--danger);
+  border-left: 4px solid var(--danger);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  animation: pulse-danger 2s infinite ease-in-out;
+}
+
+@keyframes pulse-danger {
+  0%, 100% { box-shadow: 0 0 0 rgba(239, 68, 68, 0); }
+  50% { box-shadow: 0 0 16px rgba(239, 68, 68, 0.4); }
+}
+
+.danger-box-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--danger);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.danger-box-desc {
+  font-size: 11px;
+  color: #fca5a5;
+  line-height: 1.4;
+}
+
+.danger-box.warning-yellow {
+  background: rgba(250, 204, 21, 0.12);
+  border: 1px solid var(--yellow);
+  border-left: 4px solid var(--yellow);
+  animation: none;
+}
+
+.danger-box.warning-yellow .danger-box-title {
+  color: var(--yellow);
+}
+
+.danger-box.warning-yellow .danger-box-desc {
+  color: #fef08a;
+}
+}
+
 /* Modal Overlay */
 .modal-overlay {
   position: fixed;

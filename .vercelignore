@@ -1,0 +1,12 @@
+main.py
+auto_poster.py
+twitch_clipper.py
+generate_story.py
+requirements.txt
+src/**
+tools/**
+output/**
+assets/**
+temp_build/**
+__pycache__/**
+*.log
