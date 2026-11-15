@@ -2,6 +2,14 @@
   "project_name": "HyperClip AI",
   "mode": "twitch_hype",
   "disable_stickman_during_hype": true,
+  "gemini_models": [
+    "gemini-3.5-flash-lite",
+    "gemini-3.1-flash-lite",
+    "gemini-2.5-flash-lite",
+    "gemini-2.5-flash",
+    "gemini-3.6-flash",
+    "gemini-3.8-flash"
+  ],
   "twitch_clipper": {
     "streamers": [
       "kaicenat",

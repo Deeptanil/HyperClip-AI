@@ -33,6 +33,35 @@ EMOJI_KEYWORDS = {
 }
 
 
+DEFAULT_GEMINI_MODELS = [
+    "gemini-3.5-flash-lite",
+    "gemini-3.1-flash-lite",
+    "gemini-2.5-flash-lite",
+    "gemini-2.5-flash",
+    "gemini-3.6-flash",
+    "gemini-3.8-flash",
+]
+
+
+def _get_configured_models() -> list:
+    """Reads GEMINI_MODELS from environment, config.json, or default cascade."""
+    env_models = os.getenv("GEMINI_MODELS")
+    if env_models:
+        return [m.strip() for m in env_models.split(",") if m.strip()]
+    try:
+        import json
+        config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "config.json")
+        if os.path.exists(config_path):
+            with open(config_path, "r", encoding="utf-8") as f:
+                cfg = json.load(f)
+                custom = cfg.get("gemini_models")
+                if custom and isinstance(custom, list):
+                    return custom
+    except Exception:
+        pass
+    return DEFAULT_GEMINI_MODELS
+
+
 def slugify_hook(text: str) -> str:
     """Converts a hook headline into a clean filesystem slug."""
     clean = re.sub(r"[^\w\s-]", "", text).strip().lower()
@@ -46,9 +75,7 @@ def generate_hook_text(streamer: str, game: str, stream_title: str, sample_chat:
     """
     api_key = os.getenv("GEMINI_API_KEY")
     if api_key and genai:
-        try:
-            client = genai.Client(api_key=api_key)
-            prompt = f"""
+        prompt = f"""
 You are an expert viral gaming shorts & reels editor.
 Write a punchy, click-worthy 4 to 6 word ALL-CAPS headline hook with exactly 1 or 2 matching emojis for this clip.
 Streamer: {streamer}
@@ -65,16 +92,22 @@ RULES:
 - Example: KAI CENAT CANNOT BELIEVE THIS 💀
 - Example: CLIX CLUTCHES WITH 1 HP 🤯
 """
-            resp = client.models.generate_content(
-                model="gemini-3.8-flash",
-                contents=prompt,
-                config=types.GenerateContentConfig(temperature=0.7, max_output_tokens=30)
-            )
-            raw = (resp.text or "").strip().replace('"', '').replace("'", "")
-            if 3 <= len(raw.split()) <= 10:
-                return raw
-        except Exception as e:
-            print(f"[!] Gemini hook generation error ({e}); using heuristic fallback.")
+        models_to_try = _get_configured_models()
+        client = None
+        for model_name in models_to_try:
+            try:
+                if client is None:
+                    client = genai.Client(api_key=api_key)
+                resp = client.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(temperature=0.7, max_output_tokens=30)
+                )
+                raw = (resp.text or "").strip().replace('"', '').replace("'", "")
+                if 3 <= len(raw.split()) <= 10:
+                    return raw
+            except Exception as e:
+                print(f"[!] Gemini model '{model_name}' failed ({e}); falling back to next model...")
 
     # Rule-based fallback
     lower_context = f"{stream_title} {transcript or ''} {' '.join(sample_chat or [])}".lower()
