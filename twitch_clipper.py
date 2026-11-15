@@ -23,8 +23,9 @@ from src.twitch_clipper.twitch_gql import find_clippable_targets
 from src.twitch_clipper.downloader import download_chat, download_video_segment
 from src.twitch_clipper.hype_detector import detect_hype_moments
 from src.twitch_clipper.captioner import generate_clip_captions
-from src.twitch_clipper.video_framer import frame_to_portrait
+from src.twitch_clipper.video_framer import frame_to_portrait, detect_facecam_region, get_video_dimensions
 from src.twitch_clipper.hook_generator import generate_hook_text, render_hook_banner, slugify_hook
+from src.twitch_clipper.content_judge import evaluate_clip_quality
 from src.uploaders.youtube_uploader import upload_short
 from src.uploaders.instagram_uploader import upload_reel_direct
 
@@ -185,6 +186,10 @@ def harvest_clips(config: dict, max_total_new: int = 4) -> list:
             try:
                 download_video_segment(vod_id, m["start_sec"], m["end_sec"], raw_clip)
 
+                # Check facecam layout & presence
+                raw_w, raw_h, _ = get_video_dimensions(raw_clip)
+                facecam_box = detect_facecam_region(raw_clip, raw_w, raw_h)
+
                 sub_file = None
                 if tc.get("enable_captions", True):
                     sub_file = generate_clip_captions(
@@ -192,13 +197,32 @@ def harvest_clips(config: dict, max_total_new: int = 4) -> list:
                     )
 
                 transcript_text = _extract_transcript_from_ass(sub_file)
-                hook_headline = generate_hook_text(
+
+                # AI Content Quality & Viral Judge: Vets visual motion, streamer presence & entertainment value
+                eval_res = evaluate_clip_quality(
                     streamer=target["display_name"],
                     game=target.get("game", "Stream"),
                     stream_title=target.get("title", ""),
                     sample_chat=m.get("sample_chat", []),
                     transcript=transcript_text or None,
+                    raw_clip_path=raw_clip,
+                    facecam=facecam_box,
                 )
+
+                if not eval_res["approved"]:
+                    print(f"[-] Clip rejected by Content Judge: {eval_res['reason']}")
+                    already_clipped.append(peak)
+                    continue
+
+                hook_headline = eval_res.get("hook")
+                if not hook_headline:
+                    hook_headline = generate_hook_text(
+                        streamer=target["display_name"],
+                        game=target.get("game", "Stream"),
+                        stream_title=target.get("title", ""),
+                        sample_chat=m.get("sample_chat", []),
+                        transcript=transcript_text or None,
+                    )
                 render_hook_banner(hook_headline, banner_path)
 
                 hook_slug = slugify_hook(hook_headline)
@@ -220,11 +244,13 @@ def harvest_clips(config: dict, max_total_new: int = 4) -> list:
                 game_tag = slugify(target.get("game", "gaming")).replace("_", "")
                 hashtags = tc.get("default_hashtags", "#twitch #gaming #shorts #reels")
                 clip_title = hook_headline
-                clip_caption = (
-                    f"{hook_headline}\n\n"
-                    f"{target['display_name']} goes crazy on {target.get('game', 'stream')}! "
-                    f"#{target['username']} #{game_tag} {hashtags}"
-                )
+                clip_caption = eval_res.get("caption")
+                if not clip_caption:
+                    clip_caption = (
+                        f"{hook_headline}\n\n"
+                        f"{target['display_name']} on {target.get('game', 'stream')}! "
+                        f"#{target['username']} #{game_tag} {hashtags}"
+                    )
 
                 meta = {
                     "streamer": target["display_name"],
