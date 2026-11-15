@@ -55,5 +55,24 @@
     "clips_used": [
       "2026-11-15-lacy_admits_it_on_stream.mp4"
     ]
+  },
+  {
+    "timestamp": "2026-11-15T23:32:01.579581+00:00",
+    "uploads": {
+      "youtube": "https://youtube.com/shorts/dCQq16jbs54",
+      "instagram_2_regular": "https://instagram.com/reel/Dfx99SlRG0a"
+    },
+    "upload_clip_map": {
+      "youtube": "2026-11-15-lacy_admits_it_on_stream.mp4",
+      "instagram_2_regular": "2026-11-15-he_actually_stole_my_phone.mp4"
+    },
+    "upload_captions": {
+      "youtube": "Bro really just dropped the lore out of nowhere \ud83d\udc80 #lacy #twitchcon #justchatting",
+      "instagram_2_regular": "Friendships are officially ruined at Twitch Rivals! \u26f3\ud83d\ude02 #SuperBattleGolf #TwitchRivals #GamingMoments"
+    },
+    "clips_used": [
+      "2026-11-15-lacy_admits_it_on_stream.mp4",
+      "2026-11-15-he_actually_stole_my_phone.mp4"
+    ]
   }
 ]
