@@ -181,7 +181,13 @@ def render_hook_banner(hook_text: str, output_png: str) -> str:
 
         tx = max(40, (1080 - tw) // 2)
         ty = max(40, (220 - th) // 2)
-        p.text((tx, ty), hook_text, fill=(255, 255, 255, 255), font=font)
+
+        # Deep black drop shadow passes for high-contrast visibility on any background
+        for dx, dy in [(3, 3), (4, 4), (5, 5), (2, 4), (4, 2)]:
+            p.text((tx + dx, ty + dy), hook_text, fill=(0, 0, 0, 255), font=font)
+
+        # Crisp white text with 3px black stroke (no background box, no borders)
+        p.text((tx, ty), hook_text, fill=(255, 255, 255, 255), stroke_width=3, stroke_fill=(0, 0, 0, 255), font=font)
 
     img.save(output_png)
     return output_png
