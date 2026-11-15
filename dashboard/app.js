@@ -942,7 +942,7 @@
       `;
 
       card.querySelector('.btn-preview').onclick = () => window.openPreviewModal(clip);
-      card.querySelector('.btn-approve').onclick = () => approveClip(clip);
+      card.querySelector('.btn-approve').onclick = () => approveClip(clip, false);
       card.querySelector('.btn-deny').onclick = () => denyClip(clip);
       card.querySelector('.btn-delete').onclick = () => deleteClip(clip);
 
@@ -1112,6 +1112,8 @@
     const errorEl = document.getElementById('preview-video-error');
     if (loader) loader.style.display = 'none';
     if (errorEl) errorEl.style.display = 'none';
+    const captionEl = document.getElementById('preview-caption-edit');
+    if (captionEl) captionEl.value = '';
     if (modal) modal.classList.remove('open');
     selectedClip = null;
   };
@@ -1151,9 +1153,15 @@
     }
   }
 
-  function approveClip(clip) {
-    const captionEl = document.getElementById('preview-caption-edit');
-    const newCaption = captionEl ? captionEl.value : clip.caption;
+  function approveClip(clip, isFromModal = false) {
+    let newCaption = clip.caption;
+    // Only update caption from input if explicitly edited inside the active preview modal
+    if (isFromModal && selectedClip && selectedClip.id === clip.id) {
+      const captionEl = document.getElementById('preview-caption-edit');
+      if (captionEl && captionEl.value.trim()) {
+        newCaption = captionEl.value.trim();
+      }
+    }
     clip.caption = newCaption;
     clip.approval_status = 'approved';
     updateGitHubClipMetadata(clip, { approval_status: 'approved', caption: newCaption });
@@ -1274,8 +1282,8 @@
               logEntries.forEach((entry, idx) => {
                 const uploads = entry.uploads || {};
                 const clips = entry.clips_used || [];
-                const cname = clips[0] || 'Published Clip';
-                const cleanTitle = cname.replace('.mp4', '').replace(/^\d{4}-\d{2}-\d{2}-/, '').replace(/_/g, ' ');
+                const clipMap = entry.upload_clip_map || {};
+                const captionsMap = entry.upload_captions || {};
 
                 for (const [k, v] of Object.entries(uploads)) {
                   if (typeof v === 'string' && !v.toLowerCase().startsWith('failed')) {
@@ -1283,9 +1291,25 @@
                     const isIg2 = k.includes('instagram_2') || (!isIg1 && k.includes('instagram'));
                     const isYt = k.includes('youtube');
 
+                    let cname = 'Published Clip';
+                    if (clipMap[k]) {
+                      cname = clipMap[k];
+                    } else if (clips.length === 1) {
+                      cname = clips[0];
+                    } else if (clips.length > 1) {
+                      if (isYt) {
+                        cname = clips[0];
+                      } else if (isIg1 || isIg2) {
+                        cname = clips[1] || clips[0];
+                      }
+                    }
+
+                    const cleanTitle = cname.replace('.mp4', '').replace(/^\d{4}-\d{2}-\d{2}-/, '').replace(/_/g, ' ');
+
                     realPosted.push({
                       id: `posted_${idx}_${k}`,
                       title: cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1),
+                      caption: captionsMap[k] || '',
                       account: isIg1 ? 'ig1' : isIg2 ? 'ig2' : 'youtube',
                       platform: isIg1 ? 'Instagram (@solvikz)' : isIg2 ? 'Instagram (@loopablez)' : 'YouTube Shorts',
                       date: entry.timestamp,
@@ -1782,7 +1806,7 @@
     const btnApproveClip = document.getElementById('btn-approve-clip');
     if (btnApproveClip) {
       btnApproveClip.addEventListener('click', () => {
-        if (selectedClip) approveClip(selectedClip);
+        if (selectedClip) approveClip(selectedClip, true);
       });
     }
 

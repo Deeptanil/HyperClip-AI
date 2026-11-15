@@ -642,6 +642,8 @@ def publish_next_clip(
     results = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "uploads": {},
+        "upload_clip_map": {},
+        "upload_captions": {},
         "clips_used": [],
     }
 
@@ -708,6 +710,8 @@ def publish_next_clip(
                         title_suffix="#Shorts",
                     )
                     results["uploads"]["youtube"] = yt_url
+                    results["upload_clip_map"]["youtube"] = cname
+                    results["upload_captions"]["youtube"] = caption
                     results["clips_used"].append(cname)
                 except Exception as e:
                     print(f"[-] YouTube upload error: {e}")
@@ -758,6 +762,8 @@ def publish_next_clip(
             try:
                 code = upload_reel_direct(cpath, caption, account_slot=slot, trial=(action_kind == "trial"))
                 results["uploads"][f"instagram_{slot}_{action_kind}"] = f"https://instagram.com/reel/{code}"
+                results["upload_clip_map"][f"instagram_{slot}_{action_kind}"] = cname
+                results["upload_captions"][f"instagram_{slot}_{action_kind}"] = caption
                 results["clips_used"].append(cname)
                 last_any_ig = datetime.now(IST)
                 break  # At most 1 IG account per 30-min cycle to prevent same-IP dual-login flags
