@@ -29,11 +29,73 @@ def get_video_dimensions(video_path: str) -> tuple:
     return w, h, dur
 
 
-def detect_facecam_region(video_path: str, width: int, height: int) -> dict | None:
+# Calibrated facecam crop profiles for top streamers (when streaming gameplay)
+STREAMER_CAM_PROFILES = {
+    "kaicenat": {"corner": "tl", "w_pct": 0.22, "h_pct": 0.28},
+    "caseoh_": {"corner": "tl", "w_pct": 0.22, "h_pct": 0.28},
+    "xqc": {"corner": "tl", "w_pct": 0.22, "h_pct": 0.28},
+    "clix": {"corner": "br", "w_pct": 0.22, "h_pct": 0.28},
+    "jynxzi": {"corner": "tr", "w_pct": 0.22, "h_pct": 0.28},
+    "cinna": {"corner": "tl", "w_pct": 0.22, "h_pct": 0.28},
+    "jasontheween": {"corner": "tl", "w_pct": 0.22, "h_pct": 0.28},
+    "stableronaldo": {"corner": "tl", "w_pct": 0.22, "h_pct": 0.28},
+}
+
+# Categories where the full video is already a camera / person (IRL, Just Chatting)
+# These MUST NEVER be dual-stacked.
+FULL_CAMERA_CATEGORIES = {
+    "just chatting",
+    "irl",
+    "pools, hot tubs, & beaches",
+    "travel & outdoors",
+    "talk shows & podcasts",
+    "special events",
+    "fitness & health",
+    "art",
+    "beauty & body art",
+}
+
+
+def detect_facecam_region(
+    video_path: str,
+    width: int,
+    height: int,
+    streamer: str = None,
+    game: str = None,
+) -> dict | None:
     """
     Samples frames and detects if a streamer facecam overlay exists in a corner.
+    - If category is Just Chatting / IRL: returns None (forces clean centered framing).
+    - If known streamer has a profile and streaming gameplay: uses calibrated corner coordinates.
+    - Otherwise runs OpenCV Haar cascade with strict spatial variance checks to prevent
+      false positives on walking/wandering subjects.
     Returns {x, y, w, h, corner} in pixel coordinates, or None if no corner cam found.
     """
+    if game and str(game).strip().lower() in FULL_CAMERA_CATEGORIES:
+        print(f"[*] Stream category '{game}' is full-camera / IRL. Dual-stack disabled -> Centered 9:16 layout.")
+        return None
+
+    # Check known streamer profile
+    s_key = (streamer or "").strip().lower()
+    if s_key in STREAMER_CAM_PROFILES:
+        prof = STREAMER_CAM_PROFILES[s_key]
+        corner = prof["corner"]
+        cam_w = int(width * prof["w_pct"])
+        cam_h = int(height * prof["h_pct"])
+        cam_w -= cam_w % 2
+        cam_h -= cam_h % 2
+
+        if corner == "tl":
+            cam_x, cam_y = 0, 0
+        elif corner == "tr":
+            cam_x, cam_y = width - cam_w, 0
+        elif corner == "bl":
+            cam_x, cam_y = 0, height - cam_h
+        else:
+            cam_x, cam_y = width - cam_w, height - cam_h
+
+        print(f"[+] Using calibrated profile for '{streamer}' ({corner}): crop {cam_w}x{cam_h} at ({cam_x},{cam_y})")
+        return {"x": cam_x, "y": cam_y, "w": cam_w, "h": cam_h, "corner": corner}
     try:
         import cv2
     except ImportError:
@@ -122,6 +184,8 @@ def frame_to_portrait(
     banner_png: str = None,
     layout: str = "auto_stacked",
     outro_mp4: str = "assets/outro_bleep.mp4",
+    streamer: str = None,
+    game: str = None,
 ) -> str:
     """
     Renders a 1080x1920 solid-black background portrait clip.
@@ -135,7 +199,7 @@ def frame_to_portrait(
 
     facecam = None
     if layout == "auto_stacked":
-        facecam = detect_facecam_region(input_mp4, w, h)
+        facecam = detect_facecam_region(input_mp4, w, h, streamer=streamer, game=game)
 
     # Escape subtitle path for FFmpeg libass filter
     sub_filter = ""

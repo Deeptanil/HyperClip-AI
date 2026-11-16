@@ -1474,14 +1474,25 @@
       pipelineClips = realPipeline;
       postedClips = realPosted;
 
-      // Update real top stats from actual posted data
+      // Update real top stats from actual posted data (matching local/UTC day or rolling 24h window)
       const now = new Date();
-      const todayStr = now.toISOString().split('T')[0];
-      const todayPosted = realPosted.filter(p => p.date && p.date.startsWith(todayStr));
+      const isRecentPost = (p) => {
+        const raw = p.timestamp || p.date;
+        if (!raw) return false;
+        const d = new Date(raw);
+        const t = d.getTime();
+        if (isNaN(t)) return false;
+        const sameLocalDay = d.toDateString() === now.toDateString();
+        const sameUtcDay = d.toISOString().split('T')[0] === now.toISOString().split('T')[0];
+        const within24h = (now.getTime() - t) >= 0 && (now.getTime() - t) <= 24 * 3600 * 1000;
+        return sameLocalDay || sameUtcDay || within24h;
+      };
 
-      const ig1Count = todayPosted.filter(p => p.account === 'ig1').length;
-      const ig2Count = todayPosted.filter(p => p.account === 'ig2').length;
-      const ytCount = todayPosted.filter(p => p.account === 'youtube').length;
+      const recentPosted = realPosted.filter(isRecentPost);
+
+      const ig1Count = recentPosted.filter(p => p.account === 'ig1').length;
+      const ig2Count = recentPosted.filter(p => p.account === 'ig2').length;
+      const ytCount = recentPosted.filter(p => p.account === 'youtube').length;
 
       const totalMb = (totalMediaBytes / (1024 * 1024)).toFixed(1);
       const storagePct = ((totalMediaBytes / (1500 * 1024 * 1024)) * 100).toFixed(1);
@@ -1492,11 +1503,11 @@
       const storageValEl = document.getElementById('storage-stat-val');
       const storageDescEl = document.getElementById('storage-stat-desc');
 
-      if (ig1ValEl) ig1ValEl.innerHTML = `${ig1Count} / ${settings.ig1Posts} <small class="text-dim-unit">today</small>`;
-      if (ig2ValEl) ig2ValEl.innerHTML = `${ig2Count} / ${settings.ig2Posts} <small class="text-dim-unit">today</small>`;
-      if (ytValEl) ytValEl.innerHTML = `${ytCount} / ${settings.ytPosts} <small class="text-dim-unit">today</small>`;
+      if (ig1ValEl) ig1ValEl.innerHTML = `${ig1Count} / ${settings.ig1Posts} <small class="text-dim-unit">in 24h</small>`;
+      if (ig2ValEl) ig2ValEl.innerHTML = `${ig2Count} / ${settings.ig2Posts} <small class="text-dim-unit">in 24h</small>`;
+      if (ytValEl) ytValEl.innerHTML = `${ytCount} / ${settings.ytPosts} <small class="text-dim-unit">in 24h</small>`;
       if (storageValEl) storageValEl.innerHTML = `${totalMb} MB <small class="text-dim-unit">/ 1500 MB</small>`;
-      if (storageDescEl) storageDescEl.innerText = `${storagePct}% used • Completed clips deleted automatically`;
+      if (storageDescEl) storageDescEl.innerText = `${storagePct}% used • Archive retained for 7 days`;
 
       // Update Live Cooldown Timers from exact ISO timestamps
       updateCooldownDisplays();
@@ -1548,20 +1559,27 @@
       }
     });
 
-    const ig1MinGap = (parseFloat(settings.clipSpacing) || 3.0) * 60; // in minutes
-    const ig2MinGap = (parseFloat(settings.clipSpacing) || 3.0) * 60; // in minutes
-    const ytMinGap = 180; // 3.0h in minutes
+    // Dynamic Interval Formula: (24h / posts_per_day) - 30m buffer
+    function getAccountIntervalMinutes(postsPerDay) {
+      const n = parseInt(postsPerDay, 10);
+      if (!n || n <= 0) return Infinity;
+      return Math.max(15, Math.round((24 * 60 / n) - 30));
+    }
+
+    const ig1MinGap = getAccountIntervalMinutes(settings.ig1Posts || 3);
+    const ig2MinGap = getAccountIntervalMinutes(settings.ig2Posts || 3);
+    const ytMinGap = getAccountIntervalMinutes(settings.ytPosts || 3);
 
     function computeDesc(lastTs, gapMinutes, prefix = '') {
       if (!lastTs) {
         return { text: prefix ? `${prefix} • Cooldown: Ready` : 'Cooldown: Ready', isReady: true };
       }
       const elapsedMinutes = Math.floor((now.getTime() - lastTs) / (1000 * 60));
-      if (elapsedMinutes >= gapMinutes) {
-        const agoStr = elapsedMinutes < 60 ? `${elapsedMinutes}m ago` : `${Math.floor(elapsedMinutes / 60)}h ${elapsedMinutes % 60}m ago`;
+      if (elapsedMinutes < 0 || elapsedMinutes >= gapMinutes) {
+        const agoStr = elapsedMinutes < 60 ? `${Math.max(0, elapsedMinutes)}m ago` : `${Math.floor(elapsedMinutes / 60)}h ${elapsedMinutes % 60}m ago`;
         return { text: prefix ? `${prefix} • Ready (Last: ${agoStr})` : `Cooldown: Ready (Last: ${agoStr})`, isReady: true };
       }
-      const remMinutes = Math.ceil(gapMinutes - elapsedMinutes);
+      const remMinutes = Math.max(1, Math.ceil(gapMinutes - elapsedMinutes));
       const remH = Math.floor(remMinutes / 60);
       const remM = remMinutes % 60;
       const remStr = remH > 0 ? `${remH}h ${remM}m` : `${remM}m`;
@@ -1833,12 +1851,18 @@
       const valEl = document.getElementById(valId);
       if (!el || !valEl) return;
 
+      if (typeof settings[key] !== 'undefined') {
+        el.value = settings[key];
+        valEl.innerText = `${settings[key]}${suffix}`;
+      }
+
       el.addEventListener('input', () => {
         valEl.innerText = `${el.value}${suffix}`;
         settings[key] = parseInt(el.value, 10);
         safeSetStorage(STORAGE_KEY_SETTINGS, settings);
         calculateDynamicSpacing();
         renderCalendar();
+        renderPipelineQueue();
       });
     };
 

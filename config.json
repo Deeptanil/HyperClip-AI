@@ -81,12 +81,11 @@
     "default_hashtags": "#gta6 #twitch #gaming #shorts #reels #clips #viral"
   },
   "publishing_schedule": {
-    "min_cross_account_gap_minutes": 20,
+    "min_cross_account_gap_minutes": 25,
     "youtube": {
       "enabled": true,
       "shorts_per_day": 3,
-      "hard_daily_ceiling": 3,
-      "min_gap_hours": 3
+      "hard_daily_ceiling": 3
     },
     "instagram_accounts": [
       {
@@ -95,8 +94,7 @@
         "enabled": true,
         "regular_per_day": 2,
         "trial_per_day": 1,
-        "hard_daily_ceiling": 4,
-        "min_gap_hours": 3
+        "hard_daily_ceiling": 4
       },
       {
         "slot": 2,
@@ -104,8 +102,7 @@
         "enabled": true,
         "regular_per_day": 3,
         "trial_per_day": 0,
-        "hard_daily_ceiling": 4,
-        "min_gap_hours": 3
+        "hard_daily_ceiling": 4
       }
     ]
   },
@@ -114,7 +111,7 @@
     "max_repo_mb": 1500,
     "cleanup_threshold_percent": 80,
     "aggressive_threshold_percent": 90,
-    "max_posted_archive_days": 5
+    "max_posted_archive_days": 7
   },
   "story_studio": {
     "max_daily_posts": 2,

@@ -326,6 +326,8 @@ def harvest_clips(config: dict, max_total_new: int = 4) -> list:
                     ass_subtitle_path=sub_file,
                     banner_png=banner_path,
                     layout=tc.get("layout", "auto_stacked"),
+                    streamer=target["username"],
+                    game=target.get("game", ""),
                 )
 
                 game_tag = slugify(target.get("game", "gaming")).replace("_", "")
@@ -339,18 +341,35 @@ def harvest_clips(config: dict, max_total_new: int = 4) -> list:
                         f"#{target['username']} #{game_tag} {hashtags}"
                     )
 
-                # Smart YouTube allocation:
-                # 2 Instagrams (~5-6 posts/day) vs 1 YouTube (3 posts/day).
-                # Assign YouTube to ~50% of clips (highest hype / alternating) so YouTube doesn't backlog and storage stays clean!
-                current_yt_queued = 0
+                # Account Assignment & 50% YouTube Ratio:
+                # 2 Instagrams (@solvikz and @loopablez) vs 1 YouTube channel.
+                # 1. Instagram: Alternate between ig_1 and ig_2 based on current queue count.
+                ig1_queued = 0
+                ig2_queued = 0
                 for f in os.listdir(STREAM_PIPELINE_DIR):
                     if f.endswith(".json"):
                         cm = _load_json(os.path.join(STREAM_PIPELINE_DIR, f), {})
-                        if cm.get("post_to_yt", False) and not cm.get("posted_to_youtube", False):
-                            current_yt_queued += 1
+                        accs = cm.get("target_accounts", [])
+                        if "ig_1" in accs or cm.get("assigned_ig") == "ig_1":
+                            ig1_queued += 1
+                        if "ig_2" in accs or cm.get("assigned_ig") == "ig_2":
+                            ig2_queued += 1
 
-                schedule_for_yt = (current_yt_queued < 2) or (float(m.get("z_score", 0)) >= 3.8 and current_yt_queued < 3)
-                target_label = "Instagram & YouTube" if schedule_for_yt else "Instagram Only"
+                assigned_ig = "ig_1" if ig1_queued <= ig2_queued else "ig_2"
+                ig_name = "Solvikz" if assigned_ig == "ig_1" else "Loopablez"
+
+                # 2. YouTube: Exactly 50% of clips generated will be posted on YouTube.
+                # Toggle per clip generated so 1 out of every 2 clips has YouTube assigned.
+                yt_toggle = state.get("yt_toggle", True)
+                schedule_for_yt = yt_toggle
+                state["yt_toggle"] = not yt_toggle
+
+                target_accounts = [assigned_ig]
+                if schedule_for_yt:
+                    target_accounts.append("youtube")
+                    target_label = f"Instagram (@{ig_name.lower()}) & YouTube"
+                else:
+                    target_label = f"Instagram (@{ig_name.lower()}) Only"
 
                 meta = {
                     "streamer": target["display_name"],
@@ -363,10 +382,13 @@ def harvest_clips(config: dict, max_total_new: int = 4) -> list:
                     "title": clip_title,
                     "caption": clip_caption,
                     "hook": hook_headline,
+                    "target_accounts": target_accounts,
+                    "assigned_ig": assigned_ig,
                     "post_to_yt": schedule_for_yt,
                     "post_to_ig": True,
                     "posted_to_instagram": False,
                     "posted_to_youtube": False,
+                    "approval_status": "pending",
                     "target": target_label,
                     "created_at": datetime.now(timezone.utc).isoformat(),
                     "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -374,7 +396,7 @@ def harvest_clips(config: dict, max_total_new: int = 4) -> list:
                 _save_json(out_json, meta)
                 already_clipped.append(peak)
                 staged_clips.append(out_mp4)
-                print(f"[+] Staged Twitch clip: {out_mp4} (hook='{hook_headline}', z={m['z_score']})")
+                print(f"[+] Staged Twitch clip: {out_mp4} (hook='{hook_headline}', target='{target_label}', z={m['z_score']})")
             except Exception as e:
                 print(f"[-] Failed processing clip {vod_id}@{peak}s: {e}")
             finally:
@@ -442,12 +464,22 @@ def _get_today_stats(logs: list) -> dict:
     return stats
 
 
-def _pick_next_ig_action(acc_cfg: dict, acc_stats: dict, last_any_ig: datetime | None, cross_gap_min: int, force: bool = False) -> str | None:
+def get_account_interval_minutes(posts_per_day: int) -> float:
+    """
+    Computes required gap between posts for an account:
+    Interval = (24 * 60 / posts_per_day) - 30 minutes buffer.
+    Minimum safe gap: 15 minutes.
+    """
+    if not posts_per_day or posts_per_day <= 0:
+        return float("inf")
+    gap = (24.0 * 60.0 / float(posts_per_day)) - 30.0
+    return max(15.0, gap)
+
+
+def _pick_next_ig_action(acc_cfg: dict, acc_stats: dict, last_any_ig: datetime | None, cross_gap_min: int = 25, force: bool = False) -> str | None:
     """
     Returns 'regular', 'trial', or None for an Instagram account slot.
-    Enforces strict hard limits to protect accounts from shadowbans:
-    - Never exceeds hard_daily_ceiling (default 3, max 4) under ANY circumstances.
-    - Never violates cross-account gap (20 mins) or per-account cooldown (min_gap_hours).
+    Enforces dynamic gap calculation based on posts/day and strict cross-account separation.
     """
     if not acc_cfg.get("enabled", True):
         return None
@@ -456,35 +488,36 @@ def _pick_next_ig_action(acc_cfg: dict, acc_stats: dict, last_any_ig: datetime |
     reg_count = acc_stats.get("regular", 0)
     trial_count = acc_stats.get("trial", 0)
     total_today = reg_count + trial_count
-    hard_ceiling = acc_cfg.get("hard_daily_ceiling", acc_cfg.get("regular_per_day", 2) + acc_cfg.get("trial_per_day", 2))
+    posts_per_day = acc_cfg.get("regular_per_day", 2) + acc_cfg.get("trial_per_day", 1)
+    hard_ceiling = acc_cfg.get("hard_daily_ceiling", max(4, posts_per_day))
 
-    # HARD CEILING: Under no condition can an account exceed this ceiling in 24 hours
+    # 1. HARD CEILING: Never exceed daily quota in 24 hours
     if total_today >= hard_ceiling:
-        print(f"[-] Hard daily ceiling reached for {acc_cfg.get('name', 'IG')} ({total_today}/{hard_ceiling} today). Refusing to post.")
+        print(f"[-] Daily cap reached for {acc_cfg.get('name', 'IG')} ({total_today}/{hard_ceiling} today). Refusing to post.")
         return None
 
-    # MINIMUM SPACING COOLDOWN: Never post within min_gap_hours of previous post on same account
+    # 2. DYNAMIC SPACING: (24h / posts_per_day) - 30m buffer
     last_self = acc_stats.get("last")
-    min_gap_h = float(acc_cfg.get("min_gap_hours", 3.0))
+    gap_minutes = get_account_interval_minutes(posts_per_day)
     if last_self:
-        elapsed_self_h = (now_ist - last_self).total_seconds() / 3600.0
-        if elapsed_self_h < min_gap_h:
-            remaining_m = int((min_gap_h - elapsed_self_h) * 60)
-            print(f"[-] Spacing cooldown active for {acc_cfg.get('name', 'IG')}: {elapsed_self_h:.1f}h since last post. Must wait {remaining_m}m.")
+        elapsed_self_m = (now_ist - last_self).total_seconds() / 60.0
+        if elapsed_self_m < gap_minutes:
+            remaining_m = int(gap_minutes - elapsed_self_m)
+            print(f"[-] Spacing cooldown active for {acc_cfg.get('name', 'IG')}: {elapsed_self_m/60.0:.1f}h since last post. Must wait {remaining_m}m.")
             return None
 
-    # CROSS-ACCOUNT SAFEGUARD: Minimum separation between different accounts from same IP
+    # 3. CROSS-ACCOUNT SAFEGUARD: Minimum separation between any two Instagram uploads
     if last_any_ig:
         elapsed_cross_m = (now_ist - last_any_ig).total_seconds() / 60.0
         if elapsed_cross_m < cross_gap_min:
-            print(f"[-] Cross-account cooldown active: {elapsed_cross_m:.1f}m since last IG upload. Must wait {cross_gap_min - int(elapsed_cross_m)}m.")
+            print(f"[-] Cross-account IG cooldown active: {elapsed_cross_m:.1f}m since last IG upload. Must wait {cross_gap_min - int(elapsed_cross_m)}m.")
             return None
 
     if reg_count < acc_cfg.get("regular_per_day", 2):
         return "regular"
-    if trial_count < acc_cfg.get("trial_per_day", 2):
+    if trial_count < acc_cfg.get("trial_per_day", 1):
         return "trial"
-    return None
+    return "regular" if total_today < posts_per_day else None
 
 
 def check_any_platform_can_post(
@@ -496,7 +529,7 @@ def check_any_platform_can_post(
 ) -> tuple[bool, str, list]:
     """
     Early gatekeeper: Checks if YouTube or any Instagram account is currently eligible
-    to post (i.e. not on cooldown and not exceeding daily ceilings).
+    to post based on dynamic schedule (24h / posts - 30m) and cross-account gaps.
     Returns (can_post, reason_str, list_of_eligible_targets).
     """
     if platforms is None:
@@ -513,25 +546,26 @@ def check_any_platform_can_post(
     cooldown_reasons = []
 
     # 1. YouTube Shorts check
-    yt_cfg = sched.get("youtube", {"enabled": True, "shorts_per_day": 3, "min_gap_hours": 3.0, "hard_daily_ceiling": 3})
+    yt_cfg = sched.get("youtube", {"enabled": True, "shorts_per_day": 3, "hard_daily_ceiling": 3})
     if "youtube" in platforms and yt_cfg.get("enabled", True):
         yt_count = stats["youtube"]["count"]
-        yt_ceiling = yt_cfg.get("hard_daily_ceiling", yt_cfg.get("shorts_per_day", 3))
+        yt_posts_day = yt_cfg.get("shorts_per_day", 3)
+        yt_ceiling = yt_cfg.get("hard_daily_ceiling", yt_posts_day)
         last_yt = stats["youtube"]["last"]
-        min_yt_gap = float(yt_cfg.get("min_gap_hours", 3.0))
+        yt_gap_m = get_account_interval_minutes(yt_posts_day)
 
         if yt_count >= yt_ceiling:
             cooldown_reasons.append(f"YouTube hit daily cap ({yt_count}/{yt_ceiling})")
-        elif last_yt and ((now_ist - last_yt).total_seconds() / 3600.0) < min_yt_gap:
-            elapsed_h = (now_ist - last_yt).total_seconds() / 3600.0
-            remaining_m = int((min_yt_gap - elapsed_h) * 60)
-            cooldown_reasons.append(f"YouTube cooldown active ({elapsed_h:.1f}h/{min_yt_gap}h, {remaining_m}m remaining)")
+        elif last_yt and ((now_ist - last_yt).total_seconds() / 60.0) < yt_gap_m:
+            elapsed_m = (now_ist - last_yt).total_seconds() / 60.0
+            remaining_m = int(yt_gap_m - elapsed_m)
+            cooldown_reasons.append(f"YouTube cooldown active ({elapsed_m/60.0:.1f}h/{yt_gap_m/60.0:.1f}h, {remaining_m}m remaining)")
         else:
             eligible.append("YouTube Shorts")
 
     # 2. Instagram accounts check
     if "instagram" in platforms:
-        cross_gap = sched.get("min_cross_account_gap_minutes", 20)
+        cross_gap = sched.get("min_cross_account_gap_minutes", 25)
         last_any_ig = max(
             [t for t in (stats["ig_1"]["last"], stats["ig_2"]["last"]) if t is not None],
             default=None,
@@ -559,6 +593,41 @@ def check_any_platform_can_post(
     return can_post, reason, eligible
 
 
+def trigger_background_clip_generation(config: dict):
+    """
+    Starts a new GitHub Actions runner via workflow_dispatch to generate fresh clips immediately.
+    Falls back to running harvest_clips locally if GITHUB_TOKEN is not configured.
+    """
+    token = os.getenv("GITHUB_TOKEN") or os.getenv("GH_TOKEN")
+    repo = os.getenv("GITHUB_REPOSITORY")
+    if token and repo:
+        try:
+            import urllib.request
+            url = f"https://api.github.com/repos/{repo}/actions/workflows/twitch_clipper.yml/dispatches"
+            payload = json.dumps({"ref": "master", "inputs": {"harvest_only": "true"}}).encode("utf-8")
+            req = urllib.request.Request(
+                url,
+                data=payload,
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Accept": "application/vnd.github.v3+json",
+                    "User-Agent": "HyperClip-AI",
+                    "Content-Type": "application/json",
+                },
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                if resp.status in (200, 204):
+                    print("[+] Successfully triggered background GitHub Actions runner for fresh clip generation.")
+                    return
+        except Exception as e:
+            print(f"[!] Warning: Could not trigger GitHub Actions dispatch ({e}). Running local harvest...")
+
+    # Fallback: harvest locally
+    print("[*] Harvesting fresh clips for pipeline queue...")
+    harvest_clips(config, max_total_new=2)
+
+
 def publish_next_clip(
     config: dict,
     platforms: list = None,
@@ -569,20 +638,20 @@ def publish_next_clip(
     if platforms is None:
         platforms = ["youtube", "instagram"]
 
-    # First check: Can any account post right now? If no, don't do anything and go back to sleep!
+    # Step 1: Early Gatekeeper - check timestamps & cooldowns before touching any media
     can_post, reason, eligible = check_any_platform_can_post(
         config, platforms=platforms, force=force, ig_slot=ig_slot, ig_kind=ig_kind
     )
     if not can_post:
         print("\n" + "=" * 60)
-        print(f"😴 GATEKEEPER CHECK: {reason}")
+        print(f"GATEKEEPER CHECK: {reason}")
         print("[*] No account is eligible to post right now. Going back to sleep.")
         print("=" * 60)
         return {"status": "skipped", "reason": reason}
 
     print("\n" + "=" * 60)
-    print(f"🚀 GATEKEEPER APPROVED: {reason}")
-    print("[*] Proceeding with video staging, pipeline check, and publication...")
+    print(f"GATEKEEPER APPROVED: {reason}")
+    print("[*] Checking queued clips and publishing scheduled videos...")
     print("=" * 60)
 
     ensure_dirs()
@@ -596,7 +665,7 @@ def publish_next_clip(
         status = meta.get("approval_status", meta.get("status", "pending"))
         priority = 0 if status == "approved" else 2 if status == "denied" else 1
 
-        # Never sort alphabetically: sort by date/timestamp (FIFO)
+        # Strict FIFO: sort by date/timestamp, never alphabetically
         raw_ts = meta.get("timestamp") or meta.get("staged_at") or meta.get("created_at")
         ts_val = 0.0
         if raw_ts:
@@ -621,13 +690,13 @@ def publish_next_clip(
 
     queued = sorted([f for f in os.listdir(STREAM_PIPELINE_DIR) if f.endswith(".mp4")], key=_clip_sort_key)
 
-    # Only harvest fresh clips if pipeline is completely empty of publishable (approved or pending) clips
+    # Check if there are publishable clips in the pipeline
     publishable = [
         f for f in queued
         if _load_json(os.path.join(STREAM_PIPELINE_DIR, os.path.splitext(f)[0] + ".json"), {}).get("approval_status") != "denied"
     ]
     if len(publishable) == 0:
-        print("[*] Pipeline empty of publishable clips. Harvesting fresh hype clips...")
+        print("[*] Pipeline empty of publishable clips. Harvesting fresh hype clips from live streams...")
         harvest_clips(config, max_total_new=3)
         queued = sorted([f for f in os.listdir(STREAM_PIPELINE_DIR) if f.endswith(".mp4")], key=_clip_sort_key)
 
@@ -647,7 +716,8 @@ def publish_next_clip(
         "clips_used": [],
     }
 
-    def _next_clip(for_platform="instagram", ig_slot=None):
+    def _next_clip(for_platform="instagram", ig_slot=1):
+        target_tag = "youtube" if for_platform == "youtube" else f"ig_{ig_slot}"
         for cname in queued:
             cpath = os.path.join(STREAM_PIPELINE_DIR, cname)
             mpath = os.path.splitext(cpath)[0] + ".json"
@@ -657,45 +727,58 @@ def publish_next_clip(
             if meta.get("approval_status") == "denied" or meta.get("status") == "denied":
                 continue
 
+            target_accounts = meta.get("target_accounts", [])
             target_str = str(meta.get("target", "")).lower()
-            is_assigned_yt = meta.get("post_to_yt", False) or ("youtube" in target_str)
 
             if for_platform == "youtube":
-                # YouTube only posts clips explicitly assigned for YouTube
-                if not is_assigned_yt:
-                    continue
                 if meta.get("posted_to_youtube", False):
                     continue
-                return (cname, cpath, mpath), meta
+                is_assigned_yt = ("youtube" in target_accounts) or meta.get("post_to_yt", False) or ("youtube" in target_str)
+                if is_assigned_yt:
+                    return (cname, cpath, mpath), meta
 
             elif for_platform == "instagram":
-                # Instagram posts all clips (unless already posted to IG)
                 if meta.get("posted_to_instagram", False):
                     continue
-                return (cname, cpath, mpath), meta
+                # Match account slot
+                is_assigned_this_ig = (
+                    (target_tag in target_accounts) or
+                    (meta.get("assigned_ig") == target_tag) or
+                    (not target_accounts and not meta.get("assigned_ig"))  # Legacy clip without tag
+                )
+                if is_assigned_this_ig:
+                    return (cname, cpath, mpath), meta
 
         return (None, None, None), {}
 
     # 1. YouTube Shorts
-    yt_cfg = sched.get("youtube", {"enabled": True, "shorts_per_day": 3, "min_gap_hours": 3.0, "hard_daily_ceiling": 3})
+    yt_cfg = sched.get("youtube", {"enabled": True, "shorts_per_day": 3, "hard_daily_ceiling": 3})
     if "youtube" in platforms and yt_cfg.get("enabled", True):
         yt_count = stats["youtube"]["count"]
-        yt_ceiling = yt_cfg.get("hard_daily_ceiling", yt_cfg.get("shorts_per_day", 3))
+        yt_posts_day = yt_cfg.get("shorts_per_day", 3)
+        yt_ceiling = yt_cfg.get("hard_daily_ceiling", yt_posts_day)
         last_yt = stats["youtube"]["last"]
-        min_yt_gap = float(yt_cfg.get("min_gap_hours", 3.0))
+        yt_gap_m = get_account_interval_minutes(yt_posts_day)
 
         if yt_count >= yt_ceiling:
             print(f"[-] Hard daily ceiling reached for YouTube ({yt_count}/{yt_ceiling} today). Refusing to post.")
             yt_ok = False
-        elif last_yt and ((now_ist - last_yt).total_seconds() / 3600.0) < min_yt_gap:
-            elapsed_yt_h = (now_ist - last_yt).total_seconds() / 3600.0
-            remaining_m = int((min_yt_gap - elapsed_yt_h) * 60)
-            print(f"[-] YouTube cooldown active: {elapsed_yt_h:.1f}h since last Short. Must wait {remaining_m}m.")
+        elif last_yt and ((now_ist - last_yt).total_seconds() / 60.0) < yt_gap_m:
+            elapsed_yt_m = (now_ist - last_yt).total_seconds() / 60.0
+            remaining_m = int(yt_gap_m - elapsed_yt_m)
+            print(f"[-] YouTube cooldown active: {elapsed_yt_m/60.0:.1f}h since last Short. Must wait {remaining_m}m.")
             yt_ok = False
         else:
             yt_ok = True
+
         if yt_ok:
             clip_info, meta = _next_clip(for_platform="youtube")
+            if not clip_info[0]:
+                print("[*] No clips currently scheduled for YouTube Shorts in pipeline. Harvesting fresh clips...")
+                harvest_clips(config, max_total_new=2)
+                queued = sorted([f for f in os.listdir(STREAM_PIPELINE_DIR) if f.endswith(".mp4")], key=_clip_sort_key)
+                clip_info, meta = _next_clip(for_platform="youtube")
+
             if clip_info[0]:
                 cname, cpath, _ = clip_info
                 title = meta.get("title", cname.replace(".mp4", "").replace("_", " ").title())
@@ -717,18 +800,18 @@ def publish_next_clip(
                     print(f"[-] YouTube upload error: {e}")
                     results["uploads"]["youtube"] = f"Failed: {e}"
             else:
-                print("[-] No queued clips currently scheduled for YouTube Shorts. Skipping YouTube.")
+                print("[-] No clips available for YouTube Shorts. Skipping YouTube this run.")
 
-    # 2. Instagram Accounts (Slot 1 & Slot 2, Regular & Trial Reels, spaced safely)
+    # 2. Instagram Accounts (Enforce Rule 7: Two Instagram posts cannot be made at the same time)
     if "instagram" in platforms:
-        cross_gap = sched.get("min_cross_account_gap_minutes", 20)
+        cross_gap = sched.get("min_cross_account_gap_minutes", 25)
         last_any_ig = max(
             [t for t in (stats["ig_1"]["last"], stats["ig_2"]["last"]) if t is not None],
             default=None,
         )
 
         ig_accounts = sched.get("instagram_accounts", [])
-        # Prioritize accounts that haven't posted recently or missed an upload to catch up fairly
+        # Prioritize the account that has gone the longest without posting
         def _acc_sort_priority(acc):
             slot = acc.get("slot", 1)
             last_dt = stats[f"ig_{slot}"]["last"]
@@ -753,8 +836,15 @@ def publish_next_clip(
 
             clip_info, meta = _next_clip(for_platform="instagram", ig_slot=slot)
             if not clip_info[0]:
-                print(f"[-] No queued clips available for Instagram Slot {slot}.")
-                break
+                print(f"[*] No queued clips available for Instagram Slot {slot}. Harvesting fresh clips...")
+                harvest_clips(config, max_total_new=2)
+                queued = sorted([f for f in os.listdir(STREAM_PIPELINE_DIR) if f.endswith(".mp4")], key=_clip_sort_key)
+                clip_info, meta = _next_clip(for_platform="instagram", ig_slot=slot)
+
+            if not clip_info[0]:
+                print(f"[-] Still no clips available for Instagram Slot {slot}. Skipping.")
+                continue
+
             cname, cpath, _ = clip_info
             title = meta.get("title", cname.replace(".mp4", "").replace("_", " ").title())
             caption = meta.get("caption", f"{title} #reels #twitch #gaming")
@@ -765,13 +855,15 @@ def publish_next_clip(
                 results["upload_clip_map"][f"instagram_{slot}_{action_kind}"] = cname
                 results["upload_captions"][f"instagram_{slot}_{action_kind}"] = caption
                 results["clips_used"].append(cname)
-                last_any_ig = datetime.now(IST)
-                break  # At most 1 IG account per 30-min cycle to prevent same-IP dual-login flags
+                # Rule 7: Only 1 Instagram upload per runner execution (minimum cross-account separation)
+                break
             except Exception as e:
                 print(f"[-] Instagram (slot {slot}, {action_kind}) upload error: {e}")
                 results["uploads"][f"instagram_{slot}_{action_kind}"] = f"Failed: {e}"
 
-    if any(isinstance(v, str) and not v.lower().startswith("failed") for v in results["uploads"].values()):
+    # Step 3: Lifecycle Management (Tag Removal, 7-Day Retention & Moving to stream_posted/)
+    has_success = any(isinstance(v, str) and not v.lower().startswith("failed") for v in results["uploads"].values())
+    if has_success:
         logs.append(results)
         _save_json(TWITCH_LOG_FILE, logs)
 
@@ -783,55 +875,48 @@ def publish_next_clip(
             mpath = os.path.splitext(cpath)[0] + ".json"
             meta = _load_json(mpath, {})
 
+            targets = list(meta.get("target_accounts", []))
+
             if cname in yt_posted_cnames:
                 meta["posted_to_youtube"] = True
                 meta["youtube_url"] = results["uploads"].get("youtube", "")
+                if "youtube" in targets:
+                    targets.remove("youtube")
 
             if cname in ig_posted_cnames:
                 meta["posted_to_instagram"] = True
                 for k, url in results["uploads"].items():
                     if k.startswith("instagram_"):
                         meta["instagram_url"] = url
+                # Remove Instagram target
+                assigned_ig = meta.get("assigned_ig", "ig_1")
+                if assigned_ig in targets:
+                    targets.remove(assigned_ig)
+                elif "ig_1" in targets:
+                    targets.remove("ig_1")
+                elif "ig_2" in targets:
+                    targets.remove("ig_2")
 
+            meta["target_accounts"] = targets
             _save_json(mpath, meta)
 
-            target_str = str(meta.get("target", "")).lower()
-            needs_yt = meta.get("post_to_yt", False) or ("youtube" in target_str)
-            needs_ig = meta.get("post_to_ig", True)
-
-            finished_yt = meta.get("posted_to_youtube", False) or not needs_yt
-            finished_ig = meta.get("posted_to_instagram", False) or not needs_ig
-
-            # Once clip has finished all assigned destinations, DELETE both .mp4 and .json immediately!
-            if finished_ig and finished_yt:
+            # Check if all assigned destinations are complete
+            if len(targets) == 0:
+                # Move to stream_posted/ to preserve for 7 days
+                posted_mp4 = os.path.join(STREAM_POSTED_DIR, cname)
+                posted_json = os.path.join(STREAM_POSTED_DIR, os.path.splitext(cname)[0] + ".json")
                 if os.path.exists(cpath):
-                    try:
-                        os.remove(cpath)
-                    except Exception as e:
-                        print(f"[!] Error deleting {cpath}: {e}")
+                    shutil.move(cpath, posted_mp4)
                 if os.path.exists(mpath):
-                    try:
-                        os.remove(mpath)
-                    except Exception as e:
-                        print(f"[!] Error deleting {mpath}: {e}")
-                print(f"[+] Clip '{cname}' and metadata DELETED: completed all assigned destinations (Storage freed).")
+                    shutil.move(mpath, posted_json)
+                print(f"[+] Clip '{cname}' completed all assigned destinations -> Moved to stream_posted/ (Retained for 7 days).")
             else:
-                remaining = []
-                if needs_yt and not meta.get("posted_to_youtube", False):
-                    remaining.append("YouTube Shorts")
-                if needs_ig and not meta.get("posted_to_instagram", False):
-                    remaining.append("Instagram")
-                print(f"[*] Clip '{cname}' retained in pipeline: awaiting remaining destination ({', '.join(remaining)}).")
+                remaining_desc = ", ".join(targets)
+                print(f"[*] Clip '{cname}' retained in stream_pipeline/ for remaining destination: {remaining_desc}")
 
-        # Purge any lingering binary MP4s in stream_posted to keep storage lean
-        if os.path.exists(STREAM_POSTED_DIR):
-            for pf in os.listdir(STREAM_POSTED_DIR):
-                if pf.endswith(".mp4"):
-                    try:
-                        os.remove(os.path.join(STREAM_POSTED_DIR, pf))
-                        print(f"[*] Cleaned up posted binary MP4 from storage archive: {pf}")
-                    except Exception:
-                        pass
+        # When a video is posted, trigger a new runner immediately to generate fresh clips
+        print("[*] Video upload complete. Triggering background runner to generate next clips...")
+        trigger_background_clip_generation(config)
     else:
         print("[*] No eligible publishing slots right now (cooldown/daily cap active).")
 
