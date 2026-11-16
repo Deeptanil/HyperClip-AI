@@ -11,9 +11,12 @@
   "hook": "JYNXZI REACTS TO NEW ESPORTS TEAM \ud83c\udfae\ud83d\udd25",
   "post_to_yt": true,
   "post_to_ig": true,
-  "posted_to_instagram": false,
-  "posted_to_youtube": false,
+  "posted_to_instagram": true,
+  "posted_to_youtube": true,
   "target": "Instagram & YouTube",
   "created_at": "2026-11-16T02:59:14.416402+00:00",
-  "timestamp": "2026-11-16T02:59:14.416420+00:00"
+  "timestamp": "2026-11-16T02:59:14.416420+00:00",
+  "youtube_url": "https://youtube.com/shorts/6Fjch47tOps",
+  "instagram_url": "https://instagram.com/reel/DfzNP6LRCim",
+  "target_accounts": []
 }
