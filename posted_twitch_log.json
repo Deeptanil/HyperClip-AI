@@ -127,5 +127,24 @@
     "clips_used": [
       "2026-11-16-darkviperau_screams_for_gta_six.mp4"
     ]
+  },
+  {
+    "timestamp": "2026-11-16T20:59:41.174264+00:00",
+    "uploads": {
+      "youtube": "https://youtube.com/shorts/i1N_xug2ahk",
+      "instagram_2_regular": "https://instagram.com/reel/Df0RUhVRJlK"
+    },
+    "upload_clip_map": {
+      "youtube": "2026-11-16-clix_secures_insane_win.mp4",
+      "instagram_2_regular": "2026-11-16-darkviperau_beats_gta_v_100.mp4"
+    },
+    "upload_captions": {
+      "youtube": "Clix and Veno showing how it's done in Zero Build Reload! \ud83c\udfae\ud83d\udd25 #Fortnite #Clix #Reload",
+      "instagram_2_regular": "The absolute end of an era for GTA 5 speedrunning! GG. #DarkViperAU #GTAV #Speedrun"
+    },
+    "clips_used": [
+      "2026-11-16-clix_secures_insane_win.mp4",
+      "2026-11-16-darkviperau_beats_gta_v_100.mp4"
+    ]
   }
 ]
