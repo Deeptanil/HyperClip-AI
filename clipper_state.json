@@ -88,11 +88,28 @@
       "clipped_peaks": []
     },
     "2930731749": {
-      "last_scanned_sec": 6198,
+      "last_scanned_sec": 14394,
       "clipped_peaks": [
         1927,
         4907,
-        2427
+        2427,
+        6482,
+        9882,
+        6982
+      ]
+    },
+    "2930806198": {
+      "last_scanned_sec": 9012,
+      "clipped_peaks": [
+        3557,
+        1057,
+        5177
+      ]
+    },
+    "2930502283": {
+      "last_scanned_sec": 21853,
+      "clipped_peaks": [
+        8467
       ]
     }
   },
