@@ -1,0 +1,122 @@
+{
+  "project_name": "HyperClip AI",
+  "mode": "twitch_hype",
+  "disable_stickman_during_hype": true,
+  "gemini_models": [
+    "gemini-3.5-flash-lite",
+    "gemini-3.1-flash-lite",
+    "gemini-2.5-flash-lite",
+    "gemini-2.5-flash",
+    "gemini-3.6-flash",
+    "gemini-3.8-flash"
+  ],
+  "twitch_clipper": {
+    "streamers": [
+      "kaicenat",
+      "caseoh_",
+      "xqc",
+      "clix",
+      "jynxzi",
+      "cinna",
+      "darkviperau",
+      "lord_kebun",
+      "jasontheween",
+      "stableronaldo",
+      "lacy",
+      "deansocool",
+      "anthonyz",
+      "burn"
+    ],
+    "streamer_tiers": {
+      "tier_1": {
+        "weight": 0.45,
+        "streamers": [
+          "kaicenat",
+          "caseoh_",
+          "ishowspeed"
+        ]
+      },
+      "tier_2": {
+        "weight": 0.36,
+        "streamers": [
+          "xqc",
+          "clix",
+          "jynxzi",
+          "cinna"
+        ]
+      },
+      "tier_3": {
+        "weight": 0.19,
+        "streamers": [
+          "darkviperau",
+          "lord_kebun",
+          "tgg",
+          "technogamerz",
+          "jasontheween",
+          "stableronaldo",
+          "lacy",
+          "deansocool",
+          "anthonyz",
+          "burn"
+        ]
+      }
+    },
+    "target_games": [],
+    "min_stream_minutes": 30,
+    "intro_skip_sec": 480,
+    "outro_skip_sec": 360,
+    "check_past_vods_if_offline": true,
+    "past_vod_max_age_hours": 24,
+    "clip_duration_sec": 35,
+    "pre_peak_sec": 22,
+    "post_peak_sec": 13,
+    "max_clips_per_vod": 3,
+    "min_clip_spacing_sec": 300,
+    "min_spike_sigma": 2,
+    "min_messages_per_window": 12,
+    "layout": "auto_stacked",
+    "background_color": "#000000",
+    "enable_captions": true,
+    "whisper_model": "tiny.en",
+    "default_hashtags": "#gta6 #twitch #gaming #shorts #reels #clips #viral"
+  },
+  "publishing_schedule": {
+    "min_cross_account_gap_minutes": 25,
+    "youtube": {
+      "enabled": true,
+      "shorts_per_day": 3,
+      "hard_daily_ceiling": 3
+    },
+    "instagram_accounts": [
+      {
+        "slot": 1,
+        "name": "Main IG",
+        "enabled": true,
+        "regular_per_day": 2,
+        "trial_per_day": 1,
+        "hard_daily_ceiling": 4
+      },
+      {
+        "slot": 2,
+        "name": "Clip Page IG",
+        "enabled": true,
+        "regular_per_day": 3,
+        "trial_per_day": 0,
+        "hard_daily_ceiling": 4
+      }
+    ]
+  },
+  "storage_governor": {
+    "enabled": true,
+    "max_repo_mb": 1500,
+    "cleanup_threshold_percent": 80,
+    "aggressive_threshold_percent": 90,
+    "max_posted_archive_days": 7
+  },
+  "story_studio": {
+    "max_daily_posts": 2,
+    "min_gap_hours": 5,
+    "instagram_account_slot": 1,
+    "post_24_7": true
+  }
+}
