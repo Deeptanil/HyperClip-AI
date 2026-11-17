@@ -9,16 +9,16 @@
   "title": "STABLERONALDO REACTS TO CRAZY ART \ud83c\udfa8\ud83d\udd25",
   "caption": "Bro found his new favorite room decoration \ud83d\ude02 #stableronaldo #irl #twitchstreamer",
   "hook": "STABLERONALDO REACTS TO CRAZY ART \ud83c\udfa8\ud83d\udd25",
-  "target_accounts": [
-    "ig_2"
-  ],
+  "target_accounts": [],
   "assigned_ig": "ig_2",
   "post_to_yt": false,
   "post_to_ig": true,
-  "posted_to_instagram": false,
-  "posted_to_youtube": false,
+  "posted_to_instagram": true,
+  "posted_to_youtube": true,
   "approval_status": "pending",
   "target": "Instagram (@loopablez) Only",
   "created_at": "2026-11-16T04:54:32.931485+00:00",
-  "timestamp": "2026-11-16T04:54:32.931503+00:00"
+  "timestamp": "2026-11-16T04:54:32.931503+00:00",
+  "youtube_url": "https://youtube.com/shorts/pCFjc1SMFHA",
+  "instagram_url": "https://instagram.com/reel/Df1JxUtR88d"
 }
