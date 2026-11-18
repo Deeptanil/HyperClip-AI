@@ -156,11 +156,34 @@
       "clipped_peaks": []
     },
     "2931381500": {
-      "last_scanned_sec": 25896,
+      "last_scanned_sec": 32572,
       "clipped_peaks": [
         2557,
-        7352
+        7352,
+        27657
       ]
+    },
+    "2932113307": {
+      "last_scanned_sec": 16368,
+      "clipped_peaks": [
+        11337
+      ]
+    },
+    "2932185714": {
+      "last_scanned_sec": 4218,
+      "clipped_peaks": []
+    },
+    "2932190650": {
+      "last_scanned_sec": 3522,
+      "clipped_peaks": [
+        2737,
+        962,
+        562
+      ]
+    },
+    "2932194507": {
+      "last_scanned_sec": 2958,
+      "clipped_peaks": []
     }
   },
   "yt_toggle": true

@@ -10,16 +10,16 @@
   "caption": "DARKVIPERAU SAYS GOODBYE TO GTA \ud83d\ude2d\n\nDarkViperAU on Grand Theft Auto V! #darkviperau #grandtheftautov #gta6 #twitch #gaming #shorts #reels #clips #viral",
   "hook": "DARKVIPERAU SAYS GOODBYE TO GTA \ud83d\ude2d",
   "target_accounts": [
-    "ig_1",
-    "youtube"
+    "ig_1"
   ],
   "assigned_ig": "ig_1",
   "post_to_yt": true,
   "post_to_ig": true,
   "posted_to_instagram": false,
-  "posted_to_youtube": false,
+  "posted_to_youtube": true,
   "approval_status": "pending",
   "target": "Instagram (@solvikz) & YouTube",
   "created_at": "2026-11-17T12:15:39.269524+00:00",
-  "timestamp": "2026-11-17T12:15:39.269539+00:00"
+  "timestamp": "2026-11-17T12:15:39.269539+00:00",
+  "youtube_url": "https://youtube.com/shorts/pln_Cro6xYQ"
 }
