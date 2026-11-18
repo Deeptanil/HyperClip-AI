@@ -113,7 +113,7 @@
         "slot": 2,
         "name": "Clip Page IG (Loopablez)",
         "enabled": true,
-        "regular_per_day": 2,
+        "regular_per_day": 3,
         "trial_per_day": 0,
         "hard_daily_ceiling": 3,
         "token_expiry_date": "2027-01-17"
