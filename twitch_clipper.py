@@ -279,7 +279,9 @@ def harvest_clips(config: dict, max_total_new: int = 4) -> list:
 
                 # Check facecam layout & presence
                 raw_w, raw_h, _ = get_video_dimensions(raw_clip)
-                facecam_box = detect_facecam_region(raw_clip, raw_w, raw_h)
+                facecam_box = detect_facecam_region(
+                    raw_clip, raw_w, raw_h, streamer=target["username"], game=target.get("game", "")
+                )
 
                 sub_file = None
                 if tc.get("enable_captions", True):

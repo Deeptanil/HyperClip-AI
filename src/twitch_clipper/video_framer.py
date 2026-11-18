@@ -9,6 +9,9 @@ import os
 import json
 import shutil
 import subprocess
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 def get_video_dimensions(video_path: str) -> tuple:
@@ -56,6 +59,106 @@ FULL_CAMERA_CATEGORIES = {
 }
 
 
+def compute_facecam_crop(box_2d: list, width: int, height: int, target_aspect: float = 1080.0 / 680.0) -> dict:
+    """
+    Expands a detected [ymin, xmin, ymax, xmax] box (0-1000 scale)
+    to cleanly fit the top 1080x680 portrait slot without distortion.
+    """
+    ymin, xmin, ymax, xmax = box_2d
+    bx = (xmin / 1000.0) * width
+    by = (ymin / 1000.0) * height
+    bw = ((xmax - xmin) / 1000.0) * width
+    bh = ((ymax - ymin) / 1000.0) * height
+
+    center_x = bx + bw / 2.0
+    center_y = by + bh / 2.0
+
+    # Expand to fit target aspect ratio with 12% breathing room
+    padded_w = bw * 1.12
+    padded_h = bh * 1.12
+
+    if padded_w / max(1.0, padded_h) < target_aspect:
+        padded_w = padded_h * target_aspect
+    else:
+        padded_h = padded_w / target_aspect
+
+    crop_w = int(min(width, padded_w))
+    crop_h = int(min(height, padded_h))
+    crop_w -= crop_w % 2
+    crop_h -= crop_h % 2
+
+    crop_x = int(center_x - crop_w / 2.0)
+    crop_y = int(center_y - crop_h / 2.0)
+    crop_x = max(0, min(width - crop_w, crop_x))
+    crop_y = max(0, min(height - crop_h, crop_y))
+    crop_x -= crop_x % 2
+    crop_y -= crop_y % 2
+
+    return {"x": crop_x, "y": crop_y, "w": crop_w, "h": crop_h}
+
+
+def _detect_facecam_ai(video_path: str, width: int, height: int) -> dict | None:
+    """
+    Uses Gemini AI Vision to dynamically detect the streamer's webcam box anywhere on the screen
+    (floating, side margin, corners) or confirms pure gameplay with no camera.
+    """
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        return None
+    try:
+        import cv2
+        from google import genai
+        from google.genai import types
+    except ImportError:
+        return None
+
+    cap = cv2.VideoCapture(video_path)
+    total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 100)
+    cap.set(cv2.CAP_PROP_POS_FRAMES, int(total * 0.30))
+    ok, frame = cap.read()
+    cap.release()
+    if not ok or frame is None:
+        return None
+
+    ok, buf = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
+    if not ok:
+        return None
+
+    client = genai.Client(api_key=api_key)
+    prompt = f"""Analyze this livestream broadcast frame (width {width}, height {height}).
+Is there a streamer webcam / facecam overlay box?
+Streamers place their camera overlay on the sides or in corners, but not always flush against the screen edge.
+If there is a facecam overlay box, return JSON:
+{{
+  "has_facecam": true,
+  "box_2d": [ymin, xmin, ymax, xmax],
+  "description": "brief description of location"
+}}
+Coordinates must be scaled 0 to 1000.
+If no facecam exists (e.g. pure full-screen gameplay without camera, or full-camera IRL), return:
+{{"has_facecam": false}}
+"""
+    for m in ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3.8-flash"]:
+        try:
+            resp = client.models.generate_content(
+                model=m,
+                contents=[types.Part.from_bytes(data=buf.tobytes(), mime_type="image/jpeg"), prompt],
+                config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.1)
+            )
+            data = json.loads(resp.text)
+            if not data.get("has_facecam"):
+                return None
+            box = data.get("box_2d", [])
+            if len(box) == 4:
+                crop = compute_facecam_crop(box, width, height)
+                if 80 <= crop["w"] <= width * 0.75 and 80 <= crop["h"] <= height * 0.75:
+                    print(f"[+] AI Vision detected facecam overlay: {crop} ({data.get('description', '')})")
+                    return crop
+        except Exception as e:
+            continue
+    return None
+
+
 def detect_facecam_region(
     video_path: str,
     width: int,
@@ -64,18 +167,22 @@ def detect_facecam_region(
     game: str = None,
 ) -> dict | None:
     """
-    Samples frames and detects if a streamer facecam overlay exists in a corner.
+    Samples frames and detects if a streamer facecam overlay exists.
     - If category is Just Chatting / IRL: returns None (forces clean centered framing).
-    - If known streamer has a profile and streaming gameplay: uses calibrated corner coordinates.
-    - Otherwise runs OpenCV Haar cascade with strict spatial variance checks to prevent
-      false positives on walking/wandering subjects.
-    Returns {x, y, w, h, corner} in pixel coordinates, or None if no corner cam found.
+    - Primary: AI Vision dynamically detects floating/side webcam overlays.
+    - Fallback: Calibrated streamer profiles or spatial detection.
+    Returns {x, y, w, h} in pixel coordinates, or None if no facecam found.
     """
     if game and str(game).strip().lower() in FULL_CAMERA_CATEGORIES:
         print(f"[*] Stream category '{game}' is full-camera / IRL. Dual-stack disabled -> Centered 9:16 layout.")
         return None
 
-    # Check known streamer profile
+    # 1. Primary: AI Vision Detection (handles floating, side, and margin cams accurately)
+    ai_crop = _detect_facecam_ai(video_path, width, height)
+    if ai_crop is not None:
+        return ai_crop
+
+    # 2. Secondary: Fallback to calibrated profile if available
     s_key = (streamer or "").strip().lower()
     if s_key in STREAMER_CAM_PROFILES:
         prof = STREAMER_CAM_PROFILES[s_key]
@@ -94,7 +201,7 @@ def detect_facecam_region(
         else:
             cam_x, cam_y = width - cam_w, height - cam_h
 
-        print(f"[+] Using calibrated profile for '{streamer}' ({corner}): crop {cam_w}x{cam_h} at ({cam_x},{cam_y})")
+        print(f"[+] Using calibrated fallback profile for '{streamer}' ({corner}): crop {cam_w}x{cam_h} at ({cam_x},{cam_y})")
         return {"x": cam_x, "y": cam_y, "w": cam_w, "h": cam_h, "corner": corner}
     try:
         import cv2
