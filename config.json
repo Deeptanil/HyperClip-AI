@@ -85,6 +85,14 @@
   },
   "publishing_schedule": {
     "min_cross_account_gap_minutes": 25,
+    "priority_rules": {
+      "prioritized_categories": [
+        "Grand Theft Auto VI",
+        "GTA 6",
+        "GTA VI"
+      ],
+      "deprioritized_categories": []
+    },
     "youtube": {
       "enabled": true,
       "shorts_per_day": 3,
@@ -117,6 +125,11 @@
     "cleanup_threshold_percent": 80,
     "aggressive_threshold_percent": 90,
     "max_posted_archive_days": 7
+  },
+  "content_safety": {
+    "auto_censor_nsfw": true,
+    "censor_mode": "blur",
+    "max_nsfw_ratio_before_reject": 0.65
   },
   "story_studio": {
     "enabled": false,

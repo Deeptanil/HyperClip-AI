@@ -1561,3 +1561,279 @@ input:checked + .slider:before {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+/* Stepper Buttons for Exact Daily Post Counts */
+.btn-stepper {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.range-val.val-paused {
+  color: var(--danger);
+}
+
+/* Priority Filter Bar & Tier Badges */
+.priority-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.priority-legend-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.prio-arrow {
+  color: var(--text-dim);
+  font-weight: 700;
+}
+
+.prio-tier-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tier-prioritized {
+  background: rgba(250, 204, 21, 0.18);
+  color: #FACC15;
+  border: 1px solid rgba(250, 204, 21, 0.55);
+}
+
+.tier-approved {
+  background: rgba(34, 197, 94, 0.16);
+  color: #22C55E;
+  border: 1px solid rgba(34, 197, 94, 0.45);
+}
+
+.tier-normal {
+  background: rgba(161, 161, 170, 0.12);
+  color: #e4e4e7;
+  border: 1px solid rgba(161, 161, 170, 0.3);
+}
+
+.tier-deprioritized {
+  background: rgba(113, 113, 122, 0.12);
+  color: #71717a;
+  border: 1px dashed rgba(113, 113, 122, 0.45);
+}
+
+/* Priority Rule Tag Manager */
+.priority-rule-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.tag-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.quick-presets-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.preset-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+}
+
+.preset-chip {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-family: var(--font-mono);
+  padding: 2px 7px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.preset-chip:hover {
+  border-color: var(--yellow);
+  color: var(--yellow);
+}
+
+.cat-chips-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 24px;
+}
+
+.cat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+.cat-chip.chip-prio {
+  background: rgba(250, 204, 21, 0.15);
+  border: 1px solid rgba(250, 204, 21, 0.5);
+  color: #FACC15;
+}
+
+.cat-chip.chip-deprio {
+  background: rgba(113, 113, 122, 0.18);
+  border: 1px solid rgba(113, 113, 122, 0.45);
+  color: #a1a1aa;
+}
+
+.cat-chip-remove {
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  opacity: 0.75;
+}
+
+.cat-chip-remove:hover {
+  opacity: 1;
+  color: var(--danger);
+}
+
+/* Clip Card Queue Rank & Priority Controls */
+.clip-rank-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid var(--border);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  padding: 3px 7px;
+  border-radius: var(--radius-sm);
+}
+
+.clip-rank-badge.is-first {
+  background: var(--yellow);
+  color: #000000;
+  border-color: var(--yellow);
+}
+
+.clip-card.card-prioritized {
+  border-color: rgba(250, 204, 21, 0.45);
+}
+
+.clip-card.card-deprioritized {
+  opacity: 0.78;
+  border-style: dashed;
+}
+
+.clip-prio-bar {
+  display: flex;
+  gap: 4px;
+  padding: 6px 14px;
+  background: rgba(255, 255, 255, 0.02);
+  border-top: 1px solid var(--border);
+}
+
+.clip-prio-bar .btn {
+  flex: 1;
+  justify-content: center;
+  padding: 4px 6px;
+  font-size: 10px;
+}
+
+.btn.prio-active-prioritized {
+  background: rgba(250, 204, 21, 0.22);
+  border-color: var(--yellow);
+  color: var(--yellow);
+}
+
+.btn.prio-active-approved {
+  background: rgba(34, 197, 94, 0.2);
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.btn.prio-active-deprioritized {
+  background: rgba(113, 113, 122, 0.28);
+  border-color: #71717a;
+  color: #e4e4e7;
+}
+
+.priority-btn-group {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.prio-select-btn {
+  justify-content: center;
+  font-size: 10px;
+  padding: 6px 4px;
+}
+
+.prio-select-btn.active {
+  border-color: var(--yellow);
+  background: var(--yellow-muted);
+  color: var(--yellow);
+}
+
+.clip-game-tag {
+  display: inline-block;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.clip-censored-tag {
+  display: inline-block;
+  font-size: 9px;
+  font-family: var(--font-mono);
+  font-weight: 800;
+  color: #f97316;
+  background: rgba(249, 115, 22, 0.15);
+  border: 1px solid rgba(249, 115, 22, 0.45);
+  padding: 1px 5px;
+  border-radius: 3px;
+}

@@ -26,6 +26,7 @@ from src.twitch_clipper.captioner import generate_clip_captions
 from src.twitch_clipper.video_framer import frame_to_portrait, detect_facecam_region, get_video_dimensions
 from src.twitch_clipper.hook_generator import generate_hook_text, render_hook_banner, slugify_hook
 from src.twitch_clipper.content_judge import evaluate_clip_quality
+from src.twitch_clipper.nsfw_censor import scan_and_censor_nsfw
 from src.uploaders.youtube_uploader import upload_short
 from src.uploaders.instagram_uploader import upload_reel_direct
 
@@ -304,6 +305,20 @@ def harvest_clips(config: dict, max_total_new: int = 4) -> list:
                     already_clipped.append(peak)
                     continue
 
+                # Automated Sexual / NSFW Content Detection & Censoring
+                safety_cfg = config.get("content_safety", {})
+                nsfw_res = {"action": "clean", "segments": []}
+                if safety_cfg.get("auto_censor_nsfw", True):
+                    nsfw_res = scan_and_censor_nsfw(
+                        raw_clip,
+                        censor_mode=safety_cfg.get("censor_mode", "blur"),
+                        max_nsfw_ratio=float(safety_cfg.get("max_nsfw_ratio_before_reject", 0.65)),
+                    )
+                    if nsfw_res["action"] == "rejected":
+                        print(f"[-] Clip rejected by NSFW Safety Shield: {nsfw_res['reason']}")
+                        already_clipped.append(peak)
+                        continue
+
                 hook_headline = eval_res.get("hook")
                 if not hook_headline:
                     hook_headline = generate_hook_text(
@@ -402,6 +417,9 @@ def harvest_clips(config: dict, max_total_new: int = 4) -> list:
                     "posted_to_instagram": False,
                     "posted_to_youtube": False,
                     "approval_status": "pending",
+                    "priority": "auto",
+                    "nsfw_censored": nsfw_res.get("action") == "censored",
+                    "nsfw_segments": nsfw_res.get("segments", []),
                     "target": target_label,
                     "created_at": datetime.now(timezone.utc).isoformat(),
                     "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -483,16 +501,62 @@ def get_account_interval_minutes(posts_per_day: int) -> float:
     Interval = (24 * 60 / posts_per_day) - 30 minutes buffer.
     Minimum safe gap: 15 minutes.
     """
-    if not posts_per_day or posts_per_day <= 0:
+    if posts_per_day is None or posts_per_day <= 0:
         return float("inf")
     gap = (24.0 * 60.0 / float(posts_per_day)) - 30.0
     return max(15.0, gap)
 
 
+def compute_clip_priority(meta: dict, config: dict, filename: str = "") -> tuple[int, str]:
+    """
+    4-Tier Posting Priority Order (lower rank posts first):
+      0 = prioritized   : Manually prioritized OR matches prioritized_categories (e.g. GTA 6)
+      1 = approved      : Manually approved
+      2 = normal        : Default / no category
+      3 = deprioritized : Manually deprioritized OR matches deprioritized_categories (posts ONLY when no higher priority exists)
+      9 = denied        : Excluded from publishing
+    """
+    status = str(meta.get("approval_status", meta.get("status", "pending"))).lower().strip()
+    if status == "denied":
+        return 9, "denied"
+
+    explicit = str(meta.get("priority", "")).lower().strip()
+    if explicit == "prioritized":
+        return 0, "prioritized"
+    if explicit == "approved":
+        return 1, "approved"
+    if explicit == "normal":
+        return 2, "normal"
+    if explicit in ("deprioritized", "unprioritized"):
+        return 3, "deprioritized"
+
+    # Category / Game rules from config.json
+    rules = config.get("publishing_schedule", {}).get("priority_rules", {})
+    prio_cats = [str(c).lower().strip() for c in rules.get("prioritized_categories", []) if str(c).strip()]
+    deprio_cats = [str(c).lower().strip() for c in rules.get("deprioritized_categories", []) if str(c).strip()]
+
+    haystack = " ".join([
+        str(meta.get("game", "")),
+        str(meta.get("category", "")),
+        str(meta.get("title", "")),
+        str(meta.get("caption", "")),
+        str(meta.get("hook", "")),
+        str(filename),
+    ]).lower()
+
+    if any(cat in haystack for cat in prio_cats):
+        return 0, "prioritized"
+    if status == "approved":
+        return 1, "approved"
+    if any(cat in haystack for cat in deprio_cats):
+        return 3, "deprioritized"
+    return 2, "normal"
+
+
 def _pick_next_ig_action(acc_cfg: dict, acc_stats: dict, last_any_ig: datetime | None, cross_gap_min: int = 25, force: bool = False) -> str | None:
     """
     Returns 'regular', 'trial', or None for an Instagram account slot.
-    Enforces dynamic gap calculation based on posts/day and strict cross-account separation.
+    Enforces dynamic gap calculation based on posts/day (0 = paused) and strict cross-account separation.
     """
     if not acc_cfg.get("enabled", True):
         return None
@@ -501,12 +565,21 @@ def _pick_next_ig_action(acc_cfg: dict, acc_stats: dict, last_any_ig: datetime |
     reg_count = acc_stats.get("regular", 0)
     trial_count = acc_stats.get("trial", 0)
     total_today = reg_count + trial_count
-    posts_per_day = acc_cfg.get("regular_per_day", 2) + acc_cfg.get("trial_per_day", 1)
-    hard_ceiling = acc_cfg.get("hard_daily_ceiling", max(4, posts_per_day))
+    reg_target = int(acc_cfg.get("regular_per_day", 0) or 0)
+    trial_target = int(acc_cfg.get("trial_per_day", 0) or 0)
+    posts_per_day = reg_target + trial_target
+    if posts_per_day <= 0:
+        print(f"[-] {acc_cfg.get('name', 'IG')} is set to 0 posts/day (Paused).")
+        return None
+
+    hard_ceiling = int(acc_cfg.get("hard_daily_ceiling", posts_per_day) if acc_cfg.get("hard_daily_ceiling") is not None else posts_per_day)
+    effective_cap = min(posts_per_day, hard_ceiling)
+    if effective_cap <= 0:
+        return None
 
     # 1. HARD CEILING: Never exceed daily quota in 24 hours
-    if total_today >= hard_ceiling:
-        print(f"[-] Daily cap reached for {acc_cfg.get('name', 'IG')} ({total_today}/{hard_ceiling} today). Refusing to post.")
+    if total_today >= effective_cap:
+        print(f"[-] Daily cap reached for {acc_cfg.get('name', 'IG')} ({total_today}/{effective_cap} today). Refusing to post.")
         return None
 
     # 2. DYNAMIC SPACING: (24h / posts_per_day) - 30m buffer
@@ -526,11 +599,11 @@ def _pick_next_ig_action(acc_cfg: dict, acc_stats: dict, last_any_ig: datetime |
             print(f"[-] Cross-account IG cooldown active: {elapsed_cross_m:.1f}m since last IG upload. Must wait {cross_gap_min - int(elapsed_cross_m)}m.")
             return None
 
-    if reg_count < acc_cfg.get("regular_per_day", 2):
+    if reg_count < reg_target:
         return "regular"
-    if trial_count < acc_cfg.get("trial_per_day", 1):
+    if trial_count < trial_target:
         return "trial"
-    return "regular" if total_today < posts_per_day else None
+    return "regular" if total_today < effective_cap else None
 
 
 def check_any_platform_can_post(
@@ -560,21 +633,25 @@ def check_any_platform_can_post(
 
     # 1. YouTube Shorts check
     yt_cfg = sched.get("youtube", {"enabled": True, "shorts_per_day": 3, "hard_daily_ceiling": 3})
-    if "youtube" in platforms and yt_cfg.get("enabled", True):
-        yt_count = stats["youtube"]["count"]
-        yt_posts_day = yt_cfg.get("shorts_per_day", 3)
-        yt_ceiling = yt_cfg.get("hard_daily_ceiling", yt_posts_day)
-        last_yt = stats["youtube"]["last"]
-        yt_gap_m = get_account_interval_minutes(yt_posts_day)
-
-        if yt_count >= yt_ceiling:
-            cooldown_reasons.append(f"YouTube hit daily cap ({yt_count}/{yt_ceiling})")
-        elif last_yt and ((now_ist - last_yt).total_seconds() / 60.0) < yt_gap_m:
-            elapsed_m = (now_ist - last_yt).total_seconds() / 60.0
-            remaining_m = int(yt_gap_m - elapsed_m)
-            cooldown_reasons.append(f"YouTube cooldown active ({elapsed_m/60.0:.1f}h/{yt_gap_m/60.0:.1f}h, {remaining_m}m remaining)")
+    if "youtube" in platforms:
+        yt_posts_day = int(yt_cfg.get("shorts_per_day", 3) if yt_cfg.get("shorts_per_day") is not None else 3)
+        yt_ceiling = int(yt_cfg.get("hard_daily_ceiling", yt_posts_day) if yt_cfg.get("hard_daily_ceiling") is not None else yt_posts_day)
+        yt_cap = min(yt_posts_day, yt_ceiling)
+        if not yt_cfg.get("enabled", True) or yt_cap <= 0:
+            cooldown_reasons.append("YouTube paused (0 Shorts/day configured)")
         else:
-            eligible.append("YouTube Shorts")
+            yt_count = stats["youtube"]["count"]
+            last_yt = stats["youtube"]["last"]
+            yt_gap_m = get_account_interval_minutes(yt_posts_day)
+
+            if yt_count >= yt_cap:
+                cooldown_reasons.append(f"YouTube hit daily cap ({yt_count}/{yt_cap})")
+            elif last_yt and ((now_ist - last_yt).total_seconds() / 60.0) < yt_gap_m:
+                elapsed_m = (now_ist - last_yt).total_seconds() / 60.0
+                remaining_m = int(yt_gap_m - elapsed_m)
+                cooldown_reasons.append(f"YouTube cooldown active ({elapsed_m/60.0:.1f}h/{yt_gap_m/60.0:.1f}h, {remaining_m}m remaining)")
+            else:
+                eligible.append("YouTube Shorts")
 
     # 2. Instagram accounts check
     if "instagram" in platforms:
@@ -682,11 +759,10 @@ def publish_next_clip(
         cpath = os.path.join(STREAM_PIPELINE_DIR, cname)
         mpath = os.path.join(STREAM_PIPELINE_DIR, os.path.splitext(cname)[0] + ".json")
         meta = _load_json(mpath, {})
-        # Approved clips come first (0), pending clips come second (1), denied come last (2)
-        status = meta.get("approval_status", meta.get("status", "pending"))
-        priority = 0 if status == "approved" else 2 if status == "denied" else 1
+        # 4-Tier Priority: 0=Prioritized, 1=Approved, 2=No Category, 3=Deprioritized, 9=Denied
+        priority, _ = compute_clip_priority(meta, config, filename=cname)
 
-        # Strict FIFO: sort by date/timestamp, never alphabetically
+        # Strict FIFO within each priority tier: sort by date/timestamp, never alphabetically
         raw_ts = meta.get("timestamp") or meta.get("staged_at") or meta.get("created_at")
         ts_val = 0.0
         if raw_ts:
@@ -776,13 +852,17 @@ def publish_next_clip(
     yt_cfg = sched.get("youtube", {"enabled": True, "shorts_per_day": 3, "hard_daily_ceiling": 3})
     if "youtube" in platforms and yt_cfg.get("enabled", True):
         yt_count = stats["youtube"]["count"]
-        yt_posts_day = yt_cfg.get("shorts_per_day", 3)
-        yt_ceiling = yt_cfg.get("hard_daily_ceiling", yt_posts_day)
+        yt_posts_day = int(yt_cfg.get("shorts_per_day", 3) if yt_cfg.get("shorts_per_day") is not None else 3)
+        yt_ceiling = int(yt_cfg.get("hard_daily_ceiling", yt_posts_day) if yt_cfg.get("hard_daily_ceiling") is not None else yt_posts_day)
+        yt_cap = min(yt_posts_day, yt_ceiling)
         last_yt = stats["youtube"]["last"]
         yt_gap_m = get_account_interval_minutes(yt_posts_day)
 
-        if yt_count >= yt_ceiling:
-            print(f"[-] Hard daily ceiling reached for YouTube ({yt_count}/{yt_ceiling} today). Refusing to post.")
+        if yt_cap <= 0:
+            print("[-] YouTube Shorts set to 0 posts/day (Paused). Refusing to post.")
+            yt_ok = False
+        elif yt_count >= yt_cap:
+            print(f"[-] Hard daily ceiling reached for YouTube ({yt_count}/{yt_cap} today). Refusing to post.")
             yt_ok = False
         elif last_yt and ((now_ist - last_yt).total_seconds() / 60.0) < yt_gap_m:
             elapsed_yt_m = (now_ist - last_yt).total_seconds() / 60.0

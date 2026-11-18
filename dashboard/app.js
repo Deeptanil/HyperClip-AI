@@ -37,25 +37,140 @@
     isDemo: true
   });
 
+  function safeInt(val, fallback) {
+    const n = parseInt(val, 10);
+    return Number.isNaN(n) ? fallback : n;
+  }
+
   let settings = safeGetStorage(STORAGE_KEY_SETTINGS, {
-    ig1Posts: 3,
-    ig1TrialPosts: 2,
-    ig2Posts: 3,
+    ig1Posts: 0,
+    ig1TrialPosts: 0,
+    ig2Posts: 0,
     ytPosts: 3,
     hypeMode: false,
     streamYield: 3,
-    clipSpacing: 300
+    clipSpacing: 300,
+    prioritizedCategories: ['Grand Theft Auto VI', 'GTA 6', 'GTA VI'],
+    deprioritizedCategories: [],
+    autoCensorNsfw: true,
+    censorMode: 'blur'
   });
 
-  if (typeof settings.ig1TrialPosts === 'undefined') {
-    settings.ig1TrialPosts = Math.min(2, settings.ig1Posts || 3);
+  settings.ig1Posts = Math.max(0, safeInt(settings.ig1Posts, 0));
+  settings.ig2Posts = Math.max(0, safeInt(settings.ig2Posts, 0));
+  settings.ytPosts = Math.max(0, safeInt(settings.ytPosts, 3));
+  settings.ig1TrialPosts = Math.min(settings.ig1Posts, Math.max(0, safeInt(settings.ig1TrialPosts, 0)));
+  if (!Array.isArray(settings.prioritizedCategories)) {
+    settings.prioritizedCategories = ['Grand Theft Auto VI', 'GTA 6', 'GTA VI'];
+  }
+  if (!Array.isArray(settings.deprioritizedCategories)) {
+    settings.deprioritizedCategories = [];
+  }
+  if (typeof settings.autoCensorNsfw !== 'boolean') {
+    settings.autoCensorNsfw = true;
+  }
+  if (!settings.censorMode) {
+    settings.censorMode = 'blur';
   }
 
   let activeTab = 'calendar';
   let activeCalView = 'week'; // 'day', 'week', 'month'
   let activeFilter = 'all'; // 'all', 'ig1', 'ig2', 'youtube', 'staged'
+  let activePrioFilter = 'all'; // 'all', 'prioritized', 'approved', 'normal', 'deprioritized'
   let currentDate = new Date();
   let selectedClip = null;
+  let lastTodayCounts = { ig1: 0, ig2: 0, youtube: 0 };
+
+  // --- 4-Tier Posting Priority Engine (Mirrors twitch_clipper.py exactly) ---
+  // 0: Prioritized (Post ASAP) -> 1: Approved -> 2: No Category -> 3: Deprioritized (Last Resort) -> 9: Denied
+  function getClipPriority(clip) {
+    const status = String(clip.approval_status || clip.status || 'pending').toLowerCase().trim();
+    if (status === 'denied') {
+      return { rank: 9, tier: 'denied', label: 'Denied', source: 'manual' };
+    }
+
+    const explicit = String(clip.priority || '').toLowerCase().trim();
+    if (explicit === 'prioritized') {
+      return { rank: 0, tier: 'prioritized', label: 'Prioritized', source: 'manual' };
+    }
+    if (explicit === 'approved') {
+      return { rank: 1, tier: 'approved', label: 'Approved', source: 'manual' };
+    }
+    if (explicit === 'normal') {
+      return { rank: 2, tier: 'normal', label: 'No Category', source: 'manual' };
+    }
+    if (explicit === 'deprioritized' || explicit === 'unprioritized') {
+      return { rank: 3, tier: 'deprioritized', label: 'Deprioritized', source: 'manual' };
+    }
+
+    const prioCats = (settings.prioritizedCategories || []).map(c => String(c).toLowerCase().trim()).filter(Boolean);
+    const deprioCats = (settings.deprioritizedCategories || []).map(c => String(c).toLowerCase().trim()).filter(Boolean);
+    const haystack = [
+      clip.game || '',
+      clip.category || '',
+      clip.title || '',
+      clip.caption || '',
+      clip.filename || ''
+    ].join(' ').toLowerCase();
+
+    const matchedPrio = prioCats.find(cat => haystack.includes(cat));
+    if (matchedPrio) {
+      return { rank: 0, tier: 'prioritized', label: `Prioritized (${matchedPrio.toUpperCase()})`, source: 'category' };
+    }
+    if (status === 'approved') {
+      return { rank: 1, tier: 'approved', label: 'Approved', source: 'manual' };
+    }
+    const matchedDeprio = deprioCats.find(cat => haystack.includes(cat));
+    if (matchedDeprio) {
+      return { rank: 3, tier: 'deprioritized', label: `Deprioritized (${matchedDeprio.toUpperCase()})`, source: 'category' };
+    }
+    return { rank: 2, tier: 'normal', label: 'No Category', source: 'default' };
+  }
+
+  function getClipTimestamp(c) {
+    if (c.timestamp) {
+      const t = new Date(c.timestamp).getTime();
+      if (!Number.isNaN(t)) return t;
+    }
+    const m = (c.filename || '').match(/^(\d{4}-\d{2}-\d{2})/);
+    if (m) {
+      const t = new Date(m[1]).getTime();
+      if (!Number.isNaN(t)) return t;
+    }
+    return 0;
+  }
+
+  function sortPipelineClips() {
+    pipelineClips.forEach(c => {
+      c._prio = getClipPriority(c);
+    });
+    pipelineClips.sort((a, b) => {
+      const rankDiff = (a._prio?.rank ?? 2) - (b._prio?.rank ?? 2);
+      if (rankDiff !== 0) return rankDiff;
+      return getClipTimestamp(a) - getClipTimestamp(b);
+    });
+  }
+
+  function formatSliderVal(val) {
+    const n = safeInt(val, 0);
+    return n === 0 ? '0 (OFF)' : String(n);
+  }
+
+  function updateTopStatCards() {
+    const ig1ValEl = document.getElementById('ig1-stat-val');
+    const ig2ValEl = document.getElementById('ig2-stat-val');
+    const ytValEl = document.getElementById('yt-stat-val');
+
+    if (ig1ValEl) {
+      ig1ValEl.innerHTML = `${lastTodayCounts.ig1} / ${settings.ig1Posts} <small class="text-dim-unit">${settings.ig1Posts === 0 ? 'paused' : 'in 24h'}</small>`;
+    }
+    if (ig2ValEl) {
+      ig2ValEl.innerHTML = `${lastTodayCounts.ig2} / ${settings.ig2Posts} <small class="text-dim-unit">${settings.ig2Posts === 0 ? 'paused' : 'in 24h'}</small>`;
+    }
+    if (ytValEl) {
+      ytValEl.innerHTML = `${lastTodayCounts.youtube} / ${settings.ytPosts} <small class="text-dim-unit">${settings.ytPosts === 0 ? 'paused' : 'in 24h'}</small>`;
+    }
+  }
 
   // Data collections
   let pipelineClips = [];
@@ -161,23 +276,32 @@
 
   // --- Dynamic Spacing & Hazard Detection ---
   function calculateDynamicSpacing() {
-    const totalIg = settings.ig1Posts + settings.ig2Posts;
-    const intervalHours = totalIg > 0 ? (24 / totalIg) : 24;
+    const ig1N = safeInt(settings.ig1Posts, 0);
+    const ig2N = safeInt(settings.ig2Posts, 0);
+    const ytN = safeInt(settings.ytPosts, 0);
+    const totalIg = ig1N + ig2N;
+    const intervalHours = totalIg > 0 ? (24 / totalIg) : 0;
     const intervalMins = Math.round(intervalHours * 60);
 
     const minPerAccountHours = 3.0; // Strict anti-shadowban
-    const minCrossAccountMins = 20; // Anti-bot IP safeguard
+    const minCrossAccountMins = 25; // Anti-bot IP safeguard
 
     const summaryEl = document.getElementById('spacing-summary-text');
     if (summaryEl) {
-      const trial1 = settings.ig1TrialPosts || 0;
-      const reg1 = Math.max(0, settings.ig1Posts - trial1);
+      const trial1 = Math.min(ig1N, safeInt(settings.ig1TrialPosts, 0));
+      const reg1 = Math.max(0, ig1N - trial1);
+      const ytGapText = ytN > 0
+        ? `1 Short every <strong>${(24 / ytN).toFixed(1)}h</strong> (minus 30m runner buffer)`
+        : `<strong style="color:var(--danger)">Paused (0 Shorts/day)</strong>`;
+      const igGapText = totalIg > 0
+        ? `1 Reel every <strong>${intervalHours.toFixed(1)} hours (${intervalMins} mins)</strong> across active IG slots (≥ ${minCrossAccountMins}m cross-account buffer)`
+        : `<strong style="color:var(--danger)">Instagram Paused (0 Reels/day)</strong>`;
+
       summaryEl.innerHTML = `
-        <strong>Dynamic Spacing Plan:</strong> ${totalIg} Instagram Reels / day (${settings.ig1Posts} @solvikz [${trial1} trial, ${reg1} standard] + ${settings.ig2Posts} @loopablez) + ${settings.ytPosts} YouTube Shorts.<br>
-        • <strong>Target Interval:</strong> 1 Reel every <strong>${intervalHours.toFixed(1)} hours (${intervalMins} mins)</strong> alternating accounts.<br>
-        • <strong>Per-Account Gap:</strong> ≥ <strong>${(intervalHours * 2).toFixed(1)} hours</strong> between posts on the same account (Safe: threshold is ${minPerAccountHours}h).<br>
-        • <strong>Cross-Account Buffer:</strong> ≥ <strong>${minCrossAccountMins} minutes</strong> separation between uploads to prevent same-IP flag.<br>
-        • <em>Missed uploads are prioritized on the next cycle with a staggered 20m buffer (never simultaneous dual-post).</em>
+        <strong>Dynamic Spacing Plan:</strong> ${totalIg} Instagram Reels/day (${ig1N} @solvikz [${trial1} trial, ${reg1} standard] + ${ig2N} @loopablez) + ${ytN} YouTube Shorts/day.<br>
+        • <strong>Instagram Cadence:</strong> ${igGapText}<br>
+        • <strong>YouTube Cadence:</strong> ${ytGapText}<br>
+        • <strong>Priority Order:</strong> Prioritized (${(settings.prioritizedCategories || []).length} rules) → Approved → No Category → Deprioritized (${(settings.deprioritizedCategories || []).length} rules).
       `;
     }
 
@@ -186,22 +310,22 @@
     const hazardTitle = document.getElementById('shadowban-hazard-title');
     const hazardDesc = document.getElementById('shadowban-hazard-desc');
 
-    const maxPostsSingleAccount = Math.max(settings.ig1Posts, settings.ig2Posts);
+    const maxPostsSingleAccount = Math.max(ig1N, ig2N);
     const minCalculatedGap = maxPostsSingleAccount > 0 ? (24 / maxPostsSingleAccount) : 24;
 
     if (hazardBox) {
-      if (minCalculatedGap < 3.0 || maxPostsSingleAccount >= 5) {
+      if (maxPostsSingleAccount > 0 && (minCalculatedGap < 3.0 || maxPostsSingleAccount >= 5)) {
         hazardBox.style.display = 'flex';
         hazardBox.className = 'danger-box';
         if (hazardTitle) hazardTitle.innerText = 'CRITICAL SPAM HAZARD: FREQUENCY LIMIT EXCEEDED';
         if (hazardDesc) {
           hazardDesc.innerHTML = `
-            <strong>WARNING: High risk of account restriction / shadowban.</strong> An account is set to <strong>${maxPostsSingleAccount} posts/day</strong>, which drops the post separation down to only <strong>${minCalculatedGap.toFixed(1)} hours</strong>.<br>
-            Instagram's anti-spam detection automatically restricts accounts posting with less than a 3.0-hour gap or more than 4 times per day. <strong>This can result in shadowbans, ineligibility for trial reels, or API blocks.</strong><br>
+            <strong>WARNING: High risk of account restriction / shadowban.</strong> An Instagram account is set to <strong>${maxPostsSingleAccount} posts/day</strong>, which drops the post separation down to only <strong>${minCalculatedGap.toFixed(1)} hours</strong>.<br>
+            Instagram's anti-spam detection automatically restricts accounts posting with less than a 3.0-hour gap or more than 4 times per day.<br>
             <em>Recommendation: Reduce daily posts to ≤ 3 per account to maintain a safe 4.0h+ cooldown.</em>
           `;
         }
-      } else if (maxPostsSingleAccount === 4 || minCalculatedGap < 4.0) {
+      } else if (maxPostsSingleAccount === 4 || (maxPostsSingleAccount > 0 && minCalculatedGap < 4.0)) {
         hazardBox.style.display = 'flex';
         hazardBox.className = 'danger-box warning-yellow';
         if (hazardTitle) hazardTitle.innerText = 'MODERATE SPAM RISK: ELEVATED POST FREQUENCY';
@@ -216,6 +340,8 @@
       }
     }
 
+    updateTopStatCards();
+    updateCooldownDisplays();
     generateScheduledSlots();
   }
 
@@ -485,11 +611,13 @@
         upcomingSlots.push({ ...slot });
       });
 
-      // Map staged pipeline clips onto the earliest upcoming slots
+      // Map priority-sorted staged pipeline clips onto the earliest upcoming slots
+      sortPipelineClips();
+      const activeStaged = pipelineClips.filter(c => (c._prio?.tier || 'normal') !== 'denied');
       let stagedIdx = 0;
       upcomingSlots.forEach(slot => {
-        if (stagedIdx < pipelineClips.length) {
-          const stagedClip = pipelineClips[stagedIdx];
+        if (stagedIdx < activeStaged.length) {
+          const stagedClip = activeStaged[stagedIdx];
           events.push({
             ...stagedClip,
             account: slot.account,
@@ -873,26 +1001,48 @@
   function renderPipelineQueue() {
     const grid = document.getElementById('pipeline-clips-grid');
     const badge = document.getElementById('pipeline-count-badge');
-    if (badge) badge.innerText = pipelineClips.length;
+
+    // Always sort by exact 4-tier priority + FIFO
+    sortPipelineClips();
+
+    const activeQueue = pipelineClips.filter(c => (c._prio?.tier || 'normal') !== 'denied');
+    if (badge) badge.innerText = activeQueue.length;
+
+    // Update priority filter pill counts
+    const counts = { all: activeQueue.length, prioritized: 0, approved: 0, normal: 0, deprioritized: 0 };
+    activeQueue.forEach(c => {
+      const t = c._prio?.tier || 'normal';
+      if (typeof counts[t] === 'number') counts[t]++;
+    });
+    Object.entries(counts).forEach(([k, v]) => {
+      const el = document.getElementById(`prio-count-${k}`);
+      if (el) el.innerText = v;
+    });
 
     if (!grid) return;
     grid.innerHTML = '';
 
-    if (pipelineClips.length === 0) {
+    const filteredClips = activePrioFilter === 'all'
+      ? activeQueue
+      : activeQueue.filter(c => (c._prio?.tier || 'normal') === activePrioFilter);
+
+    if (filteredClips.length === 0) {
       grid.innerHTML = `
         <div style="grid-column:1/-1;text-align:center;padding:60px 20px;border:1px dashed var(--border);border-radius:var(--radius-md);background:var(--bg-surface)">
           <div style="margin-bottom:12px;color:var(--text-dim)">${ICONS.film}</div>
-          <div style="font-size:16px;font-weight:700;color:#ffffff">No Staged Clips in Pipeline</div>
-          <div style="font-size:12px;color:var(--text-muted);margin-top:4px">All harvested clips have been published. Click "Scan Live Streams" to stage new moments.</div>
+          <div style="font-size:16px;font-weight:700;color:#ffffff">${activeQueue.length === 0 ? 'No Staged Clips in Pipeline' : 'No Clips in This Priority Tier'}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:4px">${activeQueue.length === 0 ? 'All harvested clips have been published. Click "Scan Live Streams" to stage new moments.' : 'Switch filter to "All" or adjust clip priority buttons.'}</div>
         </div>
       `;
       return;
     }
 
     let ig1TrialUsed = 0;
-    const ig1TrialLimit = Math.max(0, parseInt(settings.ig1TrialPosts, 10) || 0);
+    const ig1TrialLimit = Math.max(0, safeInt(settings.ig1TrialPosts, 0));
 
-    pipelineClips.forEach(clip => {
+    filteredClips.forEach(clip => {
+      const queuePos = activeQueue.indexOf(clip) + 1;
+      const prio = clip._prio || getClipPriority(clip);
       const isIg1 = clip.account === 'ig1' || (clip.target && clip.target.toLowerCase().includes('solvikz'));
       let isTrial = Boolean(clip.isTrial || clip.post_kind === 'trial' || clip.trial || (clip.target && clip.target.toLowerCase().includes('trial')));
       if (!isTrial && isIg1 && ig1TrialUsed < ig1TrialLimit) {
@@ -904,7 +1054,12 @@
       clip.isTrial = isTrial;
 
       const card = document.createElement('div');
-      card.className = 'clip-card';
+      card.className = `clip-card card-${prio.tier}`;
+
+      const tierClass = `tier-${prio.tier}`;
+      const isManualPrio = clip.priority === 'prioritized';
+      const isManualAppr = clip.priority === 'approved' || (!clip.priority && clip.approval_status === 'approved');
+      const isManualDeprio = clip.priority === 'deprioritized';
 
       card.innerHTML = `
         <div class="clip-preview-container">
@@ -912,37 +1067,44 @@
           <div class="clip-overlay-badge">
             <span>${clip.streamer}</span>
           </div>
+          <div class="clip-rank-badge ${queuePos === 1 ? 'is-first' : ''}">
+            ${queuePos === 1 ? '#1 NEXT UP' : '#' + queuePos}
+          </div>
           ${isTrial ? '<div style="position:absolute;bottom:8px;left:8px;z-index:2;"><span class="clip-trial-tag">TRIAL REEL</span></div>' : ''}
           <div class="clip-duration-badge">${clip.duration}</div>
         </div>
         <div class="clip-body">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;">
-            <div class="clip-title">${clip.title}</div>
-            <div style="display:flex;gap:4px;align-items:center;">
-              ${isTrial ? '<span class="clip-trial-tag">TRIAL REEL</span>' : ''}
-              <span class="status-pill" style="font-size:9px;white-space:nowrap;${clip.approval_status === 'approved' ? 'color:var(--success);border-color:rgba(34,197,94,0.4);' : clip.approval_status === 'denied' ? 'color:var(--danger);border-color:rgba(239,68,68,0.4);' : 'color:var(--yellow);'}">
-                ${clip.approval_status === 'approved' ? 'Approved' : clip.approval_status === 'denied' ? 'Denied' : 'Pending (Auto)'}
-              </span>
-            </div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;flex-wrap:wrap;">
+            <div class="clip-title" style="flex:1;min-width:140px;">${clip.title}</div>
+            <span class="prio-tier-badge ${tierClass}">${prio.label}</span>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+            ${clip.game ? `<span class="clip-game-tag">${clip.game}</span>` : ''}
+            ${clip.nsfw_censored ? '<span class="clip-censored-tag">AUTO-CENSORED</span>' : ''}
+            ${isTrial ? '<span class="clip-trial-tag">TRIAL REEL</span>' : ''}
           </div>
           <div class="clip-caption">${clip.caption}</div>
           <div class="clip-metrics">
             <span>Spike: ${clip.sigma}</span> • 
-            <span>${clip.motion}</span> • 
-            <span>${clip.post_to_yt ? '<strong style="color:#ffffff">IG + YouTube</strong>' : '<span style="color:var(--text-muted)">Instagram Only (YT Skipped)</span>'}</span>
-            ${isTrial ? ' • <span style="color:var(--yellow);font-weight:700">Trial Reel (Non-Followers)</span>' : ''}
+            <span>${clip.post_to_yt ? '<strong style="color:#ffffff">IG + YouTube</strong>' : '<span style="color:var(--text-muted)">Instagram Only</span>'}</span>
           </div>
+        </div>
+        <div class="clip-prio-bar">
+          <button class="btn btn-sm btn-prio-up ${isManualPrio ? 'prio-active-prioritized' : ''}" title="Prioritize: Post ASAP before Approved &amp; No Category">▲ Prioritize</button>
+          <button class="btn btn-sm btn-approve ${isManualAppr ? 'prio-active-approved' : ''}" title="Approve: Post after Prioritized, before No Category">✓ Approve</button>
+          <button class="btn btn-sm btn-prio-down ${isManualDeprio ? 'prio-active-deprioritized' : ''}" title="Deprioritize: Post ONLY if no higher priority clips remain">▼ Deprioritize</button>
         </div>
         <div class="clip-actions">
           <button class="btn btn-yellow btn-sm btn-preview" style="flex:1;justify-content:center">Preview</button>
-          <button class="btn btn-sm btn-approve" style="color:var(--success)" title="Approve & prioritize">Approve</button>
           <button class="btn btn-warning btn-sm btn-deny" title="Deny clip (removes from pipeline)">Deny</button>
           <button class="btn btn-danger btn-sm btn-delete" title="Permanently delete clip">Delete</button>
         </div>
       `;
 
       card.querySelector('.btn-preview').onclick = () => window.openPreviewModal(clip);
-      card.querySelector('.btn-approve').onclick = () => approveClip(clip, false);
+      card.querySelector('.btn-prio-up').onclick = () => setClipPriority(clip, isManualPrio ? 'auto' : 'prioritized', false);
+      card.querySelector('.btn-approve').onclick = () => setClipPriority(clip, isManualAppr ? 'normal' : 'approved', false);
+      card.querySelector('.btn-prio-down').onclick = () => setClipPriority(clip, isManualDeprio ? 'auto' : 'deprioritized', false);
       card.querySelector('.btn-deny').onclick = () => denyClip(clip);
       card.querySelector('.btn-delete').onclick = () => deleteClip(clip);
 
@@ -998,18 +1160,27 @@
     const badge = document.getElementById('preview-streamer-badge');
     const title = document.getElementById('preview-modal-title');
     const caption = document.getElementById('preview-caption-edit');
+    const gameEl = document.getElementById('preview-game');
+    const prioValEl = document.getElementById('preview-priority-val');
     const sigma = document.getElementById('preview-sigma');
     const motion = document.getElementById('preview-motion');
     const layout = document.getElementById('preview-layout');
     const target = document.getElementById('preview-target');
 
+    const effPrio = getClipPriority(clip);
     if (badge) badge.innerText = `${clip.streamer} // Highlight`;
     if (title) title.innerText = clip.title;
     if (caption) caption.value = clip.caption;
+    if (gameEl) gameEl.innerText = clip.game || 'Uncategorized';
+    if (prioValEl) prioValEl.innerHTML = `<span class="prio-tier-badge tier-${effPrio.tier}">${effPrio.label}</span>`;
     if (sigma) sigma.innerText = clip.sigma || '3.5 σ';
     if (motion) motion.innerText = clip.motion || 'High Action Active';
     if (layout) layout.innerText = clip.layout || 'Dual Stack 9:16';
     if (target) target.innerText = clip.target || 'Instagram & YouTube';
+
+    document.querySelectorAll('#preview-priority-controls .prio-select-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.setPriority === effPrio.tier);
+    });
 
     const trialPill = document.getElementById('preview-trial-pill');
     const postFormat = document.getElementById('preview-post-format');
@@ -1138,7 +1309,7 @@
         method: 'PUT',
         headers,
         body: JSON.stringify({
-          message: `chore: update clip status to ${updates.approval_status} for ${clip.filename}`,
+          message: `chore: update clip metadata (${updates.priority || updates.approval_status || 'updated'}) for ${clip.filename}`,
           content: newBase64,
           sha: getData.sha,
           branch: cBranch
@@ -1147,15 +1318,20 @@
       if (putRes.ok) {
         const putData = await putRes.json();
         clip.jsonSha = putData.content.sha;
+        return true;
+      } else {
+        const errBody = await putRes.json().catch(() => ({}));
+        console.warn('GitHub clip metadata PUT failed:', putRes.status, errBody);
+        return false;
       }
     } catch (e) {
       console.warn('Failed to update GitHub clip metadata:', e);
+      return false;
     }
   }
 
-  function approveClip(clip, isFromModal = false) {
+  async function setClipPriority(clip, newTier, isFromModal = false) {
     let newCaption = clip.caption;
-    // Only update caption from input if explicitly edited inside the active preview modal
     if (isFromModal && selectedClip && selectedClip.id === clip.id) {
       const captionEl = document.getElementById('preview-caption-edit');
       if (captionEl && captionEl.value.trim()) {
@@ -1163,11 +1339,35 @@
       }
     }
     clip.caption = newCaption;
-    clip.approval_status = 'approved';
-    updateGitHubClipMetadata(clip, { approval_status: 'approved', caption: newCaption });
+    clip.priority = newTier;
+    if (newTier === 'approved') {
+      clip.approval_status = 'approved';
+    } else if (clip.approval_status === 'denied' || newTier === 'normal' || newTier === 'deprioritized' || newTier === 'auto') {
+      clip.approval_status = 'pending';
+    }
+
+    sortPipelineClips();
     renderPipelineQueue();
     renderCalendar();
-    alert(`Clip "${clip.title}" approved and prioritized for next upload.`);
+
+    if (isFromModal && selectedClip && selectedClip.id === clip.id) {
+      const effPrio = getClipPriority(clip);
+      const prioValEl = document.getElementById('preview-priority-val');
+      if (prioValEl) prioValEl.innerHTML = `<span class="prio-tier-badge tier-${effPrio.tier}">${effPrio.label}</span>`;
+      document.querySelectorAll('#preview-priority-controls .prio-select-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.setPriority === effPrio.tier);
+      });
+    }
+
+    await updateGitHubClipMetadata(clip, {
+      priority: clip.priority,
+      approval_status: clip.approval_status,
+      caption: newCaption
+    });
+  }
+
+  function approveClip(clip, isFromModal = false) {
+    setClipPriority(clip, 'approved', isFromModal);
     window.closePreviewModal();
   }
 
@@ -1402,6 +1602,8 @@
                   id: `real_${baseName}`,
                   filename: mp4.name,
                   streamer: meta.streamer || meta.username || 'Stream Highlight',
+                  game: meta.game || meta.category || '',
+                  category: meta.category || meta.game || '',
                   title: meta.title || baseName.replace(/_/g, ' '),
                   caption: meta.caption || `${meta.title} #gaming #reels`,
                   duration: durMinStr,
@@ -1417,6 +1619,9 @@
                   isTrial: isTrial,
                   status: 'staged',
                   approval_status: meta.approval_status || meta.status || 'pending',
+                  priority: meta.priority || 'auto',
+                  nsfw_censored: Boolean(meta.nsfw_censored),
+                  nsfw_segments: Array.isArray(meta.nsfw_segments) ? meta.nsfw_segments : [],
                   timestamp: meta.timestamp || meta.staged_at || meta.created_at || null,
                   videoUrl: rawVideoUrl,
                   path: mp4.path,
@@ -1447,32 +1652,10 @@
         } catch (e) {}
       }
 
-      // Sort realPipeline: Approved first, pending second, denied last.
-      // Within each status, sort chronologically by date/timestamp (FIFO, never alphabetically).
-      realPipeline.sort((a, b) => {
-        const getPrio = (c) => (c.approval_status === 'approved' ? 0 : c.approval_status === 'denied' ? 2 : 1);
-        const prioA = getPrio(a);
-        const prioB = getPrio(b);
-        if (prioA !== prioB) return prioA - prioB;
-
-        const getTs = (c) => {
-          if (c.timestamp) {
-            const t = new Date(c.timestamp).getTime();
-            if (!isNaN(t)) return t;
-          }
-          const m = (c.filename || '').match(/^(\d{4}-\d{2}-\d{2})/);
-          if (m) {
-            const t = new Date(m[1]).getTime();
-            if (!isNaN(t)) return t;
-          }
-          return 0;
-        };
-        return getTs(a) - getTs(b);
-      });
-
-      // 6. Bind Real Data to Dashboard State (DO NOT Fallback to Fake Demo Data)
+      // 6. Bind Real Data to Dashboard State & Sort by 4-Tier Priority + FIFO
       pipelineClips = realPipeline;
       postedClips = realPosted;
+      sortPipelineClips();
 
       // Update real top stats from actual posted data (matching local/UTC day or rolling 24h window)
       const now = new Date();
@@ -1490,22 +1673,19 @@
 
       const recentPosted = realPosted.filter(isRecentPost);
 
-      const ig1Count = recentPosted.filter(p => p.account === 'ig1').length;
-      const ig2Count = recentPosted.filter(p => p.account === 'ig2').length;
-      const ytCount = recentPosted.filter(p => p.account === 'youtube').length;
+      lastTodayCounts = {
+        ig1: recentPosted.filter(p => p.account === 'ig1').length,
+        ig2: recentPosted.filter(p => p.account === 'ig2').length,
+        youtube: recentPosted.filter(p => p.account === 'youtube').length
+      };
 
       const totalMb = (totalMediaBytes / (1024 * 1024)).toFixed(1);
       const storagePct = ((totalMediaBytes / (1500 * 1024 * 1024)) * 100).toFixed(1);
 
-      const ig1ValEl = document.getElementById('ig1-stat-val');
-      const ig2ValEl = document.getElementById('ig2-stat-val');
-      const ytValEl = document.getElementById('yt-stat-val');
       const storageValEl = document.getElementById('storage-stat-val');
       const storageDescEl = document.getElementById('storage-stat-desc');
 
-      if (ig1ValEl) ig1ValEl.innerHTML = `${ig1Count} / ${settings.ig1Posts} <small class="text-dim-unit">in 24h</small>`;
-      if (ig2ValEl) ig2ValEl.innerHTML = `${ig2Count} / ${settings.ig2Posts} <small class="text-dim-unit">in 24h</small>`;
-      if (ytValEl) ytValEl.innerHTML = `${ytCount} / ${settings.ytPosts} <small class="text-dim-unit">in 24h</small>`;
+      updateTopStatCards();
       if (storageValEl) storageValEl.innerHTML = `${totalMb} MB <small class="text-dim-unit">/ 1500 MB</small>`;
       if (storageDescEl) storageDescEl.innerText = `${storagePct}% used • Archive retained for 7 days`;
 
@@ -1530,10 +1710,12 @@
   function updateTrialDesc() {
     const descEl = document.getElementById('desc-ig1-trial');
     if (descEl) {
-      const total = settings.ig1Posts || 3;
-      const trial = typeof settings.ig1TrialPosts !== 'undefined' ? settings.ig1TrialPosts : 2;
+      const total = safeInt(settings.ig1Posts, 0);
+      const trial = Math.min(total, safeInt(settings.ig1TrialPosts, 0));
       const reg = Math.max(0, total - trial);
-      descEl.innerText = `${trial} of ${total} posts will test with non-followers (${reg} standard reel${reg === 1 ? '' : 's'})`;
+      descEl.innerText = total === 0
+        ? 'Account paused (0 posts/day)'
+        : `${trial} of ${total} posts will test with non-followers (${reg} standard reel${reg === 1 ? '' : 's'})`;
     }
   }
 
@@ -1561,14 +1743,18 @@
 
     // Dynamic Interval Formula: (24h / posts_per_day) - 30m buffer
     function getAccountIntervalMinutes(postsPerDay) {
-      const n = parseInt(postsPerDay, 10);
-      if (!n || n <= 0) return Infinity;
+      const n = safeInt(postsPerDay, 0);
+      if (n <= 0) return Infinity;
       return Math.max(15, Math.round((24 * 60 / n) - 30));
     }
 
-    const ig1MinGap = getAccountIntervalMinutes(settings.ig1Posts || 3);
-    const ig2MinGap = getAccountIntervalMinutes(settings.ig2Posts || 3);
-    const ytMinGap = getAccountIntervalMinutes(settings.ytPosts || 3);
+    const ig1N = safeInt(settings.ig1Posts, 0);
+    const ig2N = safeInt(settings.ig2Posts, 0);
+    const ytN = safeInt(settings.ytPosts, 0);
+
+    const ig1MinGap = getAccountIntervalMinutes(ig1N);
+    const ig2MinGap = getAccountIntervalMinutes(ig2N);
+    const ytMinGap = getAccountIntervalMinutes(ytN);
 
     function computeDesc(lastTs, gapMinutes, prefix = '') {
       if (!lastTs) {
@@ -1592,11 +1778,11 @@
     const ytDescEl = document.getElementById('yt-stat-desc');
 
     if (ig1DescEl) {
-      if (!settings.ig1Posts || settings.ig1Posts === 0) {
-        ig1DescEl.innerText = 'Paused • Protection Active';
+      if (ig1N <= 0) {
+        ig1DescEl.innerText = 'Paused • 0 Posts/day';
         ig1DescEl.classList.remove('highlight');
       } else {
-        const trial = typeof settings.ig1TrialPosts !== 'undefined' ? settings.ig1TrialPosts : 1;
+        const trial = safeInt(settings.ig1TrialPosts, 0);
         const prefix = trial > 0 ? 'Trial Eligible' : 'Regular Reels';
         const info = computeDesc(lastIg1Ts, ig1MinGap, prefix);
         ig1DescEl.innerText = info.text;
@@ -1606,8 +1792,8 @@
     }
 
     if (ig2DescEl) {
-      if (!settings.ig2Posts || settings.ig2Posts === 0) {
-        ig2DescEl.innerText = 'Paused • Protection Active';
+      if (ig2N <= 0) {
+        ig2DescEl.innerText = 'Paused • 0 Posts/day';
         ig2DescEl.classList.remove('highlight');
       } else {
         const info = computeDesc(lastIg2Ts, ig2MinGap, 'Regular Reels');
@@ -1618,11 +1804,96 @@
     }
 
     if (ytDescEl) {
-      const info = computeDesc(lastYtTs, ytMinGap, 'YouTube Shorts');
-      ytDescEl.innerText = info.text;
-      if (info.isReady) ytDescEl.classList.add('highlight');
-      else ytDescEl.classList.remove('highlight');
+      if (ytN <= 0) {
+        ytDescEl.innerText = 'Paused • 0 Shorts/day';
+        ytDescEl.classList.remove('highlight');
+      } else {
+        const info = computeDesc(lastYtTs, ytMinGap, 'YouTube Shorts');
+        ytDescEl.innerText = info.text;
+        if (info.isReady) ytDescEl.classList.add('highlight');
+        else ytDescEl.classList.remove('highlight');
+      }
     }
+  }
+
+  function renderCategoryChips() {
+    const prioWrap = document.getElementById('prio-cat-chips');
+    const deprioWrap = document.getElementById('deprio-cat-chips');
+
+    if (prioWrap) {
+      const list = settings.prioritizedCategories || [];
+      if (list.length === 0) {
+        prioWrap.innerHTML = '<span style="font-size:11px;color:var(--text-dim);font-style:italic;">No prioritized categories configured.</span>';
+      } else {
+        prioWrap.innerHTML = '';
+        list.forEach(cat => {
+          const chip = document.createElement('span');
+          chip.className = 'cat-chip chip-prio';
+          chip.innerHTML = `<span>${cat}</span><button type="button" class="cat-chip-remove" title="Remove">&times;</button>`;
+          chip.querySelector('.cat-chip-remove').onclick = () => {
+            settings.prioritizedCategories = settings.prioritizedCategories.filter(c => c !== cat);
+            safeSetStorage(STORAGE_KEY_SETTINGS, settings);
+            renderCategoryChips();
+            calculateDynamicSpacing();
+            renderPipelineQueue();
+            renderCalendar();
+          };
+          prioWrap.appendChild(chip);
+        });
+      }
+    }
+
+    if (deprioWrap) {
+      const list = settings.deprioritizedCategories || [];
+      if (list.length === 0) {
+        deprioWrap.innerHTML = '<span style="font-size:11px;color:var(--text-dim);font-style:italic;">No deprioritized categories configured.</span>';
+      } else {
+        deprioWrap.innerHTML = '';
+        list.forEach(cat => {
+          const chip = document.createElement('span');
+          chip.className = 'cat-chip chip-deprio';
+          chip.innerHTML = `<span>${cat}</span><button type="button" class="cat-chip-remove" title="Remove">&times;</button>`;
+          chip.querySelector('.cat-chip-remove').onclick = () => {
+            settings.deprioritizedCategories = settings.deprioritizedCategories.filter(c => c !== cat);
+            safeSetStorage(STORAGE_KEY_SETTINGS, settings);
+            renderCategoryChips();
+            calculateDynamicSpacing();
+            renderPipelineQueue();
+            renderCalendar();
+          };
+          deprioWrap.appendChild(chip);
+        });
+      }
+    }
+  }
+
+  function syncSettingsControlsToUI() {
+    const setSliderVal = (sId, vId, val, suffix = '', showPaused = false) => {
+      const s = document.getElementById(sId);
+      const v = document.getElementById(vId);
+      if (s) s.value = val;
+      if (v) {
+        v.innerText = showPaused ? formatSliderVal(val) : `${val}${suffix}`;
+        if (showPaused) v.classList.toggle('val-paused', safeInt(val, 0) === 0);
+      }
+    };
+
+    setSliderVal('slider-ig1', 'val-ig1', settings.ig1Posts, '', true);
+    const s1Trial = document.getElementById('slider-ig1-trial');
+    if (s1Trial) s1Trial.max = settings.ig1Posts;
+    setSliderVal('slider-ig1-trial', 'val-ig1-trial', settings.ig1TrialPosts, '', false);
+    setSliderVal('slider-ig2', 'val-ig2', settings.ig2Posts, '', true);
+    setSliderVal('slider-yt', 'val-yt', settings.ytPosts, '', true);
+    setSliderVal('slider-stream-yield', 'val-stream-yield', settings.streamYield, '', false);
+    setSliderVal('slider-clip-spacing', 'val-clip-spacing', settings.clipSpacing, 's', false);
+
+    const nsfwToggle = document.getElementById('toggle-nsfw-censor');
+    if (nsfwToggle) nsfwToggle.checked = Boolean(settings.autoCensorNsfw);
+    const censorSel = document.getElementById('select-censor-mode');
+    if (censorSel) censorSel.value = settings.censorMode || 'blur';
+
+    updateTrialDesc();
+    renderCategoryChips();
   }
 
   function applyRemoteConfig(cfg) {
@@ -1631,44 +1902,49 @@
 
     const ig1 = igAccounts.find(a => a.slot === 1);
     if (ig1) {
-      const reg = ig1.regular_per_day || 0;
-      const trial = ig1.trial_per_day || 0;
-      settings.ig1Posts = reg + trial;
-      settings.ig1TrialPosts = trial;
-
-      const s1 = document.getElementById('slider-ig1');
-      const v1 = document.getElementById('val-ig1');
-      if (s1) s1.value = settings.ig1Posts;
-      if (v1) v1.innerText = settings.ig1Posts;
-
-      const s1Trial = document.getElementById('slider-ig1-trial');
-      const v1Trial = document.getElementById('val-ig1-trial');
-      if (s1Trial) {
-        s1Trial.max = settings.ig1Posts;
-        s1Trial.value = settings.ig1TrialPosts;
-      }
-      if (v1Trial) v1Trial.innerText = settings.ig1TrialPosts;
-      updateTrialDesc();
+      const reg = safeInt(ig1.regular_per_day, 0);
+      const trial = safeInt(ig1.trial_per_day, 0);
+      settings.ig1Posts = ig1.enabled === false ? 0 : (reg + trial);
+      settings.ig1TrialPosts = ig1.enabled === false ? 0 : Math.min(settings.ig1Posts, trial);
     }
 
     const ig2 = igAccounts.find(a => a.slot === 2);
     if (ig2) {
-      settings.ig2Posts = ig2.regular_per_day || 3;
-      const s2 = document.getElementById('slider-ig2');
-      const v2 = document.getElementById('val-ig2');
-      if (s2) s2.value = settings.ig2Posts;
-      if (v2) v2.innerText = settings.ig2Posts;
+      settings.ig2Posts = ig2.enabled === false ? 0 : safeInt(ig2.regular_per_day, 0);
     }
 
     const yt = sched.youtube || {};
     if (yt) {
-      settings.ytPosts = yt.shorts_per_day || 3;
-      const sy = document.getElementById('slider-yt');
-      const vy = document.getElementById('val-yt');
-      if (sy) sy.value = settings.ytPosts;
-      if (vy) vy.innerText = settings.ytPosts;
+      settings.ytPosts = yt.enabled === false ? 0 : safeInt(yt.shorts_per_day, 3);
     }
 
+    if (sched.priority_rules) {
+      if (Array.isArray(sched.priority_rules.prioritized_categories)) {
+        settings.prioritizedCategories = [...sched.priority_rules.prioritized_categories];
+      }
+      if (Array.isArray(sched.priority_rules.deprioritized_categories)) {
+        settings.deprioritizedCategories = [...sched.priority_rules.deprioritized_categories];
+      }
+    }
+
+    const tc = cfg.twitch_clipper || {};
+    if (typeof tc.max_clips_per_vod !== 'undefined') {
+      settings.streamYield = safeInt(tc.max_clips_per_vod, 3);
+    }
+    if (typeof tc.min_clip_spacing_sec !== 'undefined') {
+      settings.clipSpacing = safeInt(tc.min_clip_spacing_sec, 300);
+    }
+
+    const safety = cfg.content_safety || {};
+    if (typeof safety.auto_censor_nsfw === 'boolean') {
+      settings.autoCensorNsfw = safety.auto_censor_nsfw;
+    }
+    if (safety.censor_mode) {
+      settings.censorMode = safety.censor_mode;
+    }
+
+    safeSetStorage(STORAGE_KEY_SETTINGS, settings);
+    syncSettingsControlsToUI();
     calculateDynamicSpacing();
   }
 
@@ -1838,6 +2114,25 @@
       });
     }
 
+    // Preview Modal 4-Tier Priority Buttons
+    document.querySelectorAll('#preview-priority-controls .prio-select-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (selectedClip) {
+          setClipPriority(selectedClip, btn.dataset.setPriority, true);
+        }
+      });
+    });
+
+    // Pipeline Priority Tier Filter Bar
+    document.querySelectorAll('#pipeline-priority-filters .pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        document.querySelectorAll('#pipeline-priority-filters .pill').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        activePrioFilter = pill.dataset.prioFilter || 'all';
+        renderPipelineQueue();
+      });
+    });
+
     const btnDenyClip = document.getElementById('btn-deny-clip');
     if (btnDenyClip) {
       btnDenyClip.addEventListener('click', () => {
@@ -1855,20 +2150,22 @@
     // Start Real-Time Current Time Indicator Loop
     setInterval(updateCurrentTimeIndicator, 30000);
 
-    // 7. Settings Sliders
-    const bindSlider = (id, valId, key, suffix = '') => {
+    // 7. Settings Sliders (Zero-safe: supports 0..8 cleanly)
+    const bindSlider = (id, valId, key, suffix = '', showPaused = false) => {
       const el = document.getElementById(id);
       const valEl = document.getElementById(valId);
       if (!el || !valEl) return;
 
-      if (typeof settings[key] !== 'undefined') {
-        el.value = settings[key];
-        valEl.innerText = `${settings[key]}${suffix}`;
-      }
+      const curVal = safeInt(settings[key], 0);
+      el.value = curVal;
+      valEl.innerText = showPaused ? formatSliderVal(curVal) : `${curVal}${suffix}`;
+      if (showPaused) valEl.classList.toggle('val-paused', curVal === 0);
 
       el.addEventListener('input', () => {
-        valEl.innerText = `${el.value}${suffix}`;
-        settings[key] = parseInt(el.value, 10);
+        const v = safeInt(el.value, 0);
+        valEl.innerText = showPaused ? formatSliderVal(v) : `${v}${suffix}`;
+        if (showPaused) valEl.classList.toggle('val-paused', v === 0);
+        settings[key] = v;
         safeSetStorage(STORAGE_KEY_SETTINGS, settings);
         calculateDynamicSpacing();
         renderCalendar();
@@ -1883,12 +2180,19 @@
     const valIg1Trial = document.getElementById('val-ig1-trial');
 
     if (sliderIg1) {
-      sliderIg1.value = settings.ig1Posts || 3;
-      if (valIg1) valIg1.innerText = settings.ig1Posts || 3;
+      const initIg1 = safeInt(settings.ig1Posts, 0);
+      sliderIg1.value = initIg1;
+      if (valIg1) {
+        valIg1.innerText = formatSliderVal(initIg1);
+        valIg1.classList.toggle('val-paused', initIg1 === 0);
+      }
 
       sliderIg1.addEventListener('input', () => {
-        const total = parseInt(sliderIg1.value, 10);
-        if (valIg1) valIg1.innerText = total;
+        const total = safeInt(sliderIg1.value, 0);
+        if (valIg1) {
+          valIg1.innerText = formatSliderVal(total);
+          valIg1.classList.toggle('val-paused', total === 0);
+        }
         settings.ig1Posts = total;
 
         // Dynamically clamp Trial Reels Share between 0 and total posts
@@ -1909,13 +2213,15 @@
     }
 
     if (sliderIg1Trial) {
-      sliderIg1Trial.max = settings.ig1Posts || 3;
-      sliderIg1Trial.value = settings.ig1TrialPosts || 2;
-      if (valIg1Trial) valIg1Trial.innerText = sliderIg1Trial.value;
+      const initIg1 = safeInt(settings.ig1Posts, 0);
+      const initTrial = Math.min(initIg1, safeInt(settings.ig1TrialPosts, 0));
+      sliderIg1Trial.max = initIg1;
+      sliderIg1Trial.value = initTrial;
+      if (valIg1Trial) valIg1Trial.innerText = initTrial;
       updateTrialDesc();
 
       sliderIg1Trial.addEventListener('input', () => {
-        const trial = parseInt(sliderIg1Trial.value, 10);
+        const trial = safeInt(sliderIg1Trial.value, 0);
         if (valIg1Trial) valIg1Trial.innerText = trial;
         settings.ig1TrialPosts = trial;
         updateTrialDesc();
@@ -1926,10 +2232,107 @@
       });
     }
 
-    bindSlider('slider-ig2', 'val-ig2', 'ig2Posts');
-    bindSlider('slider-yt', 'val-yt', 'ytPosts');
+    bindSlider('slider-ig2', 'val-ig2', 'ig2Posts', '', true);
+    bindSlider('slider-yt', 'val-yt', 'ytPosts', '', true);
     bindSlider('slider-stream-yield', 'val-stream-yield', 'streamYield');
     bindSlider('slider-clip-spacing', 'val-clip-spacing', 'clipSpacing', 's');
+
+    // Stepper Buttons (- / +) for Daily Post Counts (0..8)
+    document.querySelectorAll('.btn-stepper').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetId = btn.dataset.stepTarget;
+        const delta = safeInt(btn.dataset.step, 0);
+        const slider = document.getElementById(targetId);
+        if (!slider) return;
+        const min = safeInt(slider.min, 0);
+        const max = safeInt(slider.max, 8);
+        const nextVal = Math.max(min, Math.min(max, safeInt(slider.value, 0) + delta));
+        slider.value = nextVal;
+        slider.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+    });
+
+    // Category / Game Priority Tag Managers
+    function addPriorityCategory(targetListKey, rawText) {
+      const items = String(rawText || '').split(',').map(s => s.trim()).filter(Boolean);
+      if (items.length === 0) return;
+      if (!Array.isArray(settings[targetListKey])) settings[targetListKey] = [];
+      const otherKey = targetListKey === 'prioritizedCategories' ? 'deprioritizedCategories' : 'prioritizedCategories';
+      if (!Array.isArray(settings[otherKey])) settings[otherKey] = [];
+
+      items.forEach(item => {
+        const lower = item.toLowerCase();
+        // Remove from opposite list if present so rules never conflict
+        settings[otherKey] = settings[otherKey].filter(x => x.toLowerCase() !== lower);
+        if (!settings[targetListKey].some(x => x.toLowerCase() === lower)) {
+          settings[targetListKey].push(item);
+        }
+      });
+      safeSetStorage(STORAGE_KEY_SETTINGS, settings);
+      renderCategoryChips();
+      calculateDynamicSpacing();
+      renderPipelineQueue();
+      renderCalendar();
+    }
+
+    const inputPrioCat = document.getElementById('input-prio-cat');
+    const btnAddPrioCat = document.getElementById('btn-add-prio-cat');
+    if (btnAddPrioCat && inputPrioCat) {
+      btnAddPrioCat.addEventListener('click', () => {
+        addPriorityCategory('prioritizedCategories', inputPrioCat.value);
+        inputPrioCat.value = '';
+      });
+      inputPrioCat.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          addPriorityCategory('prioritizedCategories', inputPrioCat.value);
+          inputPrioCat.value = '';
+        }
+      });
+    }
+
+    const inputDeprioCat = document.getElementById('input-deprio-cat');
+    const btnAddDeprioCat = document.getElementById('btn-add-deprio-cat');
+    if (btnAddDeprioCat && inputDeprioCat) {
+      btnAddDeprioCat.addEventListener('click', () => {
+        addPriorityCategory('deprioritizedCategories', inputDeprioCat.value);
+        inputDeprioCat.value = '';
+      });
+      inputDeprioCat.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          addPriorityCategory('deprioritizedCategories', inputDeprioCat.value);
+          inputDeprioCat.value = '';
+        }
+      });
+    }
+
+    document.querySelectorAll('.preset-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const target = chip.dataset.presetTarget === 'deprioritized' ? 'deprioritizedCategories' : 'prioritizedCategories';
+        addPriorityCategory(target, chip.dataset.presetVal);
+      });
+    });
+
+    // Content Safety / NSFW Censor Controls
+    const nsfwToggle = document.getElementById('toggle-nsfw-censor');
+    if (nsfwToggle) {
+      nsfwToggle.checked = Boolean(settings.autoCensorNsfw);
+      nsfwToggle.addEventListener('change', () => {
+        settings.autoCensorNsfw = nsfwToggle.checked;
+        safeSetStorage(STORAGE_KEY_SETTINGS, settings);
+      });
+    }
+    const censorSel = document.getElementById('select-censor-mode');
+    if (censorSel) {
+      censorSel.value = settings.censorMode || 'blur';
+      censorSel.addEventListener('change', () => {
+        settings.censorMode = censorSel.value;
+        safeSetStorage(STORAGE_KEY_SETTINGS, settings);
+      });
+    }
+
+    renderCategoryChips();
 
     // 8. Hype Mode Toggle
     const hypeToggle = document.getElementById('toggle-hype');
@@ -1937,40 +2340,22 @@
       hypeToggle.addEventListener('change', () => {
         settings.hypeMode = hypeToggle.checked;
         if (settings.hypeMode) {
-          settings.ig1Posts = 4;
-          settings.ig2Posts = 4;
+          settings.ytPosts = Math.max(4, settings.ytPosts);
+          if (settings.ig1Posts > 0) settings.ig1Posts = 4;
+          if (settings.ig2Posts > 0) settings.ig2Posts = 4;
         } else {
-          settings.ig1Posts = 3;
-          settings.ig2Posts = 3;
+          if (settings.ytPosts > 3) settings.ytPosts = 3;
+          if (settings.ig1Posts > 3) settings.ig1Posts = 3;
+          if (settings.ig2Posts > 3) settings.ig2Posts = 3;
         }
-
-        const s1 = document.getElementById('slider-ig1');
-        const v1 = document.getElementById('val-ig1');
-        const s2 = document.getElementById('slider-ig2');
-        const v2 = document.getElementById('val-ig2');
-
-        if (s1) s1.value = settings.ig1Posts;
-        if (v1) v1.innerText = settings.ig1Posts;
-        if (s2) s2.value = settings.ig2Posts;
-        if (v2) v2.innerText = settings.ig2Posts;
-
-        if (sliderIg1Trial) {
-          sliderIg1Trial.max = settings.ig1Posts;
-          if (settings.ig1TrialPosts > settings.ig1Posts) {
-            settings.ig1TrialPosts = settings.ig1Posts;
-            sliderIg1Trial.value = settings.ig1Posts;
-            if (valIg1Trial) valIg1Trial.innerText = settings.ig1Posts;
-          }
-        }
-        updateTrialDesc();
-
+        syncSettingsControlsToUI();
         safeSetStorage(STORAGE_KEY_SETTINGS, settings);
         calculateDynamicSpacing();
         renderCalendar();
       });
     }
 
-    // 9. Save Settings Button
+    // 9. Save Settings Button (Writes ALL daily counts including 0, priority rules, & NSFW shield to GitHub config.json)
     const btnSaveSettings = document.getElementById('btn-save-settings');
     if (btnSaveSettings) {
       btnSaveSettings.addEventListener('click', async () => {
@@ -1978,69 +2363,111 @@
 
         if (auth.pat && !auth.isDemo) {
           try {
+            btnSaveSettings.disabled = true;
             btnSaveSettings.innerText = 'Saving to GitHub...';
             const headers = {
               'Authorization': `token ${auth.pat.trim()}`,
-              'Accept': 'application/vnd.github.v3+json'
+              'Accept': 'application/vnd.github.v3+json',
+              'Content-Type': 'application/json'
             };
             const pBranch = auth.branch || 'master';
 
             // 1. Get current config.json to get sha and existing structure
             const curRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json?ref=${pBranch}`, { headers });
-            if (curRes.ok) {
-              const curData = await curRes.json();
-              const curStr = decodeURIComponent(escape(atob(curData.content)));
-              const cfg = JSON.parse(curStr);
+            if (!curRes.ok) {
+              const errJson = await curRes.json().catch(() => ({}));
+              throw new Error(errJson.message || `Could not read config.json (HTTP ${curRes.status})`);
+            }
+            const curData = await curRes.json();
+            const curStr = decodeURIComponent(escape(atob(curData.content)));
+            const cfg = JSON.parse(curStr);
 
-              // Update config
-              if (!cfg.publishing_schedule) cfg.publishing_schedule = {};
-              if (!cfg.publishing_schedule.youtube) cfg.publishing_schedule.youtube = {};
-              cfg.publishing_schedule.youtube.shorts_per_day = settings.ytPosts;
+            // 2. Update Daily Limits (explicitly supporting 0 = paused)
+            if (!cfg.publishing_schedule) cfg.publishing_schedule = {};
+            if (!cfg.publishing_schedule.youtube) cfg.publishing_schedule.youtube = {};
+            const ytN = Math.max(0, safeInt(settings.ytPosts, 0));
+            cfg.publishing_schedule.youtube.enabled = ytN > 0;
+            cfg.publishing_schedule.youtube.shorts_per_day = ytN;
+            cfg.publishing_schedule.youtube.hard_daily_ceiling = ytN;
 
-              if (Array.isArray(cfg.publishing_schedule.instagram_accounts)) {
-                const acc1 = cfg.publishing_schedule.instagram_accounts.find(a => a.slot === 1);
-                if (acc1) {
-                  acc1.trial_per_day = settings.ig1TrialPosts;
-                  acc1.regular_per_day = Math.max(0, settings.ig1Posts - settings.ig1TrialPosts);
-                  acc1.hard_daily_ceiling = Math.max(acc1.hard_daily_ceiling || 4, settings.ig1Posts);
-                }
-                const acc2 = cfg.publishing_schedule.instagram_accounts.find(a => a.slot === 2);
-                if (acc2) {
-                  acc2.regular_per_day = settings.ig2Posts;
-                  acc2.trial_per_day = 0;
-                  acc2.hard_daily_ceiling = Math.max(acc2.hard_daily_ceiling || 4, settings.ig2Posts);
-                }
+            if (Array.isArray(cfg.publishing_schedule.instagram_accounts)) {
+              const ig1N = Math.max(0, safeInt(settings.ig1Posts, 0));
+              const ig1Trial = Math.min(ig1N, Math.max(0, safeInt(settings.ig1TrialPosts, 0)));
+              const acc1 = cfg.publishing_schedule.instagram_accounts.find(a => a.slot === 1);
+              if (acc1) {
+                acc1.enabled = ig1N > 0;
+                acc1.trial_per_day = ig1Trial;
+                acc1.regular_per_day = Math.max(0, ig1N - ig1Trial);
+                acc1.hard_daily_ceiling = ig1N;
+                if (ig1N > 0) delete acc1.disabled_reason;
               }
 
-              const updatedJsonStr = JSON.stringify(cfg, null, 2);
-              const b64 = btoa(unescape(encodeURIComponent(updatedJsonStr)));
-
-              // Commit updated config.json to GitHub
-              const putRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json`, {
-                method: 'PUT',
-                headers,
-                body: JSON.stringify({
-                  message: 'chore(config): update posting schedule & trial reels share via dashboard',
-                  content: b64,
-                  sha: curData.sha,
-                  branch: pBranch
-                })
-              });
-
-              if (putRes.ok) {
-                alert('Settings saved and committed to GitHub repository (config.json)!');
-              } else {
-                alert('Settings saved locally in dashboard.');
+              const ig2N = Math.max(0, safeInt(settings.ig2Posts, 0));
+              const acc2 = cfg.publishing_schedule.instagram_accounts.find(a => a.slot === 2);
+              if (acc2) {
+                acc2.enabled = ig2N > 0;
+                acc2.regular_per_day = ig2N;
+                acc2.trial_per_day = 0;
+                acc2.hard_daily_ceiling = ig2N;
+                if (ig2N > 0) delete acc2.disabled_reason;
               }
             }
+
+            // 3. Update Category / Game Priority Rules
+            cfg.publishing_schedule.priority_rules = {
+              prioritized_categories: [...(settings.prioritizedCategories || [])],
+              deprioritized_categories: [...(settings.deprioritizedCategories || [])]
+            };
+
+            // 4. Update Clipper Yield & Spacing
+            if (!cfg.twitch_clipper) cfg.twitch_clipper = {};
+            cfg.twitch_clipper.max_clips_per_vod = safeInt(settings.streamYield, 3);
+            cfg.twitch_clipper.min_clip_spacing_sec = safeInt(settings.clipSpacing, 300);
+
+            // 5. Update NSFW Auto-Censor Safety Settings
+            cfg.content_safety = {
+              ...(cfg.content_safety || {}),
+              auto_censor_nsfw: Boolean(settings.autoCensorNsfw),
+              censor_mode: settings.censorMode || 'blur',
+              max_nsfw_ratio_before_reject: (cfg.content_safety && cfg.content_safety.max_nsfw_ratio_before_reject) || 0.65
+            };
+
+            const updatedJsonStr = JSON.stringify(cfg, null, 2);
+            const b64 = btoa(unescape(encodeURIComponent(updatedJsonStr)));
+
+            // Commit updated config.json to GitHub
+            const putRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json`, {
+              method: 'PUT',
+              headers,
+              body: JSON.stringify({
+                message: `chore(config): update daily limits (YT=${ytN}, IG1=${settings.ig1Posts}, IG2=${settings.ig2Posts}) & priority rules via dashboard`,
+                content: b64,
+                sha: curData.sha,
+                branch: pBranch
+              })
+            });
+
+            if (putRes.ok) {
+              calculateDynamicSpacing();
+              renderCalendar();
+              renderPipelineQueue();
+              alert(`Settings saved to GitHub (${pBranch}/config.json)!\n\n• YouTube Shorts: ${ytN}/day\n• IG @solvikz: ${settings.ig1Posts}/day\n• IG @loopablez: ${settings.ig2Posts}/day\n• Prioritized Categories: ${(settings.prioritizedCategories || []).join(', ') || 'None'}\n• Deprioritized Categories: ${(settings.deprioritizedCategories || []).join(', ') || 'None'}`);
+            } else {
+              const errJson = await putRes.json().catch(() => ({}));
+              throw new Error(errJson.message || `GitHub commit failed (HTTP ${putRes.status})`);
+            }
           } catch (e) {
-            console.warn('Failed to commit config to GitHub:', e);
-            alert('Settings saved locally in dashboard.');
+            console.error('Failed to commit config to GitHub:', e);
+            alert(`Failed to save to GitHub: ${e.message}\n\nSettings were saved locally in browser, but NOT committed to GitHub. Check your PAT permissions (needs 'repo' write scope).`);
           } finally {
+            btnSaveSettings.disabled = false;
             btnSaveSettings.innerHTML = '<svg class="icon" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save Settings to Repository';
           }
         } else {
-          alert('Settings saved. Future scheduled slots adjusted. Staged pipeline clips preserved.');
+          calculateDynamicSpacing();
+          renderCalendar();
+          renderPipelineQueue();
+          alert('Demo Mode: Settings saved locally in browser. Connect a GitHub PAT in Setup to commit changes to config.json.');
         }
       });
     }
