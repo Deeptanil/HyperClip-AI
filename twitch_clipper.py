@@ -584,22 +584,23 @@ def _pick_next_ig_action(acc_cfg: dict, acc_stats: dict, last_any_ig: datetime |
         print(f"[-] Daily cap reached for {acc_cfg.get('name', 'IG')} ({total_today}/{effective_cap} today). Refusing to post.")
         return None
 
-    # 2. DYNAMIC SPACING: (24h / posts_per_day) - 30m buffer
-    last_self = acc_stats.get("last")
-    gap_minutes = get_account_interval_minutes(posts_per_day)
-    if last_self:
-        elapsed_self_m = (now_ist - last_self).total_seconds() / 60.0
-        if elapsed_self_m < gap_minutes:
-            remaining_m = int(gap_minutes - elapsed_self_m)
-            print(f"[-] Spacing cooldown active for {acc_cfg.get('name', 'IG')}: {elapsed_self_m/60.0:.1f}h since last post. Must wait {remaining_m}m.")
-            return None
+    # 2. DYNAMIC SPACING: (24h / posts_per_day) - 30m buffer (bypassed if force=True)
+    if not force:
+        last_self = acc_stats.get("last")
+        gap_minutes = get_account_interval_minutes(posts_per_day)
+        if last_self:
+            elapsed_self_m = (now_ist - last_self).total_seconds() / 60.0
+            if elapsed_self_m < gap_minutes:
+                remaining_m = int(gap_minutes - elapsed_self_m)
+                print(f"[-] Spacing cooldown active for {acc_cfg.get('name', 'IG')}: {elapsed_self_m/60.0:.1f}h since last post. Must wait {remaining_m}m.")
+                return None
 
-    # 3. CROSS-ACCOUNT SAFEGUARD: Minimum separation between any two Instagram uploads
-    if last_any_ig:
-        elapsed_cross_m = (now_ist - last_any_ig).total_seconds() / 60.0
-        if elapsed_cross_m < cross_gap_min:
-            print(f"[-] Cross-account IG cooldown active: {elapsed_cross_m:.1f}m since last IG upload. Must wait {cross_gap_min - int(elapsed_cross_m)}m.")
-            return None
+        # 3. CROSS-ACCOUNT SAFEGUARD: Minimum separation between any two Instagram uploads
+        if last_any_ig:
+            elapsed_cross_m = (now_ist - last_any_ig).total_seconds() / 60.0
+            if elapsed_cross_m < cross_gap_min:
+                print(f"[-] Cross-account IG cooldown active: {elapsed_cross_m:.1f}m since last IG upload. Must wait {cross_gap_min - int(elapsed_cross_m)}m.")
+                return None
 
     if reg_count < reg_target:
         return "regular"
@@ -668,7 +669,11 @@ def check_any_platform_can_post(
             if ig_slot is not None and slot != ig_slot:
                 continue
             suffix = "" if slot == 1 else f"_{slot}"
-            if not (os.getenv(f"INSTA_USERNAME{suffix}") and os.getenv(f"INSTA_PASSWORD{suffix}")):
+            meta_token = os.getenv("META_ACCESS_TOKEN")
+            ig_id = os.getenv(f"INSTAGRAM_ACCOUNT_ID{suffix}") if suffix else os.getenv("INSTAGRAM_ACCOUNT_ID")
+            has_meta = bool(meta_token and ig_id)
+            has_instagrapi = bool(os.getenv(f"INSTA_USERNAME{suffix}") and os.getenv(f"INSTA_PASSWORD{suffix}"))
+            if not (has_meta or has_instagrapi):
                 continue
             if ig_kind in ("regular", "trial"):
                 action = ig_kind
@@ -839,14 +844,24 @@ def publish_next_clip(
             elif for_platform == "instagram":
                 if meta.get("posted_to_instagram", False):
                     continue
-                # Match account slot or allow unposted pipeline clip
+
+                assigned_ig = meta.get("assigned_ig")
+                other_slot_tag = "ig_2" if ig_slot == 1 else "ig_1"
+
+                # Strict account isolation: NEVER steal a clip assigned specifically to the other Instagram account
+                if assigned_ig == other_slot_tag:
+                    continue
+                if other_slot_tag in target_accounts and target_tag not in target_accounts:
+                    continue
+
                 is_assigned_this_ig = (
                     (target_tag in target_accounts) or
-                    (meta.get("assigned_ig") == target_tag) or
-                    ("instagram" in target_accounts) or
-                    ("instagram" in target_str) or
-                    meta.get("post_to_ig", False) or
-                    (not meta.get("assigned_ig"))
+                    (assigned_ig == target_tag) or
+                    (not assigned_ig and (
+                        "instagram" in target_accounts or
+                        "instagram" in target_str or
+                        meta.get("post_to_ig", False)
+                    ))
                 )
                 if is_assigned_this_ig:
                     return (cname, cpath, mpath), meta
@@ -930,7 +945,11 @@ def publish_next_clip(
             if ig_slot is not None and slot != ig_slot:
                 continue
             suffix = "" if slot == 1 else f"_{slot}"
-            if not (os.getenv(f"INSTA_USERNAME{suffix}") and os.getenv(f"INSTA_PASSWORD{suffix}")):
+            meta_token = os.getenv("META_ACCESS_TOKEN")
+            ig_id = os.getenv(f"INSTAGRAM_ACCOUNT_ID{suffix}") if suffix else os.getenv("INSTAGRAM_ACCOUNT_ID")
+            has_meta = bool(meta_token and ig_id)
+            has_instagrapi = bool(os.getenv(f"INSTA_USERNAME{suffix}") and os.getenv(f"INSTA_PASSWORD{suffix}"))
+            if not (has_meta or has_instagrapi):
                 continue
 
             if ig_kind in ("regular", "trial"):
