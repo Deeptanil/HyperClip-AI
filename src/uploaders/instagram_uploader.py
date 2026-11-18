@@ -14,54 +14,122 @@ load_dotenv()
 
 SESSION_FILE = "ig_session.json"
 
-def upload_reel_meta_graph(video_url, caption, ig_user_id=None, access_token=None):
+def upload_reel_meta_graph(video_path_or_url: str, caption: str, account_slot: int = 1, ig_user_id: str = None, access_token: str = None) -> tuple[str, str]:
     """
-    Uploads a reel via Meta Graph API (Official).
-    Requires:
-      - video_url: Publicly accessible URL (Google Drive / GitHub release / Cloudinary)
-      - ig_user_id: Instagram Business/Creator Account ID
-      - access_token: Long-lived Meta User/Page Access Token
+    Uploads a reel via the official Meta Graph API (Zero-bot challenge / shadowban immune).
+    Supports:
+      1. Local files via Resumable Upload (rupload.facebook.com) - no public URL needed!
+      2. Publicly accessible URLs.
+    Returns (media_id, permalink_or_url).
     """
-    ig_user_id = ig_user_id or os.getenv("INSTAGRAM_ACCOUNT_ID")
-    access_token = access_token or os.getenv("META_ACCESS_TOKEN")
+    token = access_token or os.getenv("META_ACCESS_TOKEN")
+    if account_slot == 2:
+        user_id = ig_user_id or os.getenv("INSTAGRAM_ACCOUNT_ID_2") or os.getenv("INSTAGRAM_ACCOUNT_ID")
+    else:
+        user_id = ig_user_id or os.getenv("INSTAGRAM_ACCOUNT_ID")
 
-    if not all([ig_user_id, access_token]):
-        raise ValueError("Missing Instagram Graph API credentials (INSTAGRAM_ACCOUNT_ID, META_ACCESS_TOKEN).")
+    if not all([user_id, token]):
+        raise ValueError("Missing Meta Graph API credentials (INSTAGRAM_ACCOUNT_ID / META_ACCESS_TOKEN).")
 
-    print("[*] Creating Instagram Reel media container...")
-    container_endpoint = f"https://graph.facebook.com/v20.0/{ig_user_id}/media"
-    payload = {
-        "media_type": "REELS",
-        "video_url": video_url,
-        "caption": caption,
-        "access_token": access_token
-    }
+    is_local_file = os.path.exists(video_path_or_url)
+    api_ver = "v21.0"
+    base_graph = f"https://graph.facebook.com/{api_ver}"
 
-    res = requests.post(container_endpoint, data=payload).json()
-    if "id" not in res:
-        raise RuntimeError(f"Failed to create Instagram container: {res}")
+    print(f"[*] Initializing Meta Graph API Reel container (Slot {account_slot}, Account ID {user_id})...")
+    container_endpoint = f"{base_graph}/{user_id}/media"
 
-    creation_id = res["id"]
+    if is_local_file:
+        file_size = os.path.getsize(video_path_or_url)
+        payload = {
+            "media_type": "REELS",
+            "upload_type": "resumable",
+            "caption": caption,
+            "access_token": token,
+        }
+        res = requests.post(container_endpoint, data=payload, timeout=30).json()
+        if "id" not in res:
+            raise RuntimeError(f"Failed to create Instagram resumable container: {res}")
 
-    # Wait for Instagram video processing
-    status_endpoint = f"https://graph.facebook.com/v20.0/{creation_id}"
-    print("[*] Waiting for Instagram video processing...")
-    for _ in range(30):
+        creation_id = res["id"]
+        upload_uri = res.get("uri") or f"https://rupload.facebook.com/ig-api-upload/{api_ver}/{creation_id}"
+
+        print(f"[*] Uploading binary video file ({file_size / (1024*1024):.2f} MB) to Meta Ruploader...")
+        upload_headers = {
+            "Authorization": f"OAuth {token}",
+            "offset": "0",
+            "file_size": str(file_size),
+            "Content-Type": "application/octet-stream",
+        }
+        with open(video_path_or_url, "rb") as f:
+            up_res = requests.post(upload_uri, headers=upload_headers, data=f, timeout=180)
+            if up_res.status_code not in (200, 201):
+                raise RuntimeError(f"Resumable video upload failed ({up_res.status_code}): {up_res.text}")
+    else:
+        payload = {
+            "media_type": "REELS",
+            "video_url": video_path_or_url,
+            "caption": caption,
+            "access_token": token,
+        }
+        res = requests.post(container_endpoint, data=payload, timeout=30).json()
+        if "id" not in res:
+            raise RuntimeError(f"Failed to create Instagram container: {res}")
+        creation_id = res["id"]
+
+    # Poll status
+    status_endpoint = f"{base_graph}/{creation_id}"
+    print(f"[*] Waiting for Instagram to process video container ({creation_id})...")
+    for attempt in range(40):
         time.sleep(5)
-        check = requests.get(status_endpoint, params={"fields": "status_code", "access_token": access_token}).json()
+        check = requests.get(status_endpoint, params={"fields": "status_code", "access_token": token}, timeout=15).json()
         status = check.get("status_code")
+        print(f"    Container status: {status} (check {attempt+1}/40)")
         if status == "FINISHED":
             break
         elif status == "ERROR":
             raise RuntimeError(f"Instagram video processing failed: {check}")
 
-    # Publish the container
-    print("[*] Publishing Reel...")
-    publish_endpoint = f"https://graph.facebook.com/v20.0/{ig_user_id}/media_publish"
-    pub_res = requests.post(publish_endpoint, data={"creation_id": creation_id, "access_token": access_token}).json()
-    reel_id = pub_res.get("id")
-    print(f"[+] Published Instagram Reel ID: {reel_id}")
-    return reel_id
+    # Publish container
+    print(f"[*] Publishing media container ({creation_id}) to Instagram...")
+    pub_res = requests.post(
+        f"{base_graph}/{user_id}/media_publish",
+        data={"creation_id": creation_id, "access_token": token},
+        timeout=30
+    ).json()
+
+    if "id" not in pub_res:
+        raise RuntimeError(f"Failed to publish Instagram container: {pub_res}")
+
+    media_id = pub_res["id"]
+    permalink = f"https://instagram.com/reel/{media_id}"
+    try:
+        media_info = requests.get(f"{base_graph}/{media_id}", params={"fields": "permalink", "access_token": token}, timeout=10).json()
+        if media_info.get("permalink"):
+            permalink = media_info["permalink"]
+    except Exception:
+        pass
+
+    print(f"[+] Published Official Meta Instagram Reel: {permalink} (ID: {media_id})")
+    return media_id, permalink
+
+
+def upload_reel(video_path: str, caption: str, account_slot: int = 1, trial: bool = False, **kwargs) -> str:
+    """
+    Smart hybrid Instagram Reel uploader:
+    1. Primary: Official Meta Graph API (resumable local file upload) - Zero bot blocks or shadowbans.
+    2. Fallback: instagrapi session-based uploader if Meta Graph API token is not configured.
+    """
+    token = os.getenv("META_ACCESS_TOKEN")
+    ig_id = os.getenv("INSTAGRAM_ACCOUNT_ID_2" if account_slot == 2 else "INSTAGRAM_ACCOUNT_ID")
+    if token and ig_id:
+        try:
+            _, permalink = upload_reel_meta_graph(video_path, caption, account_slot=account_slot)
+            return permalink
+        except Exception as e:
+            print(f"[!] Meta Graph API upload attempt failed ({e}). Falling back to direct session...")
+
+    code = upload_reel_direct(video_path, caption, account_slot=account_slot, trial=trial)
+    return f"https://instagram.com/reel/{code}"
 
 def upload_reel_direct(video_path, caption, username=None, password=None, challenge_code=None, account_slot=1, trial=False):
     """

@@ -28,7 +28,7 @@ from src.twitch_clipper.hook_generator import generate_hook_text, render_hook_ba
 from src.twitch_clipper.content_judge import evaluate_clip_quality
 from src.twitch_clipper.nsfw_censor import scan_and_censor_nsfw
 from src.uploaders.youtube_uploader import upload_short
-from src.uploaders.instagram_uploader import upload_reel_direct
+from src.uploaders.instagram_uploader import upload_reel, upload_reel_direct
 
 CONFIG_FILE = "config.json"
 STATE_FILE = "clipper_state.json"
@@ -839,11 +839,14 @@ def publish_next_clip(
             elif for_platform == "instagram":
                 if meta.get("posted_to_instagram", False):
                     continue
-                # Match account slot
+                # Match account slot or allow unposted pipeline clip
                 is_assigned_this_ig = (
                     (target_tag in target_accounts) or
                     (meta.get("assigned_ig") == target_tag) or
-                    (not target_accounts and not meta.get("assigned_ig"))  # Legacy clip without tag
+                    ("instagram" in target_accounts) or
+                    ("instagram" in target_str) or
+                    meta.get("post_to_ig", False) or
+                    (not meta.get("assigned_ig"))
                 )
                 if is_assigned_this_ig:
                     return (cname, cpath, mpath), meta
@@ -953,8 +956,8 @@ def publish_next_clip(
             caption = meta.get("caption", f"{title} #reels #twitch #gaming")
 
             try:
-                code = upload_reel_direct(cpath, caption, account_slot=slot, trial=(action_kind == "trial"))
-                results["uploads"][f"instagram_{slot}_{action_kind}"] = f"https://instagram.com/reel/{code}"
+                permalink = upload_reel(cpath, caption, account_slot=slot, trial=(action_kind == "trial"))
+                results["uploads"][f"instagram_{slot}_{action_kind}"] = permalink
                 results["upload_clip_map"][f"instagram_{slot}_{action_kind}"] = cname
                 results["upload_captions"][f"instagram_{slot}_{action_kind}"] = caption
                 results["clips_used"].append(cname)
