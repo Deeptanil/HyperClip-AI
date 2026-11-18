@@ -91,18 +91,20 @@
       {
         "slot": 1,
         "name": "Main IG",
-        "enabled": true,
-        "regular_per_day": 1,
+        "enabled": false,
+        "disabled_reason": "Automations stopped. Moving to official Meta Graph API.",
+        "regular_per_day": 0,
         "trial_per_day": 0,
-        "hard_daily_ceiling": 4
+        "hard_daily_ceiling": 0
       },
       {
         "slot": 2,
         "name": "Clip Page IG",
-        "enabled": true,
-        "regular_per_day": 1,
+        "enabled": false,
+        "disabled_reason": "Automations stopped. Moving to official Meta Graph API.",
+        "regular_per_day": 0,
         "trial_per_day": 0,
-        "hard_daily_ceiling": 4
+        "hard_daily_ceiling": 0
       }
     ]
   },
@@ -114,9 +116,10 @@
     "max_posted_archive_days": 7
   },
   "story_studio": {
-    "max_daily_posts": 2,
+    "enabled": false,
+    "max_daily_posts": 0,
     "min_gap_hours": 5,
     "instagram_account_slot": 1,
-    "post_24_7": true
+    "post_24_7": false
   }
 }

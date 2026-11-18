@@ -250,7 +250,9 @@ async def stage_new_video(category=None, topic=None, style_mode="historical_cart
 
 async def run_pipeline(platforms=None, force=False):
     if platforms is None:
-        platforms = ["youtube", "instagram"]
+        platforms = ["youtube"]
+    # Safety: Filter out Instagram to protect account from automated scraping bans
+    platforms = [p for p in platforms if p != "instagram"]
 
     if os.path.exists("config.json"):
         try:
@@ -381,7 +383,7 @@ async def run_pipeline(platforms=None, force=False):
 
 def main():
     parser = argparse.ArgumentParser(description="Autonomous Storytelling Pipeline & Publisher")
-    parser.add_argument("--platforms", nargs="+", choices=["youtube", "instagram", "tiktok"], default=["youtube", "instagram"])
+    parser.add_argument("--platforms", nargs="+", choices=["youtube", "instagram", "tiktok"], default=["youtube"])
     parser.add_argument("--force", action="store_true", help="Force publish immediately, bypassing time window & quota checks")
     parser.add_argument("--stage-only", action="store_true", help="Stage a new video in pipeline without publishing")
     args = parser.parse_args()

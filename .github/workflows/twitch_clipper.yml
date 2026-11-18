@@ -17,10 +17,10 @@ on:
         type: boolean
         default: false
       platforms:
-        description: 'Platforms to publish to (space separated, e.g. youtube instagram)'
+        description: 'Platforms to publish to (space separated, e.g. youtube)'
         required: false
         type: string
-        default: 'youtube instagram'
+        default: 'youtube'
       ig_slot:
         description: 'Optional Instagram slot override (1 or 2)'
         required: false
@@ -92,7 +92,7 @@ jobs:
           INSTA_SESSION_DATA_2: ${{ secrets.INSTA_SESSION_DATA_2 }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          PLATFORMS="${{ github.event.inputs.platforms || 'youtube instagram' }}"
+          PLATFORMS="${{ github.event.inputs.platforms || 'youtube' }}"
           EXTRA_ARGS=""
           if [ -n "${{ github.event.inputs.ig_slot }}" ]; then
             EXTRA_ARGS="$EXTRA_ARGS --ig-slot ${{ github.event.inputs.ig_slot }}"

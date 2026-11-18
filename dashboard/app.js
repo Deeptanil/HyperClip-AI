@@ -1592,19 +1592,29 @@
     const ytDescEl = document.getElementById('yt-stat-desc');
 
     if (ig1DescEl) {
-      const trial = typeof settings.ig1TrialPosts !== 'undefined' ? settings.ig1TrialPosts : 1;
-      const prefix = trial > 0 ? 'Trial Eligible' : 'Regular Reels';
-      const info = computeDesc(lastIg1Ts, ig1MinGap, prefix);
-      ig1DescEl.innerText = info.text;
-      if (info.isReady) ig1DescEl.classList.add('highlight');
-      else ig1DescEl.classList.remove('highlight');
+      if (!settings.ig1Posts || settings.ig1Posts === 0) {
+        ig1DescEl.innerText = 'Paused • Protection Active';
+        ig1DescEl.classList.remove('highlight');
+      } else {
+        const trial = typeof settings.ig1TrialPosts !== 'undefined' ? settings.ig1TrialPosts : 1;
+        const prefix = trial > 0 ? 'Trial Eligible' : 'Regular Reels';
+        const info = computeDesc(lastIg1Ts, ig1MinGap, prefix);
+        ig1DescEl.innerText = info.text;
+        if (info.isReady) ig1DescEl.classList.add('highlight');
+        else ig1DescEl.classList.remove('highlight');
+      }
     }
 
     if (ig2DescEl) {
-      const info = computeDesc(lastIg2Ts, ig2MinGap, 'Regular Reels');
-      ig2DescEl.innerText = info.text;
-      if (info.isReady) ig2DescEl.classList.add('highlight');
-      else ig2DescEl.classList.remove('highlight');
+      if (!settings.ig2Posts || settings.ig2Posts === 0) {
+        ig2DescEl.innerText = 'Paused • Protection Active';
+        ig2DescEl.classList.remove('highlight');
+      } else {
+        const info = computeDesc(lastIg2Ts, ig2MinGap, 'Regular Reels');
+        ig2DescEl.innerText = info.text;
+        if (info.isReady) ig2DescEl.classList.add('highlight');
+        else ig2DescEl.classList.remove('highlight');
+      }
     }
 
     if (ytDescEl) {

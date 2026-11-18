@@ -67,9 +67,9 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           if [ "${{ inputs.force }}" = "true" ]; then
-            python auto_poster.py --platforms youtube instagram --force
+            python auto_poster.py --platforms youtube --force
           else
-            python auto_poster.py --platforms youtube instagram
+            python auto_poster.py --platforms youtube
           fi
 
       - name: Commit Content Updates to Dedicated 'content' Branch

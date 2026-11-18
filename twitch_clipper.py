@@ -341,35 +341,45 @@ def harvest_clips(config: dict, max_total_new: int = 4) -> list:
                         f"#{target['username']} #{game_tag} {hashtags}"
                     )
 
-                # Account Assignment & 50% YouTube Ratio:
-                # 2 Instagrams (@solvikz and @loopablez) vs 1 YouTube channel.
-                # 1. Instagram: Alternate between ig_1 and ig_2 based on current queue count.
-                ig1_queued = 0
-                ig2_queued = 0
-                for f in os.listdir(STREAM_PIPELINE_DIR):
-                    if f.endswith(".json"):
-                        cm = _load_json(os.path.join(STREAM_PIPELINE_DIR, f), {})
-                        accs = cm.get("target_accounts", [])
-                        if "ig_1" in accs or cm.get("assigned_ig") == "ig_1":
-                            ig1_queued += 1
-                        if "ig_2" in accs or cm.get("assigned_ig") == "ig_2":
-                            ig2_queued += 1
+                # Account Assignment & YouTube Ratio:
+                sched = config.get("publishing_schedule", {})
+                ig_accounts = sched.get("instagram_accounts", [])
+                ig_any_enabled = any(a.get("enabled", False) for a in ig_accounts)
 
-                assigned_ig = "ig_1" if ig1_queued <= ig2_queued else "ig_2"
-                ig_name = "Solvikz" if assigned_ig == "ig_1" else "Loopablez"
-
-                # 2. YouTube: Exactly 50% of clips generated will be posted on YouTube.
-                # Toggle per clip generated so 1 out of every 2 clips has YouTube assigned.
-                yt_toggle = state.get("yt_toggle", True)
-                schedule_for_yt = yt_toggle
-                state["yt_toggle"] = not yt_toggle
-
-                target_accounts = [assigned_ig]
-                if schedule_for_yt:
-                    target_accounts.append("youtube")
-                    target_label = f"Instagram (@{ig_name.lower()}) & YouTube"
+                if not ig_any_enabled:
+                    # Instagram automations PAUSED to protect account integrity. Route 100% of clips to YouTube Shorts!
+                    schedule_for_yt = True
+                    target_accounts = ["youtube"]
+                    target_label = "YouTube Shorts"
+                    assigned_ig = None
                 else:
-                    target_label = f"Instagram (@{ig_name.lower()}) Only"
+                    # 2 Instagrams (@solvikz and @loopablez) vs 1 YouTube channel.
+                    # 1. Instagram: Alternate between ig_1 and ig_2 based on current queue count.
+                    ig1_queued = 0
+                    ig2_queued = 0
+                    for f in os.listdir(STREAM_PIPELINE_DIR):
+                        if f.endswith(".json"):
+                            cm = _load_json(os.path.join(STREAM_PIPELINE_DIR, f), {})
+                            accs = cm.get("target_accounts", [])
+                            if "ig_1" in accs or cm.get("assigned_ig") == "ig_1":
+                                ig1_queued += 1
+                            if "ig_2" in accs or cm.get("assigned_ig") == "ig_2":
+                                ig2_queued += 1
+
+                    assigned_ig = "ig_1" if ig1_queued <= ig2_queued else "ig_2"
+                    ig_name = "Solvikz" if assigned_ig == "ig_1" else "Loopablez"
+
+                    # 2. YouTube: Exactly 50% of clips generated will be posted on YouTube.
+                    yt_toggle = state.get("yt_toggle", True)
+                    schedule_for_yt = yt_toggle
+                    state["yt_toggle"] = not yt_toggle
+
+                    target_accounts = [assigned_ig]
+                    if schedule_for_yt:
+                        target_accounts.append("youtube")
+                        target_label = f"Instagram (@{ig_name.lower()}) & YouTube"
+                    else:
+                        target_label = f"Instagram (@{ig_name.lower()}) Only"
 
                 meta = {
                     "streamer": target["display_name"],
@@ -636,7 +646,15 @@ def publish_next_clip(
     ig_kind: str = None,
 ) -> dict:
     if platforms is None:
-        platforms = ["youtube", "instagram"]
+        platforms = ["youtube"]
+
+    sched = config.get("publishing_schedule", {})
+    ig_accounts = sched.get("instagram_accounts", [])
+    ig_any_enabled = any(a.get("enabled", False) for a in ig_accounts)
+    if "instagram" in platforms and not ig_any_enabled:
+        print("[!] NOTICE: Instagram posting is PAUSED to protect account from automated scraping flags.")
+        print("[*] Continuing exclusively with YouTube Shorts.")
+        platforms = [p for p in platforms if p != "instagram"]
 
     # Step 1: Early Gatekeeper - check timestamps & cooldowns before touching any media
     can_post, reason, eligible = check_any_platform_can_post(
@@ -928,7 +946,7 @@ if __name__ == "__main__":
     parser.add_argument("--harvest-only", action="store_true", help="Only scan and stage clips without posting")
     parser.add_argument("--check-only", action="store_true", help="Check live/VOD targets and exit")
     parser.add_argument("--force", action="store_true", help="Bypass daily cap and cooldown")
-    parser.add_argument("--platforms", nargs="+", default=["youtube", "instagram"])
+    parser.add_argument("--platforms", nargs="+", default=["youtube"])
     parser.add_argument("--ig-slot", type=int, default=None, help="Target a specific IG account slot (1 or 2)")
     parser.add_argument("--ig-kind", choices=["auto", "regular", "trial"], default="auto", help="Force IG post type")
     args = parser.parse_args()
