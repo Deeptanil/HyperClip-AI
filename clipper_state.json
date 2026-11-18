@@ -164,46 +164,64 @@
       ]
     },
     "2932113307": {
-      "last_scanned_sec": 41400,
+      "last_scanned_sec": 44016,
       "clipped_peaks": [
-        11337
+        11337,
+        42157
       ]
     },
     "2932185714": {
-      "last_scanned_sec": 29250,
+      "last_scanned_sec": 31860,
       "clipped_peaks": [
         20567,
         9662,
-        11467
+        11467,
+        29937,
+        31357
       ]
     },
     "2932190650": {
-      "last_scanned_sec": 28554,
+      "last_scanned_sec": 31164,
       "clipped_peaks": [
         2737,
         962,
         562,
-        4442
+        4442,
+        30977,
+        30612
       ]
     },
     "2932194507": {
-      "last_scanned_sec": 2958,
-      "clipped_peaks": []
+      "last_scanned_sec": 30606,
+      "clipped_peaks": [
+        3357,
+        29807,
+        7367
+      ]
     },
     "2932305259": {
-      "last_scanned_sec": 17874,
+      "last_scanned_sec": 20490,
       "clipped_peaks": [
         16447,
         16982
       ]
     },
     "2932204601": {
-      "last_scanned_sec": 26616,
+      "last_scanned_sec": 29232,
       "clipped_peaks": [
         25507,
-        25852
+        25852,
+        29087,
+        27932
+      ]
+    },
+    "2932442046": {
+      "last_scanned_sec": 9180,
+      "clipped_peaks": [
+        8637,
+        8017
       ]
     }
   },
-  "yt_toggle": true
+  "yt_toggle": false
 }

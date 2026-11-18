@@ -9,17 +9,16 @@
   "title": "HE FOUND HIMSELF IN GTA VI \ud83e\udd2f",
   "caption": "Bro actually thought he was the main character in New Zealand \ud83d\udc80 #gta6 #jasontheween #gamingmoments",
   "hook": "HE FOUND HIMSELF IN GTA VI \ud83e\udd2f",
-  "target_accounts": [
-    "ig_2",
-    "youtube"
-  ],
+  "target_accounts": [],
   "assigned_ig": "ig_2",
   "post_to_yt": true,
   "post_to_ig": true,
-  "posted_to_instagram": false,
-  "posted_to_youtube": false,
+  "posted_to_instagram": true,
+  "posted_to_youtube": true,
   "approval_status": "pending",
   "target": "Instagram (@loopablez) & YouTube",
   "created_at": "2026-11-18T11:04:02.424930+00:00",
-  "timestamp": "2026-11-18T11:04:02.424947+00:00"
+  "timestamp": "2026-11-18T11:04:02.424947+00:00",
+  "youtube_url": "https://youtube.com/shorts/dBKVWBjjdX8",
+  "instagram_url": "https://www.instagram.com/reel/Df5LAFHiTPN/"
 }
