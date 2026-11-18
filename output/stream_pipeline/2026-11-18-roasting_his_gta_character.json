@@ -1,0 +1,28 @@
+{
+  "streamer": "Clix",
+  "username": "clix",
+  "vod_id": "2932204601",
+  "game": "Grand Theft Auto VI",
+  "peak_sec": 25507,
+  "hype_score": 67.25,
+  "z_score": 3.39,
+  "title": "ROASTING HIS GTA CHARACTER \ud83d\udc80\ud83d\udd25",
+  "caption": "Clix loses it over his chat making fun of his GTA character \ud83d\ude2d #GTA6 #Clix #GTAOnline",
+  "hook": "ROASTING HIS GTA CHARACTER \ud83d\udc80\ud83d\udd25",
+  "target_accounts": [
+    "ig_2",
+    "youtube"
+  ],
+  "assigned_ig": "ig_2",
+  "post_to_yt": true,
+  "post_to_ig": true,
+  "posted_to_instagram": false,
+  "posted_to_youtube": false,
+  "approval_status": "pending",
+  "priority": "auto",
+  "nsfw_censored": false,
+  "nsfw_segments": [],
+  "target": "Instagram (@loopablez) & YouTube",
+  "created_at": "2026-11-18T18:07:23.431315+00:00",
+  "timestamp": "2026-11-18T18:07:23.431334+00:00"
+}
