@@ -130,7 +130,9 @@
   "content_safety": {
     "auto_censor_nsfw": true,
     "censor_mode": "blur",
-    "max_nsfw_ratio_before_reject": 0.65
+    "max_nsfw_ratio_before_reject": 0.65,
+    "auto_bleep_profanity": true,
+    "censor_caption_profanity": true
   },
   "story_studio": {
     "enabled": false,

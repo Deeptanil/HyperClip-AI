@@ -293,6 +293,7 @@ def frame_to_portrait(
     outro_mp4: str = "assets/outro_bleep.mp4",
     streamer: str = None,
     game: str = None,
+    bleep_segments: list = None,
 ) -> str:
     """
     Renders a 1080x1920 solid-black background portrait clip.
@@ -302,7 +303,7 @@ def frame_to_portrait(
     - outro_mp4: appends retro NO SIGNAL glitch outro with censor bleep for the final 2 seconds.
     """
     os.makedirs(os.path.dirname(os.path.abspath(output_mp4)), exist_ok=True)
-    w, h, _ = get_video_dimensions(input_mp4)
+    w, h, dur = get_video_dimensions(input_mp4)
 
     facecam = None
     if layout == "auto_stacked":
@@ -354,12 +355,32 @@ def frame_to_portrait(
                 f"pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black{sub_filter}[vout]"
             )
 
+    dur_val = float(dur) if dur else 60.0
+    audio_map = []
+    if bleep_segments:
+        print(f"[*] Applying 1000Hz audio bleep filter graph to {len(bleep_segments)} profanity segment(s)...")
+        conds = "+".join([f"between(t,{s:.3f},{e:.3f})" for s, e in bleep_segments])
+        audio_filter_str = (
+            f";[0:a]volume=enable='{conds}':volume=0[clean_a];"
+            f"sine=frequency=1000:duration={dur_val + 5.0}[beep_raw];"
+            f"[beep_raw]volume=enable='{conds}':volume=0.28,volume=enable='not({conds})':volume=0[beep_gated];"
+            f"[clean_a][beep_gated]amix=inputs=2:duration=first:dropout_transition=0,loudnorm=I=-16:TP=-1.5:LRA=11[aout]"
+        )
+        filter_complex += audio_filter_str
+        audio_map = ["[aout]"]
+    else:
+        audio_map = ["0:a?"]
+
     temp_framed = output_mp4 + ".tmp_framed.mp4"
     cmd.extend([
         "-filter_complex", filter_complex,
         "-map", "[vout]",
-        "-map", "0:a?",
-        "-af", "loudnorm=I=-16:TP=-1.5:LRA=11",
+    ])
+    for am in audio_map:
+        cmd.extend(["-map", am])
+    if not bleep_segments:
+        cmd.extend(["-af", "loudnorm=I=-16:TP=-1.5:LRA=11"])
+    cmd.extend([
         "-c:v", "libx264",
         "-preset", "fast",
         "-crf", "22",

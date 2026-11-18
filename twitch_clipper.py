@@ -284,9 +284,17 @@ def harvest_clips(config: dict, max_total_new: int = 4) -> list:
                 )
 
                 sub_file = None
+                bleep_segments = []
+                safety_cfg = config.get("content_safety", {})
+                do_bleep = safety_cfg.get("auto_bleep_profanity", True)
+                do_censor_caps = safety_cfg.get("censor_caption_profanity", True)
+
                 if tc.get("enable_captions", True):
-                    sub_file = generate_clip_captions(
-                        raw_clip, ass_path, model_size=tc.get("whisper_model", "tiny.en")
+                    sub_file, bleep_segments = generate_clip_captions(
+                        raw_clip,
+                        ass_path,
+                        model_size=tc.get("whisper_model", "tiny.en"),
+                        censor_profanity=do_censor_caps,
                     )
 
                 transcript_text = _extract_transcript_from_ass(sub_file)
@@ -348,6 +356,7 @@ def harvest_clips(config: dict, max_total_new: int = 4) -> list:
                     layout=tc.get("layout", "auto_stacked"),
                     streamer=target["username"],
                     game=target.get("game", ""),
+                    bleep_segments=bleep_segments if do_bleep else None,
                 )
 
                 game_tag = slugify(target.get("game", "gaming")).replace("_", "")
@@ -422,6 +431,8 @@ def harvest_clips(config: dict, max_total_new: int = 4) -> list:
                     "priority": "auto",
                     "nsfw_censored": nsfw_res.get("action") == "censored",
                     "nsfw_segments": nsfw_res.get("segments", []),
+                    "profanity_bleeped": bool(bleep_segments),
+                    "bleep_segments": bleep_segments,
                     "target": target_label,
                     "created_at": datetime.now(timezone.utc).isoformat(),
                     "timestamp": datetime.now(timezone.utc).isoformat(),
