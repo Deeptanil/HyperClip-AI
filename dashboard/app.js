@@ -1534,7 +1534,17 @@
   }
 
   // --- Real GitHub REST API Integration & Data Engine ---
-  async function syncWithGitHub() {
+  let isSyncing = false;
+  let lastSyncDate = null;
+
+  async function syncWithGitHub(isManual = false) {
+    if (isSyncing) return;
+    isSyncing = true;
+
+    const btnSync = document.getElementById('btn-sync');
+    const syncIcon = btnSync ? btnSync.querySelector('.icon') : null;
+    if (syncIcon) syncIcon.classList.add('spin-icon');
+
     const statusText = document.getElementById('conn-status-text');
     const dot = document.getElementById('conn-dot');
 
@@ -1542,12 +1552,14 @@
       if (dot) dot.className = 'dot yellow';
       if (statusText) statusText.innerText = 'Demo Mode (Read-Only)';
       loadDemoData();
+      isSyncing = false;
+      if (syncIcon) syncIcon.classList.remove('spin-icon');
       return;
     }
 
     try {
-      if (statusText) statusText.innerText = 'Connecting to GitHub...';
-      if (dot) dot.className = 'dot yellow';
+      if (statusText && isManual) statusText.innerText = 'Syncing from GitHub...';
+      if (dot && isManual) dot.className = 'dot yellow';
 
       const cleanPat = auth.pat.trim();
       const headers = {
@@ -1804,13 +1816,21 @@
       renderCalendar();
       renderPipelineQueue();
 
+      lastSyncDate = new Date();
+      const timeStr = lastSyncDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
       if (dot) dot.className = 'dot online';
-      if (statusText) statusText.innerText = `Connected: ${auth.repo} (${pipelineClips.length} in queue, ${postedClips.length} posted)`;
+      if (statusText) statusText.innerText = `Connected: ${auth.repo} (Synced ${timeStr}) • ${pipelineClips.length} in queue, ${postedClips.length} posted`;
     } catch (err) {
       console.error('GitHub API Sync Error:', err);
       if (dot) dot.className = 'dot danger';
       if (statusText) statusText.innerText = `Auth Error: ${err.message || 'Check Token'}`;
-      alert(`GitHub Sync Failed: ${err.message || 'Could not connect'}\n\nPlease verify that your token has 'repo' and 'workflow' scopes.`);
+      if (isManual) {
+        alert(`GitHub Sync Failed: ${err.message || 'Could not connect'}\n\nPlease verify that your token has 'repo' and 'workflow' scopes.`);
+      }
+    } finally {
+      isSyncing = false;
+      if (syncIcon) syncIcon.classList.remove('spin-icon');
     }
   }
 
@@ -2593,7 +2613,7 @@
 
     // 10. Diagnostics and Action Triggers
     const btnSync = document.getElementById('btn-sync');
-    if (btnSync) btnSync.addEventListener('click', syncWithGitHub);
+    if (btnSync) btnSync.addEventListener('click', () => syncWithGitHub(true));
 
     // Generic helper to dispatch GitHub Actions workflows via GitHub API
     async function triggerGitHubWorkflow(workflowFile, inputs = {}) {
@@ -2770,10 +2790,31 @@
     if (!auth.pat || auth.isDemo) {
       loadDemoData();
     } else {
-      syncWithGitHub();
+      syncWithGitHub(false);
     }
-    // Live real-time cooldown countdown ticker
-    setInterval(updateCooldownDisplays, 30000);
+
+    // Live real-time cooldown countdown ticker (every 10s)
+    setInterval(updateCooldownDisplays, 10000);
+
+    // Continuous auto-sync with GitHub every 15 seconds
+    setInterval(() => {
+      if (auth.pat && !auth.isDemo && !isSyncing) {
+        syncWithGitHub(false);
+      }
+    }, 15000);
+
+    // Instant auto-sync whenever the user switches back to the tab or focuses window
+    window.addEventListener('focus', () => {
+      if (auth.pat && !auth.isDemo && !isSyncing) {
+        syncWithGitHub(false);
+      }
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && auth.pat && !auth.isDemo && !isSyncing) {
+        syncWithGitHub(false);
+      }
+    });
   }
 
   if (document.readyState === 'loading') {
