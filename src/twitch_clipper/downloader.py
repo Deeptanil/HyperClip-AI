@@ -94,9 +94,9 @@ def download_chat(vod_id: str, output_json: str, start_sec: int = None, end_sec:
         cli, "chatdownload",
         "-u", str(vod_id),
         "-o", output_json,
-        "--bttv", "true",
-        "--ffz", "true",
-        "--stv", "true",
+        "--bttv", "false",
+        "--ffz", "false",
+        "--stv", "false",
         "--chat-connections", "4",
     ]
     if start_sec is not None and start_sec > 0:

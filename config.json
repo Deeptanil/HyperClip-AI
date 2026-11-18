@@ -61,7 +61,10 @@
         ]
       }
     },
-    "target_games": [],
+    "target_games": [
+      "Grand Theft Auto VI",
+      "Grand Theft Auto V"
+    ],
     "min_stream_minutes": 30,
     "intro_skip_sec": 480,
     "outro_skip_sec": 360,

@@ -227,8 +227,11 @@ def harvest_clips(config: dict, max_total_new: int = 4) -> list:
 
         chat_json = os.path.join(TEMP_DIR, f"chat_{vod_id}.json")
         try:
-            # For live VODs, scan from last_sec up to current dur_sec (or full if first scan)
-            scan_start = max(0, last_sec - 30) if last_sec > 0 else 0
+            # For live VODs, scan from last_sec or most recent 25 mins of live action
+            if target.get("is_live"):
+                scan_start = max(0, last_sec - 30) if last_sec > 0 else max(0, dur_sec - 1500)
+            else:
+                scan_start = max(0, last_sec - 30) if last_sec > 0 else 0
             download_chat(vod_id, chat_json, start_sec=scan_start if scan_start > 0 else None)
         except Exception as e:
             print(f"[-] Chat download failed for {target['username']} ({vod_id}): {e}")

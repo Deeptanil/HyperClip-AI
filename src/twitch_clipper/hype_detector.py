@@ -80,13 +80,25 @@ def detect_hype_moments(
         if len(buckets[b_idx]["texts"]) < 6:
             buckets[b_idx]["texts"].append(body)
 
-    if max_offset < 60 or not buckets:
+    offsets = [float(c.get("content_offset_seconds", 0.0)) for c in comments if float(c.get("content_offset_seconds", 0.0)) > 0]
+    if not offsets:
         return []
 
-    # Filter out start of stream (intro) and end of stream (outro):
-    # Full streams (>= 20m): skip first intro_skip_sec (default 8m) and last outro_skip_sec (default 6m)
-    # Shorter VODs: skip 15% from start and 15% from end
-    if max_offset >= 1200:
+    min_offset = min(offsets)
+    max_offset = max(offsets)
+    duration = max_offset - min_offset
+
+    if duration < 60 or not buckets:
+        return []
+
+    is_sub_window = min_offset >= 300
+
+    # Determine intro/outro bounds:
+    # If this is a sub-window of an ongoing live stream, the window is already past intro.
+    if is_sub_window:
+        effective_intro_skip = min_offset + 10
+        effective_outro_cutoff = max_offset - 10
+    elif max_offset >= 1200:
         effective_intro_skip = intro_skip_sec
         effective_outro_cutoff = max(effective_intro_skip + 120, max_offset - outro_skip_sec)
     else:
@@ -94,30 +106,32 @@ def detect_hype_moments(
         effective_intro_skip = pad
         effective_outro_cutoff = max(pad + 60, max_offset - pad)
 
-    intro_bucket_cutoff = int(effective_intro_skip // bucket_sec)
-    outro_bucket_cutoff = int(effective_outro_cutoff // bucket_sec)
+    b_start = max(0, int(min_offset // bucket_sec))
+    b_end = int(max_offset // bucket_sec)
+    intro_bucket_cutoff = max(b_start, int(effective_intro_skip // bucket_sec))
+    outro_bucket_cutoff = min(b_end, int(effective_outro_cutoff // bucket_sec))
 
-    num_buckets = int(max_offset // bucket_sec) + 1
-    # 3-bucket (15-second) rolling window
-    rolling_scores = []
-    rolling_counts = []
-    rolling_outro_counts = []
-    for i in range(num_buckets):
-        s = sum(buckets[j]["score"] for j in range(max(0, i - 1), min(num_buckets, i + 2)))
-        cnt = sum(buckets[j]["count"] for j in range(max(0, i - 1), min(num_buckets, i + 2)))
-        out_cnt = sum(buckets[j].get("outro_count", 0) for j in range(max(0, i - 1), min(num_buckets, i + 2)))
-        rolling_scores.append(s)
-        rolling_counts.append(cnt)
-        rolling_outro_counts.append(out_cnt)
+    # Rolling window across active buckets
+    rolling_scores = {}
+    rolling_counts = {}
+    rolling_outro_counts = {}
 
-    # Compute baseline strictly from mid-stream active windows (excluding both intro and outro)
+    for i in range(b_start, b_end + 1):
+        s = sum(buckets[j]["score"] for j in range(max(b_start, i - 1), min(b_end + 1, i + 2)))
+        cnt = sum(buckets[j]["count"] for j in range(max(b_start, i - 1), min(b_end + 1, i + 2)))
+        out_cnt = sum(buckets[j].get("outro_count", 0) for j in range(max(b_start, i - 1), min(b_end + 1, i + 2)))
+        rolling_scores[i] = s
+        rolling_counts[i] = cnt
+        rolling_outro_counts[i] = out_cnt
+
+    # Compute baseline strictly from active windows
     mid_stream_scores = [
-        rolling_scores[i] for i in range(intro_bucket_cutoff, min(outro_bucket_cutoff, num_buckets))
-        if rolling_scores[i] > 0
+        rolling_scores[i] for i in range(intro_bucket_cutoff, outro_bucket_cutoff + 1)
+        if rolling_scores.get(i, 0) > 0
     ]
     mid_stream_counts = [
-        rolling_counts[i] for i in range(intro_bucket_cutoff, min(outro_bucket_cutoff, num_buckets))
-        if rolling_counts[i] > 0
+        rolling_counts[i] for i in range(intro_bucket_cutoff, outro_bucket_cutoff + 1)
+        if rolling_counts.get(i, 0) > 0
     ]
     if len(mid_stream_scores) < 5:
         return []
@@ -141,19 +155,19 @@ def detect_hype_moments(
 
     threshold = mean_score + (min_spike_sigma * std_score)
 
-    # Collect candidate peaks strictly within the mid-stream range
+    # Collect candidate peaks strictly within the active range
     candidates = []
-    for i in range(max(1, intro_bucket_cutoff), min(outro_bucket_cutoff, num_buckets - 1)):
-        s = rolling_scores[i]
-        cnt = rolling_counts[i]
-        out_cnt = rolling_outro_counts[i]
+    for i in range(intro_bucket_cutoff, outro_bucket_cutoff + 1):
+        s = rolling_scores.get(i, 0.0)
+        cnt = rolling_counts.get(i, 0)
+        out_cnt = rolling_outro_counts.get(i, 0)
 
         # Ignore outro/goodbye spam spikes (e.g. chat spamming bye/gg/cya/raid)
         if cnt > 0 and (out_cnt / float(cnt)) > 0.20:
             continue
 
         if s >= threshold and cnt >= effective_min_msgs:
-            if s >= rolling_scores[i - 1] and s >= rolling_scores[i + 1]:
+            if s >= rolling_scores.get(i - 1, 0.0) and s >= rolling_scores.get(i + 1, 0.0):
                 peak_sec = i * bucket_sec + (bucket_sec // 2)
                 if peak_sec < effective_intro_skip or peak_sec > effective_outro_cutoff:
                     continue
