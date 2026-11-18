@@ -10,16 +10,16 @@
   "caption": "LACY JOINED A BIKER GANG \ud83c\udfcd\ufe0f\n\nLacy on Just Chatting! #lacy #justchatting #gta6 #twitch #gaming #shorts #reels #clips #viral",
   "hook": "LACY JOINED A BIKER GANG \ud83c\udfcd\ufe0f",
   "target_accounts": [
-    "ig_2",
     "youtube"
   ],
   "assigned_ig": "ig_2",
   "post_to_yt": true,
   "post_to_ig": true,
-  "posted_to_instagram": false,
+  "posted_to_instagram": true,
   "posted_to_youtube": false,
   "approval_status": "pending",
   "target": "Instagram (@loopablez) & YouTube",
   "created_at": "2026-11-17T14:51:24.771025+00:00",
-  "timestamp": "2026-11-17T14:51:24.771044+00:00"
+  "timestamp": "2026-11-17T14:51:24.771044+00:00",
+  "instagram_url": "https://www.instagram.com/reel/Df5SAJggATg/"
 }
