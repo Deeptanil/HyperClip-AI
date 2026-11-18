@@ -43,9 +43,9 @@
   }
 
   let settings = safeGetStorage(STORAGE_KEY_SETTINGS, {
-    ig1Posts: 0,
-    ig1TrialPosts: 0,
-    ig2Posts: 0,
+    ig1Posts: 2,
+    ig1TrialPosts: 1,
+    ig2Posts: 2,
     ytPosts: 3,
     hypeMode: false,
     streamYield: 3,
@@ -53,13 +53,17 @@
     prioritizedCategories: ['Grand Theft Auto VI', 'GTA 6', 'GTA VI'],
     deprioritizedCategories: [],
     autoCensorNsfw: true,
-    censorMode: 'blur'
+    censorMode: 'blur',
+    tokenExpiryDate: '2027-01-17'
   });
 
-  settings.ig1Posts = Math.max(0, safeInt(settings.ig1Posts, 0));
-  settings.ig2Posts = Math.max(0, safeInt(settings.ig2Posts, 0));
+  settings.ig1Posts = Math.max(0, safeInt(settings.ig1Posts, 2));
+  settings.ig2Posts = Math.max(0, safeInt(settings.ig2Posts, 2));
   settings.ytPosts = Math.max(0, safeInt(settings.ytPosts, 3));
-  settings.ig1TrialPosts = Math.min(settings.ig1Posts, Math.max(0, safeInt(settings.ig1TrialPosts, 0)));
+  settings.ig1TrialPosts = Math.min(settings.ig1Posts, Math.max(0, safeInt(settings.ig1TrialPosts, 1)));
+  if (!settings.tokenExpiryDate) {
+    settings.tokenExpiryDate = '2027-01-17';
+  }
   if (!Array.isArray(settings.prioritizedCategories)) {
     settings.prioritizedCategories = ['Grand Theft Auto VI', 'GTA 6', 'GTA VI'];
   }
@@ -273,6 +277,109 @@
       status: 'posted'
     }
   ];
+
+  // --- Meta Token Expiry & Warning System ---
+  function calculateDaysUntilExpiry(dateStr) {
+    if (!dateStr) return null;
+    const parts = String(dateStr).trim().split('-');
+    if (parts.length !== 3) return null;
+    const exp = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    if (isNaN(exp.getTime())) return null;
+    const now = new Date();
+    exp.setHours(0, 0, 0, 0);
+    now.setHours(0, 0, 0, 0);
+    const diffMs = exp.getTime() - now.getTime();
+    return Math.round(diffMs / (1000 * 60 * 60 * 24));
+  }
+
+  function renderTokenExpiryAlerts() {
+    const banner = document.getElementById('token-expiry-banner');
+    const statusBox = document.getElementById('token-lifecycle-status-box');
+    const inputDate = document.getElementById('input-token-expiry');
+    const diagIg1 = document.getElementById('diag-ig1-token-expiry');
+    const diagIg2 = document.getElementById('diag-ig2-token-expiry');
+
+    const expDate = settings.tokenExpiryDate || '2027-01-17';
+    if (inputDate && (!inputDate.value || inputDate.value !== expDate)) {
+      inputDate.value = expDate;
+    }
+    if (diagIg1) diagIg1.textContent = expDate;
+    if (diagIg2) diagIg2.textContent = expDate;
+
+    const daysLeft = calculateDaysUntilExpiry(expDate);
+    if (daysLeft === null) {
+      if (banner) banner.style.display = 'none';
+      return;
+    }
+
+    if (daysLeft <= 0) {
+      // CRITICAL ERROR: Token expired!
+      if (banner) {
+        banner.className = 'token-alert-banner banner-critical';
+        banner.style.display = 'flex';
+        banner.innerHTML = `
+          <div class="banner-icon"><svg class="icon icon-lg" viewBox="0 0 24 24"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+          <div class="banner-body">
+            <strong>CRITICAL ERROR: Meta Graph API Token Expired (${expDate})</strong>
+            <span>Automatic Instagram Reels posting is stopped to prevent failed API calls. Please generate a fresh long-lived token in Meta Graph Explorer and update repository secrets.</span>
+          </div>
+          <button class="btn btn-sm btn-critical" onclick="document.getElementById('tab-nav-accounts').click();">Resolve in Accounts</button>
+        `;
+      }
+      if (statusBox) {
+        statusBox.style.borderColor = 'var(--danger)';
+        statusBox.style.background = 'rgba(239, 68, 68, 0.12)';
+        statusBox.innerHTML = `
+          <div>
+            <div style="font-weight:700;color:var(--danger);font-size:13px;">CRITICAL: Token Expired on ${expDate} (${Math.abs(daysLeft)} day${Math.abs(daysLeft) === 1 ? '' : 's'} ago)</div>
+            <div style="color:var(--text-muted);font-size:12px;margin-top:2px;">Reels publishing is suspended. Generate a new token and update GitHub secrets.</div>
+          </div>
+          <span class="status-pill error"><span class="dot offline"></span> EXPIRED</span>
+        `;
+      }
+    } else if (daysLeft <= 30) {
+      // WARNING: Expiring within 1 month (30 days)
+      if (banner) {
+        banner.className = 'token-alert-banner banner-warning';
+        banner.style.display = 'flex';
+        banner.innerHTML = `
+          <div class="banner-icon"><svg class="icon icon-lg" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+          <div class="banner-body">
+            <strong>WARNING: Meta Graph API Token Expires in ${daysLeft} Day${daysLeft === 1 ? '' : 's'} (${expDate})</strong>
+            <span>Your token expires in less than 30 days. Please refresh your long-lived token in Meta Graph API Explorer soon to prevent publishing interruptions.</span>
+          </div>
+          <button class="btn btn-sm btn-yellow" onclick="document.getElementById('tab-nav-accounts').click();">Update Expiry Date</button>
+        `;
+      }
+      if (statusBox) {
+        statusBox.style.borderColor = 'var(--yellow)';
+        statusBox.style.background = 'rgba(250, 204, 21, 0.10)';
+        statusBox.innerHTML = `
+          <div>
+            <div style="font-weight:700;color:var(--yellow);font-size:13px;">Warning: Expires in ${daysLeft} days (${expDate})</div>
+            <div style="color:var(--text-muted);font-size:12px;margin-top:2px;">Approaching 30-day cutoff window. Extend your token in Meta Developer Portal.</div>
+          </div>
+          <span class="status-pill warning"><span class="dot yellow"></span> Expires in ${daysLeft}d</span>
+        `;
+      }
+    } else {
+      // HEALTHY: More than 30 days remaining
+      if (banner) {
+        banner.style.display = 'none';
+      }
+      if (statusBox) {
+        statusBox.style.borderColor = 'var(--border)';
+        statusBox.style.background = 'var(--bg-elevated)';
+        statusBox.innerHTML = `
+          <div>
+            <div style="font-weight:700;color:var(--success);font-size:13px;">Healthy: Token valid until ${expDate} (${daysLeft} days remaining)</div>
+            <div style="color:var(--text-muted);font-size:12px;margin-top:2px;">Automatic warning will activate on ${new Date(Date.now() + (daysLeft - 30) * 86400000).toISOString().split('T')[0]} (1 month before expiry).</div>
+          </div>
+          <span class="status-pill"><span class="dot online"></span> ${daysLeft} Days Remaining</span>
+        `;
+      }
+    }
+  }
 
   // --- Dynamic Spacing & Hazard Detection ---
   function calculateDynamicSpacing() {
@@ -1943,8 +2050,12 @@
       settings.censorMode = safety.censor_mode;
     }
 
+    const expiry = sched.token_expiry_date || (ig1 && ig1.token_expiry_date) || (ig2 && ig2.token_expiry_date) || '2027-01-17';
+    settings.tokenExpiryDate = expiry;
+
     safeSetStorage(STORAGE_KEY_SETTINGS, settings);
     syncSettingsControlsToUI();
+    renderTokenExpiryAlerts();
     calculateDynamicSpacing();
   }
 
@@ -2413,6 +2524,14 @@
               }
             }
 
+            // 2b. Update Token Expiry Date
+            cfg.publishing_schedule.token_expiry_date = settings.tokenExpiryDate || '2027-01-17';
+            if (Array.isArray(cfg.publishing_schedule.instagram_accounts)) {
+              cfg.publishing_schedule.instagram_accounts.forEach(a => {
+                a.token_expiry_date = settings.tokenExpiryDate || '2027-01-17';
+              });
+            }
+
             // 3. Update Category / Game Priority Rules
             cfg.publishing_schedule.priority_rules = {
               prioritized_categories: [...(settings.prioritizedCategories || [])],
@@ -2577,6 +2696,72 @@
         }
       });
     }
+
+    // 11. Meta Token Expiration Save & Monitoring
+    const btnSaveTokenExpiry = document.getElementById('btn-save-token-expiry');
+    const inputTokenExpiry = document.getElementById('input-token-expiry');
+    if (btnSaveTokenExpiry && inputTokenExpiry) {
+      btnSaveTokenExpiry.addEventListener('click', async () => {
+        const val = inputTokenExpiry.value;
+        if (!val) {
+          alert('Please select a valid expiration date.');
+          return;
+        }
+        settings.tokenExpiryDate = val;
+        safeSetStorage(STORAGE_KEY_SETTINGS, settings);
+        renderTokenExpiryAlerts();
+
+        if (auth.pat && !auth.isDemo) {
+          try {
+            btnSaveTokenExpiry.disabled = true;
+            btnSaveTokenExpiry.innerText = 'Saving...';
+            const pBranch = auth.branch || 'master';
+            const headers = {
+              'Authorization': `token ${auth.pat.trim()}`,
+              'Accept': 'application/vnd.github.v3+json',
+              'Content-Type': 'application/json'
+            };
+            const curRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json?ref=${pBranch}`, { headers });
+            if (curRes.ok) {
+              const curData = await curRes.json();
+              const curStr = decodeURIComponent(escape(atob(curData.content)));
+              const cfg = JSON.parse(curStr);
+              if (!cfg.publishing_schedule) cfg.publishing_schedule = {};
+              cfg.publishing_schedule.token_expiry_date = val;
+              if (Array.isArray(cfg.publishing_schedule.instagram_accounts)) {
+                cfg.publishing_schedule.instagram_accounts.forEach(a => {
+                  a.token_expiry_date = val;
+                });
+              }
+              const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(cfg, null, 2))));
+              const putRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json`, {
+                method: 'PUT',
+                headers,
+                body: JSON.stringify({
+                  message: `chore(config): update Meta token expiration date to ${val}`,
+                  content: b64,
+                  sha: curData.sha,
+                  branch: pBranch
+                })
+              });
+              if (putRes.ok) {
+                alert(`Token expiration date (${val}) committed to config.json!`);
+              }
+            }
+          } catch (e) {
+            console.error('Failed to commit token expiry to GitHub:', e);
+            alert(`Token date saved in browser: ${val}`);
+          } finally {
+            btnSaveTokenExpiry.disabled = false;
+            btnSaveTokenExpiry.innerText = 'Save Expiry Date';
+          }
+        } else {
+          alert(`Token expiration date saved: ${val}\n(Saved locally; connect GitHub PAT in Setup to commit to config.json)`);
+        }
+      });
+    }
+
+    renderTokenExpiryAlerts();
   }
 
   // --- Initial Startup Execution (Race-Condition Free) ---

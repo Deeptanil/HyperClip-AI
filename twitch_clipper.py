@@ -728,7 +728,7 @@ def publish_next_clip(
     ig_kind: str = None,
 ) -> dict:
     if platforms is None:
-        platforms = ["youtube"]
+        platforms = ["youtube", "instagram"]
 
     sched = config.get("publishing_schedule", {})
     ig_accounts = sched.get("instagram_accounts", [])
@@ -1031,7 +1031,7 @@ if __name__ == "__main__":
     parser.add_argument("--harvest-only", action="store_true", help="Only scan and stage clips without posting")
     parser.add_argument("--check-only", action="store_true", help="Check live/VOD targets and exit")
     parser.add_argument("--force", action="store_true", help="Bypass daily cap and cooldown")
-    parser.add_argument("--platforms", nargs="+", default=["youtube"])
+    parser.add_argument("--platforms", nargs="+", default=["youtube", "instagram"])
     parser.add_argument("--ig-slot", type=int, default=None, help="Target a specific IG account slot (1 or 2)")
     parser.add_argument("--ig-kind", choices=["auto", "regular", "trial"], default="auto", help="Force IG post type")
     args = parser.parse_args()

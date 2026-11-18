@@ -74,6 +74,9 @@
       </div>
     </header>
 
+    <!-- Global Token Expiry Warning/Error Banner -->
+    <div id="token-expiry-banner" class="token-alert-banner" style="display:none;"></div>
+
     <!-- Real-Time Top Stats Strip -->
     <section class="stats-strip">
       <div class="stat-card" id="stat-ig1">
@@ -234,6 +237,7 @@
             <div class="diag-row"><span class="diag-label">Today's Posts:</span><span class="diag-val">1 / 3 Posted</span></div>
             <div class="diag-row"><span class="diag-label">Min Separation:</span><span class="diag-val">3.0 Hours (Strict)</span></div>
             <div class="diag-row"><span class="diag-label">Next Post Window:</span><span class="diag-val" style="color:var(--success)">Eligible Now</span></div>
+            <div class="diag-row"><span class="diag-label">Token Expiry:</span><span class="diag-val" id="diag-ig1-token-expiry">2027-01-17</span></div>
           </div>
           <div class="acc-footer-note">Uses direct Reels API with automatic retry and instant verification.</div>
         </div>
@@ -255,6 +259,7 @@
             <div class="diag-row"><span class="diag-label">Today's Posts:</span><span class="diag-val">1 / 3 Posted</span></div>
             <div class="diag-row"><span class="diag-label">Min Separation:</span><span class="diag-val">3.0 Hours (Strict)</span></div>
             <div class="diag-row"><span class="diag-label">Cross-Account Buffer:</span><span class="diag-val">20 Min Anti-Bot Buffer</span></div>
+            <div class="diag-row"><span class="diag-label">Token Expiry:</span><span class="diag-val" id="diag-ig2-token-expiry">2027-01-17</span></div>
           </div>
           <div class="acc-footer-note">Verified live upload to @loopablez without trial rejection errors.</div>
         </div>
@@ -277,6 +282,30 @@
             <div class="diag-row"><span class="diag-label">Category / Format:</span><span class="diag-val">Gaming (20) / #Shorts</span></div>
           </div>
           <div class="acc-footer-note">Dual upload system with automatic category tagging and #Shorts suffix.</div>
+        </div>
+      </div>
+
+      <!-- Meta Graph API Token Lifecycle Management -->
+      <div class="settings-card" id="token-lifecycle-card" style="margin-top:20px;">
+        <div class="settings-card-title">
+          <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Meta Graph API Access Token Expiration Shield
+        </div>
+        <p class="view-subtitle" style="margin-bottom:14px;">The dashboard actively monitors token health. Warnings start 30 days before expiration, and errors flag expired tokens to prevent failed publishing jobs.</p>
+
+        <div class="setting-row">
+          <div class="setting-info">
+            <span class="setting-label">Meta Long-Lived Token Expiration Date</span>
+            <span class="setting-desc">Enter the exact expiration date reported by Meta Graph API Explorer (e.g. 2027-01-17)</span>
+          </div>
+          <div class="setting-ctrl" style="display:flex;gap:8px;align-items:center;">
+            <input type="date" id="input-token-expiry" class="text-input" style="padding:6px 10px;font-size:12px;color:var(--text-main);background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);">
+            <button type="button" class="btn btn-sm btn-yellow" id="btn-save-token-expiry">Save Expiry Date</button>
+          </div>
+        </div>
+
+        <div id="token-lifecycle-status-box" style="margin-top:12px;padding:12px 14px;border-radius:var(--radius-sm);border:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg-elevated);">
+          <!-- Dynamically filled with days remaining, badge, and health status -->
         </div>
       </div>
     </main>

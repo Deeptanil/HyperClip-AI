@@ -1529,7 +1529,71 @@ input:checked + .slider:before {
   max-height: 580px;
 }
 
-/* Responsive */
+/* Token Expiration Alert Banner */
+.token-alert-banner {
+  padding: 12px 18px;
+  margin: 12px 24px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  font-size: 13px;
+  line-height: 1.4;
+  animation: fadeIn 0.25s ease;
+}
+
+.token-alert-banner .banner-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.token-alert-banner .banner-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.token-alert-banner .banner-body strong {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.token-alert-banner .banner-body span {
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.banner-warning {
+  background: rgba(245, 158, 11, 0.16);
+  border: 1px solid rgba(245, 158, 11, 0.55);
+  color: #FBBF24;
+}
+
+.banner-critical {
+  background: rgba(239, 68, 68, 0.18);
+  border: 1px solid rgba(239, 68, 68, 0.65);
+  color: #F87171;
+}
+
+.banner-critical strong {
+  color: #EF4444;
+}
+
+.btn-critical {
+  background: #EF4444;
+  color: #FFFFFF;
+  border: none;
+  font-weight: 700;
+}
+
+.btn-critical:hover {
+  background: #DC2626;
+}
+
+/* Mobile & Tablet Responsive Architecture */
 @media (max-width: 900px) {
   .stats-strip {
     grid-template-columns: repeat(2, 1fr);
@@ -1546,14 +1610,185 @@ input:checked + .slider:before {
   }
 }
 
-@media (max-width: 600px) {
-  .stats-strip {
-    grid-template-columns: 1fr;
+@media (max-width: 768px) {
+  .app-container {
+    padding: 0 8px;
   }
+
   .top-nav {
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
     align-items: stretch;
+    padding: 12px 14px;
+  }
+
+  .brand {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .nav-center {
+    overflow-x: auto;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .nav-center::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tab-btn {
+    white-space: nowrap;
+    flex-shrink: 0;
+    padding: 8px 12px;
+    font-size: 13px;
+    border-radius: var(--radius-sm);
+  }
+
+  .nav-actions {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr 1fr;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .nav-actions .btn {
+    justify-content: center;
+    width: 100%;
+    min-height: 42px;
+    font-size: 13px;
+  }
+
+  .token-alert-banner {
+    margin: 10px 4px;
+    padding: 12px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .token-alert-banner .btn {
+    width: 100%;
+    justify-content: center;
+    min-height: 38px;
+  }
+
+  .stats-strip {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin: 10px 0;
+  }
+
+  .stat-card {
+    padding: 14px 16px;
+  }
+
+  .clips-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px;
+  }
+
+  .clip-card {
+    width: 100%;
+  }
+
+  .clip-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .clip-actions .btn {
+    min-height: 40px;
+    justify-content: center;
+    font-size: 12px;
+  }
+
+  .priority-filter-bar {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .priority-filter-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .priority-filter-bar .filter-pill {
+    flex-shrink: 0;
+    white-space: nowrap;
+    min-height: 36px;
+    padding: 6px 14px;
+  }
+
+  .setting-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .setting-ctrl {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .btn-stepper {
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 16px !important;
+  }
+
+  .accounts-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .modal-content.preview-modal {
+    width: 96vw;
+    max-height: 92vh;
+    margin: 4vh auto;
+    padding: 0;
+  }
+
+  .preview-video-pane {
+    max-height: 280px;
+  }
+
+  .preview-details-pane {
+    max-height: calc(92vh - 290px);
+    padding: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .brand-logo {
+    font-size: 13px;
+  }
+
+  .brand-badge {
+    display: none;
+  }
+
+  .view-title {
+    font-size: 16px;
+  }
+
+  .view-subtitle {
+    font-size: 12px;
+  }
+
+  .clip-actions {
+    grid-template-columns: 1fr;
   }
 }
 

@@ -85,6 +85,7 @@
   },
   "publishing_schedule": {
     "min_cross_account_gap_minutes": 25,
+    "token_expiry_date": "2027-01-17",
     "priority_rules": {
       "prioritized_categories": [
         "Grand Theft Auto VI",
@@ -101,19 +102,21 @@
     "instagram_accounts": [
       {
         "slot": 1,
-        "name": "Main IG",
+        "name": "Main IG (Solvikz)",
         "enabled": true,
         "regular_per_day": 2,
         "trial_per_day": 1,
-        "hard_daily_ceiling": 3
+        "hard_daily_ceiling": 3,
+        "token_expiry_date": "2027-01-17"
       },
       {
         "slot": 2,
-        "name": "Clip Page IG",
+        "name": "Clip Page IG (Loopablez)",
         "enabled": true,
-        "regular_per_day": 3,
+        "regular_per_day": 2,
         "trial_per_day": 0,
-        "hard_daily_ceiling": 3
+        "hard_daily_ceiling": 3,
+        "token_expiry_date": "2027-01-17"
       }
     ]
   },
