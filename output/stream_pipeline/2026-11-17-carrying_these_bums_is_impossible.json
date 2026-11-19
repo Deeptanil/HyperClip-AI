@@ -4,11 +4,11 @@
   "vod_id": "2930731749",
   "game": "Fortnite",
   "peak_sec": 16247,
-  "hype_score": 256.0,
+  "hype_score": 256,
   "z_score": 9.03,
-  "title": "CARRYING THESE BUMS IS IMPOSSIBLE \ud83d\ude2d\ud83d\udc80",
-  "caption": "Bro is suffering with random teammates \ud83d\udc80 #jynxzi #fortnite #gamingmoments",
-  "hook": "CARRYING THESE BUMS IS IMPOSSIBLE \ud83d\ude2d\ud83d\udc80",
+  "title": "CARRYING THESE BUMS IS IMPOSSIBLE 😭💀",
+  "caption": "Bro is suffering with random teammates 💀 #jynxzi #fortnite #gamingmoments",
+  "hook": "CARRYING THESE BUMS IS IMPOSSIBLE 😭💀",
   "target_accounts": [
     "ig_1"
   ],
@@ -27,21 +27,22 @@
     {
       "start": 9.28,
       "end": 10.92,
-      "speed": 3.0
+      "speed": 3
     },
     {
       "start": 14.38,
       "end": 28.58,
-      "speed": 3.0
+      "speed": 3
     },
     {
       "start": 32.96,
       "end": 36.09,
-      "speed": 3.0
+      "speed": 3
     }
   ],
   "profanity_bleeped": false,
   "bleep_segments": [],
   "nsfw_censored": false,
-  "nsfw_segments": []
+  "nsfw_segments": [],
+  "priority": "deprioritized"
 }
