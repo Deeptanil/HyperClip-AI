@@ -1401,8 +1401,20 @@
         </div>
       `;
 
-      card.querySelector('.btn-restore').onclick = () => restoreClip(clip);
-      card.querySelector('.btn-delete-perm').onclick = () => deletePermanently(clip);
+      const previewWrap = card.querySelector('.clip-preview-wrap');
+      if (previewWrap) {
+        previewWrap.style.cursor = 'pointer';
+        previewWrap.onclick = () => window.openPreviewModal(clip);
+      }
+
+      card.querySelector('.btn-restore').onclick = (e) => {
+        e.stopPropagation();
+        restoreClip(clip);
+      };
+      card.querySelector('.btn-delete-perm').onclick = (e) => {
+        e.stopPropagation();
+        deletePermanently(clip);
+      };
 
       grid.appendChild(card);
     });
@@ -2483,12 +2495,18 @@
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.main-view').forEach(v => v.classList.remove('active'));
+        document.querySelectorAll('.main-view').forEach(v => {
+          v.classList.remove('active');
+          v.style.display = 'none';
+        });
 
         btn.classList.add('active');
         activeTab = btn.dataset.tab;
         const targetView = document.getElementById(`view-${activeTab}`);
-        if (targetView) targetView.classList.add('active');
+        if (targetView) {
+          targetView.classList.add('active');
+          targetView.style.display = 'block';
+        }
 
         if (activeTab === 'calendar') renderCalendar();
         if (activeTab === 'pipeline') renderPipelineQueue();
