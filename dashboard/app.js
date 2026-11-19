@@ -9,6 +9,7 @@
   // --- Safe LocalStorage Access ---
   const STORAGE_KEY_AUTH = 'hyperclip_auth_config';
   const STORAGE_KEY_SETTINGS = 'hyperclip_local_settings';
+  const STORAGE_KEY_OVERRIDES = 'hyperclip_clip_overrides_v2';
 
   function safeGetStorage(key, defaultVal) {
     try {
@@ -26,6 +27,65 @@
       localStorage.setItem(key, JSON.stringify(val));
     } catch (e) {
       console.warn('Storage write failed for key:', key, e);
+    }
+  }
+
+  function getLocalOverrides() {
+    return safeGetStorage(STORAGE_KEY_OVERRIDES, {});
+  }
+
+  function getOverrideKey(clip) {
+    if (!clip) return '';
+    if (clip.filename) return String(clip.filename).replace(/\.mp4$/i, '').replace(/\.json$/i, '');
+    if (clip.id) return String(clip.id).replace(/^real_/, '');
+    return '';
+  }
+
+  function saveLocalOverride(clip, changes) {
+    const key = getOverrideKey(clip);
+    if (!key) return;
+    const overrides = getLocalOverrides();
+    overrides[key] = {
+      ...(overrides[key] || {}),
+      ...changes,
+      updated_at: Date.now()
+    };
+    safeSetStorage(STORAGE_KEY_OVERRIDES, overrides);
+  }
+
+  function removeLocalOverride(clip) {
+    const key = getOverrideKey(clip);
+    if (!key) return;
+    const overrides = getLocalOverrides();
+    delete overrides[key];
+    safeSetStorage(STORAGE_KEY_OVERRIDES, overrides);
+  }
+
+  function applyOverridesToClip(clip) {
+    if (!clip) return;
+    const key = getOverrideKey(clip);
+    const overrides = getLocalOverrides();
+    const ov = overrides[key];
+    if (ov) {
+      if (ov.permanently_deleted) {
+        clip._deleted = true;
+        return;
+      }
+      if (typeof ov.discarded === 'boolean') {
+        clip.discarded = ov.discarded;
+      }
+      if (ov.discarded_at !== undefined) {
+        clip.discarded_at = ov.discarded_at;
+      }
+      if (ov.pre_discard_priority !== undefined) {
+        clip.pre_discard_priority = ov.pre_discard_priority;
+      }
+      if (ov.priority !== undefined) {
+        clip.priority = parseInt(ov.priority, 10);
+      }
+      if (ov.caption) {
+        clip.caption = ov.caption;
+      }
     }
   }
 
@@ -1566,22 +1626,24 @@
   };
 
   async function updateGitHubClipMetadata(clip, updates) {
-    if (!auth.pat || auth.isDemo || !clip.jsonPath || !clip.jsonSha) return;
+    if (!auth.pat || auth.isDemo) return false;
     try {
       const headers = {
         'Authorization': `token ${auth.pat.trim()}`,
         'Accept': 'application/vnd.github.v3+json'
       };
       const cBranch = auth.contentBranch || 'content';
-      const getRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/${clip.jsonPath}?ref=${cBranch}`, { headers });
-      if (!getRes.ok) return;
+      const targetPath = clip.jsonPath || (clip.path ? clip.path.replace(/\.mp4$/i, '.json') : `output/stream_pipeline/${clip.filename.replace(/\.mp4$/i, '.json')}`);
+
+      const getRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/${targetPath}?ref=${cBranch}`, { headers });
+      if (!getRes.ok) return false;
       const getData = await getRes.json();
       const currentContent = JSON.parse(decodeURIComponent(escape(atob(getData.content))));
 
       const merged = { ...currentContent, ...updates };
       const newBase64 = btoa(unescape(encodeURIComponent(JSON.stringify(merged, null, 2))));
 
-      const putRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/${clip.jsonPath}`, {
+      const putRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/${targetPath}`, {
         method: 'PUT',
         headers,
         body: JSON.stringify({
@@ -1594,6 +1656,9 @@
       if (putRes.ok) {
         const putData = await putRes.json();
         clip.jsonSha = putData.content.sha;
+        clip.jsonPath = targetPath;
+        metadataCacheBySha.set(putData.content.sha, merged);
+        metadataCacheBySha.set(getData.sha, merged);
         return true;
       } else {
         const errBody = await putRes.json().catch(() => ({}));
@@ -1620,8 +1685,15 @@
     }
     clip.caption = newCaption;
 
+    // Immediately persist override to localStorage so it never reverts
+    saveLocalOverride(clip, {
+      priority: clip.priority,
+      caption: newCaption
+    });
+
     sortPipelineClips();
     renderPipelineQueue();
+    renderDiscardedQueue();
     renderCalendar();
 
     if (isFromModal && selectedClip && selectedClip.id === clip.id) {
@@ -1633,9 +1705,12 @@
       });
     }
 
-    await updateGitHubClipMetadata(clip, {
+    // Auto-sync in background to repository
+    updateGitHubClipMetadata(clip, {
       priority: clip.priority,
       caption: newCaption
+    }).then(ok => {
+      if (ok) syncWithGitHub(false);
     });
   }
 
@@ -1648,6 +1723,13 @@
     clip.discarded_at = nowIso;
     clip.pre_discard_priority = currentPrio;
 
+    // Immediately persist to localStorage so it NEVER reverts on reload or sync
+    saveLocalOverride(clip, {
+      discarded: true,
+      discarded_at: nowIso,
+      pre_discard_priority: currentPrio
+    });
+
     sortPipelineClips();
     renderPipelineQueue();
     renderDiscardedQueue();
@@ -1657,13 +1739,14 @@
       window.closePreviewModal();
     }
 
-    await updateGitHubClipMetadata(clip, {
+    // Auto-sync in background to repository
+    updateGitHubClipMetadata(clip, {
       discarded: true,
       discarded_at: nowIso,
       pre_discard_priority: currentPrio
+    }).then(ok => {
+      if (ok) syncWithGitHub(false);
     });
-
-    alert(`Clip "${clip.title}" discarded. It will be held for 6 hours before permanent automated deletion.`);
   }
 
   async function restoreClip(clip) {
@@ -1674,25 +1757,36 @@
     delete clip.discarded_at;
     delete clip.pre_discard_priority;
 
+    // Persist restored status
+    saveLocalOverride(clip, {
+      discarded: false,
+      discarded_at: null,
+      pre_discard_priority: null,
+      priority: restoredPrio
+    });
+
     sortPipelineClips();
     renderPipelineQueue();
     renderDiscardedQueue();
     renderCalendar();
 
-    await updateGitHubClipMetadata(clip, {
+    // Auto-sync in background
+    updateGitHubClipMetadata(clip, {
       discarded: false,
       priority: restoredPrio,
       discarded_at: null,
       pre_discard_priority: null
+    }).then(ok => {
+      if (ok) syncWithGitHub(false);
     });
-
-    alert(`Clip "${clip.title}" restored back to Priority ${restoredPrio}!`);
   }
 
   async function deletePermanently(clip) {
     if (!clip) return;
     const confirmed = confirm(`Are you sure you want to permanently delete "${clip.title}"?\n\nThis will immediately remove both the video and metadata files. This action cannot be undone.`);
     if (!confirmed) return;
+
+    saveLocalOverride(clip, { permanently_deleted: true });
 
     if (auth.pat && !auth.isDemo && clip.path && clip.sha) {
       try {
@@ -1714,8 +1808,9 @@
         });
 
         // Delete matching JSON if exists
-        if (clip.jsonPath && clip.jsonSha) {
-          await fetch(`https://api.github.com/repos/${auth.repo}/contents/${clip.jsonPath}`, {
+        const jsonPath = clip.jsonPath || (clip.path ? clip.path.replace(/\.mp4$/i, '.json') : `output/stream_pipeline/${clip.filename.replace(/\.mp4$/i, '.json')}`);
+        if (clip.jsonSha) {
+          await fetch(`https://api.github.com/repos/${auth.repo}/contents/${jsonPath}`, {
             method: 'DELETE',
             headers,
             body: JSON.stringify({
@@ -1736,7 +1831,6 @@
     renderDiscardedQueue();
     renderCalendar();
     window.closePreviewModal();
-    alert(`Clip "${clip.title}" permanently deleted.`);
   }
 
   async function purgeExpiredDiscarded() {
@@ -1791,7 +1885,9 @@
 
     if (!auth.pat || auth.isDemo) {
       if (dot) dot.className = 'dot yellow';
-      if (statusText) statusText.innerText = 'Demo Mode (Read-Only)';
+      if (statusText) statusText.innerText = 'Demo';
+      const pill = document.getElementById('conn-status-pill');
+      if (pill) pill.title = 'Demo Mode (Read-Only) • Connect GitHub PAT in Setup';
       loadDemoData();
       isSyncing = false;
       if (syncIcon) syncIcon.classList.remove('spin-icon');
@@ -1799,7 +1895,7 @@
     }
 
     try {
-      if (statusText && isManual) statusText.innerText = 'Syncing from GitHub...';
+      if (statusText && isManual) statusText.innerText = 'Syncing...';
       if (dot && isManual) dot.className = 'dot yellow';
 
       const cleanPat = auth.pat.trim();
@@ -2021,7 +2117,11 @@
         } catch (e) {}
       }
 
-      // 6. Bind Real Data to Dashboard State & Sort by 4-Tier Priority + FIFO
+      // 6. Apply persistent local overrides (so discarded status & custom priorities never revert)
+      realPipeline.forEach(c => applyOverridesToClip(c));
+      realPipeline = realPipeline.filter(c => !c._deleted);
+
+      // Bind Real Data to Dashboard State & Sort by 5-Tier Priority + FIFO
       pipelineClips = realPipeline;
       postedClips = realPosted;
       sortPipelineClips();
@@ -2077,17 +2177,24 @@
         calculateDynamicSpacing();
         renderCalendar();
         renderPipelineQueue();
+        renderDiscardedQueue();
       }
 
       lastSyncDate = new Date();
       const timeStr = lastSyncDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
       if (dot) dot.className = 'dot online';
-      if (statusText) statusText.innerText = `Connected: ${auth.repo} (Synced ${timeStr}) • ${pipelineClips.length} in queue, ${postedClips.length} posted`;
+      if (statusText) statusText.innerText = 'Connected';
+      const pill = document.getElementById('conn-status-pill');
+      if (pill) {
+        pill.title = `${auth.repo} (Synced ${timeStr})\nQueue: ${pipelineClips.length} • Posted: ${postedClips.length}\nClick to configure PAT/repo`;
+      }
     } catch (err) {
       console.error('GitHub API Sync Error:', err);
       if (dot) dot.className = 'dot danger';
-      if (statusText) statusText.innerText = `Auth Error: ${err.message || 'Check Token'}`;
+      if (statusText) statusText.innerText = 'Auth Error';
+      const pill = document.getElementById('conn-status-pill');
+      if (pill) pill.title = `${err.message || 'Check Token'}\nClick to configure PAT/repo`;
       if (isManual) {
         alert(`GitHub Sync Failed: ${err.message || 'Could not connect'}\n\nPlease verify that your token has 'repo' and 'workflow' scopes.`);
       }
@@ -2345,9 +2452,12 @@
   function loadDemoData() {
     pipelineClips = [...DEMO_PIPELINE];
     postedClips = [...DEMO_POSTED];
+    pipelineClips.forEach(c => applyOverridesToClip(c));
+    pipelineClips = pipelineClips.filter(c => !c._deleted);
     calculateDynamicSpacing();
     renderCalendar();
     renderPipelineQueue();
+    renderDiscardedQueue();
   }
 
   // --- Initializer & Event Binding ---
