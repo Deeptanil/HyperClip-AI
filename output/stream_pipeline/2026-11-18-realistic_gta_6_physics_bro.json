@@ -15,10 +15,11 @@
   "assigned_ig": null,
   "post_to_yt": true,
   "post_to_ig": true,
-  "posted_to_instagram": false,
+  "posted_to_instagram": true,
   "posted_to_youtube": false,
   "approval_status": "pending",
   "target": "YouTube Shorts",
   "created_at": "2026-11-18T15:06:28.605498+00:00",
-  "timestamp": "2026-11-18T15:06:28.605534+00:00"
+  "timestamp": "2026-11-18T15:06:28.605534+00:00",
+  "instagram_url": "https://www.instagram.com/reel/Df6rj8nE2jN/"
 }

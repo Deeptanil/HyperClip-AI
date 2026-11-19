@@ -1,0 +1,29 @@
+{
+  "streamer": "KaiCenat",
+  "username": "kaicenat",
+  "vod_id": "2932305259",
+  "game": "Grand Theft Auto VI",
+  "peak_sec": 50377,
+  "hype_score": 227.0,
+  "z_score": 4.01,
+  "title": "CHAT SAYS DELETE THE GAME \ud83d\udc80\ud83c\udfae",
+  "caption": "Bro thought he was built for the GTA 6 streets... chat did not agree \ud83d\ude2d #GTA6 #KaiCenat #GamingMoments",
+  "hook": "CHAT SAYS DELETE THE GAME \ud83d\udc80\ud83c\udfae",
+  "target_accounts": [
+    "ig_1"
+  ],
+  "assigned_ig": "ig_1",
+  "post_to_yt": false,
+  "post_to_ig": true,
+  "posted_to_instagram": false,
+  "posted_to_youtube": false,
+  "approval_status": "pending",
+  "priority": "auto",
+  "nsfw_censored": false,
+  "nsfw_segments": [],
+  "profanity_bleeped": false,
+  "bleep_segments": [],
+  "target": "Instagram (@solvikz) Only",
+  "created_at": "2026-11-19T08:56:17.788309+00:00",
+  "timestamp": "2026-11-19T08:56:17.788327+00:00"
+}
