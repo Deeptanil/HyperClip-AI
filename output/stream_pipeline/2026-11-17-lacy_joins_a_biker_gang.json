@@ -6,8 +6,8 @@
   "peak_sec": 25712,
   "hype_score": 202.25,
   "z_score": 4.64,
-  "title": "LACY JOINS A BIKER GANG 🏍️",
-  "caption": "LACY JOINS A BIKER GANG 🏍️\n\nLacy on Just Chatting! #lacy #justchatting #gta6 #twitch #gaming #shorts #reels #clips #viral",
+  "title": "LACY JOINS A WILD BIKER GANG 🏍️💨",
+  "caption": "Lacy accidentally signed up for a hardcore motorcycle gang and immediately regretted every life choice he made. Would you survive a minute with these crazy bikers? #lacy #gta #twitch #gaming",
   "hook": "LACY JOINS A BIKER GANG 🏍️",
   "target_accounts": [
     "ig_1"
@@ -44,5 +44,6 @@
   "nsfw_censored": false,
   "nsfw_segments": [],
   "priority": 2,
-  "discarded": false
+  "discarded": false,
+  "ai_retitled": true
 }
