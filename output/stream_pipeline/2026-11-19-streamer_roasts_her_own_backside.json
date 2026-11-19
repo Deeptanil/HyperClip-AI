@@ -4,11 +4,11 @@
   "vod_id": "2933193462",
   "game": "Grand Theft Auto VI",
   "peak_sec": 15437,
-  "hype_score": 78.0,
+  "hype_score": 78,
   "z_score": 3.18,
-  "title": "STREAMER ROASTS HER OWN BACKSIDE \ud83d\udc80",
-  "caption": "Cinna is way too honest on main \ud83d\ude02 #cinna #gta6 #funny",
-  "hook": "STREAMER ROASTS HER OWN BACKSIDE \ud83d\udc80",
+  "title": "STREAMER ROASTS HER OWN BACKSIDE 💀",
+  "caption": "Cinna is way too honest on main 😂 #cinna #gta6 #funny",
+  "hook": "STREAMER ROASTS HER OWN BACKSIDE 💀",
   "target_accounts": [
     "ig_2",
     "youtube"
@@ -18,7 +18,7 @@
   "post_to_ig": true,
   "posted_to_instagram": false,
   "posted_to_youtube": false,
-  "priority": 4,
+  "priority": 3,
   "nsfw_censored": false,
   "nsfw_segments": [],
   "profanity_bleeped": false,
@@ -32,7 +32,7 @@
     {
       "start": 25.78,
       "end": 31.42,
-      "speed": 3.0
+      "speed": 3
     }
   ],
   "discarded": false
