@@ -6,9 +6,9 @@
   "peak_sec": 25712,
   "hype_score": 202.25,
   "z_score": 4.64,
-  "title": "LACY JOINS A BIKER GANG \ud83c\udfcd\ufe0f",
-  "caption": "LACY JOINS A BIKER GANG \ud83c\udfcd\ufe0f\n\nLacy on Just Chatting! #lacy #justchatting #gta6 #twitch #gaming #shorts #reels #clips #viral",
-  "hook": "LACY JOINS A BIKER GANG \ud83c\udfcd\ufe0f",
+  "title": "LACY JOINS A BIKER GANG 🏍️",
+  "caption": "LACY JOINS A BIKER GANG 🏍️\n\nLacy on Just Chatting! #lacy #justchatting #gta6 #twitch #gaming #shorts #reels #clips #viral",
+  "hook": "LACY JOINS A BIKER GANG 🏍️",
   "target_accounts": [
     "ig_1"
   ],
@@ -26,23 +26,23 @@
     {
       "start": 3.72,
       "end": 9.68,
-      "speed": 3.0
+      "speed": 3
     },
     {
       "start": 10.98,
       "end": 13.48,
-      "speed": 3.0
+      "speed": 3
     },
     {
       "start": 30.39,
       "end": 31.71,
-      "speed": 3.0
+      "speed": 3
     }
   ],
   "profanity_bleeped": false,
   "bleep_segments": [],
   "nsfw_censored": false,
   "nsfw_segments": [],
-  "priority": 3,
+  "priority": 2,
   "discarded": false
 }
