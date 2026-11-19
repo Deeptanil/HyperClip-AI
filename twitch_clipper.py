@@ -203,7 +203,7 @@ def prune_stream_archive(days: int = 0):
                 pass
 
 
-def harvest_clips(config: dict, max_total_new: int = 4) -> list:
+def harvest_clips(config: dict, max_total_new: int = 10) -> list:
     """
     Scans eligible streamers, downloads unscanned chat windows, detects hype spikes,
     and stages framed + captioned portrait clips into output/stream_pipeline/.
@@ -252,7 +252,7 @@ def harvest_clips(config: dict, max_total_new: int = 4) -> list:
             chat_json,
             pre_peak_sec=tc.get("pre_peak_sec", 22),
             post_peak_sec=tc.get("post_peak_sec", 13),
-            max_clips=tc.get("max_clips_per_vod", 3),
+            max_clips=tc.get("max_clips_per_vod", 10),
             min_spacing_sec=tc.get("min_clip_spacing_sec", 300),
             min_spike_sigma=tc.get("min_spike_sigma", 2.0),
             min_messages_per_window=tc.get("min_messages_per_window", 12),
@@ -390,12 +390,14 @@ def harvest_clips(config: dict, max_total_new: int = 4) -> list:
 
                 game_tag = slugify(target.get("game", "gaming")).replace("_", "")
                 hashtags = tc.get("default_hashtags", "#twitch #gaming #shorts #reels")
-                clip_title = sanitize_text_for_reach(hook_headline)
+                clip_title = sanitize_text_for_reach(eval_res.get("title") or hook_headline)
                 clip_caption = eval_res.get("caption")
                 if not clip_caption:
+                    # Contextual storytelling fallback if AI Judge returned no caption
+                    desc_body = f"Watch what happens when {target['display_name']} encounters this insane moment on {target.get('game', 'stream')}!"
                     clip_caption = (
-                        f"{hook_headline}\n\n"
-                        f"{target['display_name']} on {target.get('game', 'stream')}! "
+                        f"{clip_title}\n\n"
+                        f"{desc_body}\n\n"
                         f"#{target['username']} #{game_tag} {hashtags}"
                     )
                 clip_caption = sanitize_text_for_reach(clip_caption)

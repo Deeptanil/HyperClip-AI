@@ -143,7 +143,7 @@ def evaluate_clip_quality(
 
     prompt = f"""
 You are an expert short-form viral gaming content director (TikTok, Instagram Reels, YouTube Shorts).
-Your job is to strictly vet candidate gaming clips and REJECT anything that is boring, unengaging, or low-value.
+Your job is to strictly vet candidate gaming clips, reject anything boring, and craft high-CTR contextual titles and story captions.
 
 Clip Context:
 - Streamer: {streamer}
@@ -169,8 +169,9 @@ Output strictly valid JSON with this exact schema:
   "is_viral_clip": boolean,
   "rejection_reason": string or null,
   "confidence": float between 0.0 and 1.0,
-  "hook": "4 to 6 words ALL-CAPS headline with exactly 1 or 2 matching emojis (NO generic 'X GOES CRAZY ON Y')",
-  "caption": "Short, engaging post caption with 2-3 specific gaming hashtags"
+  "title": "4 to 7 words ALL-CAPS punchy headline title with 1-2 emojis describing the specific event or quote (NO generic titles like 'X PLAYS Y' or 'CRAZY MOMENT')",
+  "hook": "4 to 6 words banner text with emojis",
+  "caption": "Compelling 2-sentence narrative caption explaining the context of what just happened, what the streamer did, and a viewer hook question. Include 3-4 hashtags. NEVER use robotic templates like '[Streamer] on [Game]'."
 }}
 """
 
@@ -184,7 +185,7 @@ Output strictly valid JSON with this exact schema:
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
                     temperature=0.4,
-                    max_output_tokens=200,
+                    max_output_tokens=600,
                 ),
             )
             raw_text = (resp.text or "").strip()
@@ -192,6 +193,7 @@ Output strictly valid JSON with this exact schema:
 
             is_viral = bool(data.get("is_viral_clip", False))
             rejection = data.get("rejection_reason")
+            title = data.get("title", "").strip()
             hook = data.get("hook", "").strip()
             caption = data.get("caption", "").strip()
 
@@ -199,6 +201,7 @@ Output strictly valid JSON with this exact schema:
                 return {
                     "approved": False,
                     "reason": f"AI Judge Rejected ({model_name}): {rejection or 'Low engagement potential'}",
+                    "title": None,
                     "hook": None,
                     "caption": None,
                 }
@@ -207,8 +210,9 @@ Output strictly valid JSON with this exact schema:
             return {
                 "approved": True,
                 "reason": f"Approved by AI Judge ({model_name}, confidence: {data.get('confidence', 1.0)})",
+                "title": title if (title and len(title.split()) >= 3) else None,
                 "hook": hook if (hook and len(hook.split()) >= 3) else None,
-                "caption": caption if caption else None,
+                "caption": caption if (caption and len(caption) >= 15) else None,
             }
         except Exception as e:
             print(f"[!] Content judge model '{model_name}' failed ({e}); trying next model...")
@@ -217,6 +221,7 @@ Output strictly valid JSON with this exact schema:
     return {
         "approved": True,
         "reason": "Approved (AI judge cascade exhausted, passed visual motion checks)",
+        "title": None,
         "hook": None,
         "caption": None,
     }

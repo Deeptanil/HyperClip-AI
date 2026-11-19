@@ -14,12 +14,13 @@ load_dotenv()
 
 SESSION_FILE = "ig_session.json"
 
-def upload_reel_meta_graph(video_path_or_url: str, caption: str, account_slot: int = 1, ig_user_id: str = None, access_token: str = None) -> tuple[str, str]:
+def upload_reel_meta_graph(video_path_or_url: str, caption: str, account_slot: int = 1, ig_user_id: str = None, access_token: str = None, scheduled_publish_time: int = None) -> tuple[str, str]:
     """
     Uploads a reel via the official Meta Graph API (Zero-bot challenge / shadowban immune).
     Supports:
       1. Local files via Resumable Upload (rupload.facebook.com) - no public URL needed!
       2. Publicly accessible URLs.
+      3. Native Meta Graph scheduling via scheduled_publish_time (Unix timestamp).
     Returns (media_id, permalink_or_url).
     """
     token = access_token or os.getenv("META_ACCESS_TOKEN")
@@ -35,7 +36,8 @@ def upload_reel_meta_graph(video_path_or_url: str, caption: str, account_slot: i
     api_ver = "v21.0"
     base_graph = f"https://graph.facebook.com/{api_ver}"
 
-    print(f"[*] Initializing Meta Graph API Reel container (Slot {account_slot}, Account ID {user_id})...")
+    sched_info = f" [Scheduled publish time: {scheduled_publish_time}]" if scheduled_publish_time else ""
+    print(f"[*] Initializing Meta Graph API Reel container (Slot {account_slot}, Account ID {user_id}){sched_info}...")
     container_endpoint = f"{base_graph}/{user_id}/media"
 
     if is_local_file:
@@ -46,6 +48,8 @@ def upload_reel_meta_graph(video_path_or_url: str, caption: str, account_slot: i
             "caption": caption,
             "access_token": token,
         }
+        if scheduled_publish_time:
+            payload["scheduled_publish_time"] = int(scheduled_publish_time)
         res = requests.post(container_endpoint, data=payload, timeout=30).json()
         if "id" not in res:
             raise RuntimeError(f"Failed to create Instagram resumable container: {res}")
@@ -71,6 +75,8 @@ def upload_reel_meta_graph(video_path_or_url: str, caption: str, account_slot: i
             "caption": caption,
             "access_token": token,
         }
+        if scheduled_publish_time:
+            payload["scheduled_publish_time"] = int(scheduled_publish_time)
         res = requests.post(container_endpoint, data=payload, timeout=30).json()
         if "id" not in res:
             raise RuntimeError(f"Failed to create Instagram container: {res}")
@@ -88,6 +94,10 @@ def upload_reel_meta_graph(video_path_or_url: str, caption: str, account_slot: i
             break
         elif status == "ERROR":
             raise RuntimeError(f"Instagram video processing failed: {check}")
+
+    if scheduled_publish_time:
+        print(f"[+] Successfully scheduled Instagram Reel container {creation_id} for {scheduled_publish_time} on Meta Graph API.")
+        return creation_id, f"https://instagram.com/reel/{creation_id}"
 
     # Publish container
     print(f"[*] Publishing media container ({creation_id}) to Instagram...")
@@ -113,7 +123,7 @@ def upload_reel_meta_graph(video_path_or_url: str, caption: str, account_slot: i
     return media_id, permalink
 
 
-def upload_reel(video_path: str, caption: str, account_slot: int = 1, trial: bool = False, **kwargs) -> str:
+def upload_reel(video_path: str, caption: str, account_slot: int = 1, trial: bool = False, scheduled_publish_time: int = None, **kwargs) -> str:
     """
     Smart hybrid Instagram Reel uploader:
     1. Primary: Official Meta Graph API for standard public reels (resumable local file upload) - Zero bot blocks.
@@ -123,7 +133,12 @@ def upload_reel(video_path: str, caption: str, account_slot: int = 1, trial: boo
     ig_id = os.getenv("INSTAGRAM_ACCOUNT_ID_2" if account_slot == 2 else "INSTAGRAM_ACCOUNT_ID")
     if not trial and token and ig_id:
         try:
-            _, permalink = upload_reel_meta_graph(video_path, caption, account_slot=account_slot)
+            _, permalink = upload_reel_meta_graph(
+                video_path,
+                caption,
+                account_slot=account_slot,
+                scheduled_publish_time=scheduled_publish_time,
+            )
             return permalink
         except Exception as e:
             print(f"[!] Meta Graph API upload attempt failed ({e}). Falling back to direct session...")

@@ -10,6 +10,16 @@
     "gemini-3.6-flash",
     "gemini-3.8-flash"
   ],
+  "gemini_models": [
+    "gemini-3.5-flash-lite",
+    "gemini-3.1-flash-lite",
+    "gemini-2.5-flash-lite",
+    "gemini-3.8-flash",
+    "gemini-3.6-flash",
+    "gemini-2.5-flash",
+    "gemini-4-hydrogen",
+    "gemini-4.0-hydrogen"
+  ],
   "twitch_clipper": {
     "streamers": [
       "kaicenat",
@@ -73,7 +83,7 @@
     "clip_duration_sec": 35,
     "pre_peak_sec": 22,
     "post_peak_sec": 13,
-    "max_clips_per_vod": 3,
+    "max_clips_per_vod": 10,
     "min_clip_spacing_sec": 300,
     "min_spike_sigma": 2,
     "min_messages_per_window": 12,
