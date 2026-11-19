@@ -141,6 +141,7 @@
   }
 
   let activeTab = 'calendar';
+  let isSettingsDirty = false;
   let activeCalView = 'week'; // 'day', 'week', 'month'
   let activeFilter = 'all'; // 'all', 'ig1', 'ig2', 'youtube', 'staged'
   let activePrioFilter = 'all'; // 'all', '5', '4', '3', '2', '1'
@@ -2423,6 +2424,10 @@
   }
 
   function applyRemoteConfig(cfg) {
+    if (activeTab === 'settings' || isSettingsDirty) {
+      // Do not overwrite user controls while user is actively editing or reviewing settings
+      return;
+    }
     const sched = cfg.publishing_schedule || {};
     const igAccounts = sched.instagram_accounts || [];
 
@@ -2705,6 +2710,7 @@
       if (showPaused) valEl.classList.toggle('val-paused', curVal === 0);
 
       el.addEventListener('input', () => {
+        isSettingsDirty = true;
         const v = safeInt(el.value, 0);
         valEl.innerText = showPaused ? formatSliderVal(v) : `${v}${suffix}`;
         if (showPaused) valEl.classList.toggle('val-paused', v === 0);
@@ -2731,6 +2737,7 @@
       }
 
       sliderIg1.addEventListener('input', () => {
+        isSettingsDirty = true;
         const total = safeInt(sliderIg1.value, 0);
         if (valIg1) {
           valIg1.innerText = formatSliderVal(total);
@@ -2764,6 +2771,7 @@
       updateTrialDesc();
 
       sliderIg1Trial.addEventListener('input', () => {
+        isSettingsDirty = true;
         const trial = safeInt(sliderIg1Trial.value, 0);
         if (valIg1Trial) valIg1Trial.innerText = trial;
         settings.ig1TrialPosts = trial;
@@ -2780,15 +2788,16 @@
     bindSlider('slider-stream-yield', 'val-stream-yield', 'streamYield');
     bindSlider('slider-clip-spacing', 'val-clip-spacing', 'clipSpacing', 's');
 
-    // Stepper Buttons (- / +) for Daily Post Counts (0..8)
+    // Stepper Buttons (- / +) for Daily Post Counts (0..5)
     document.querySelectorAll('.btn-stepper').forEach(btn => {
       btn.addEventListener('click', () => {
+        isSettingsDirty = true;
         const targetId = btn.dataset.stepTarget;
         const delta = safeInt(btn.dataset.step, 0);
         const slider = document.getElementById(targetId);
         if (!slider) return;
         const min = safeInt(slider.min, 0);
-        const max = safeInt(slider.max, 8);
+        const max = safeInt(slider.max, 5);
         const nextVal = Math.max(min, Math.min(max, safeInt(slider.value, 0) + delta));
         slider.value = nextVal;
         slider.dispatchEvent(new Event('input', { bubbles: true }));
@@ -2987,7 +2996,7 @@
             const b64 = btoa(unescape(encodeURIComponent(updatedJsonStr)));
 
             // Commit updated config.json to GitHub
-            const putRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json`, {
+            let putRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json`, {
               method: 'PUT',
               headers,
               body: JSON.stringify({
@@ -2998,7 +3007,26 @@
               })
             });
 
+            // If 409 conflict occurs (concurrent commit / stale sha), fetch fresh sha and retry once
+            if (putRes.status === 409) {
+              const freshRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json?ref=${pBranch}&_t=${Date.now()}`, { headers });
+              if (freshRes.ok) {
+                const freshData = await freshRes.json();
+                putRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json`, {
+                  method: 'PUT',
+                  headers,
+                  body: JSON.stringify({
+                    message: `chore(config): update daily limits (YT=${ytN}, IG1=${settings.ig1Posts}, IG2=${settings.ig2Posts}) & priority rules via dashboard`,
+                    content: b64,
+                    sha: freshData.sha,
+                    branch: pBranch
+                  })
+                });
+              }
+            }
+
             if (putRes.ok) {
+              isSettingsDirty = false;
               calculateDynamicSpacing();
               renderCalendar();
               renderPipelineQueue();
