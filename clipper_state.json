@@ -200,7 +200,7 @@
       ]
     },
     "2932305259": {
-      "last_scanned_sec": 95166,
+      "last_scanned_sec": 103224,
       "clipped_peaks": [
         16447,
         16982,
@@ -211,7 +211,9 @@
         51872,
         50377,
         91902,
-        87627
+        87627,
+        98807,
+        101347
       ]
     },
     "2932204601": {
@@ -244,37 +246,68 @@
       ]
     },
     "2933527020": {
-      "last_scanned_sec": 20022,
+      "last_scanned_sec": 28080,
       "clipped_peaks": [
         4467,
         5497,
         15397,
-        19057
+        19057,
+        28867,
+        22087
       ]
     },
     "2933217724": {
-      "last_scanned_sec": 38958,
+      "last_scanned_sec": 47016,
       "clipped_peaks": [
         25372,
         23692,
-        24932
+        24932,
+        39872,
+        47412,
+        41312
       ]
     },
     "2933739024": {
-      "last_scanned_sec": 2250,
+      "last_scanned_sec": 10308,
       "clipped_peaks": [
         1427,
-        2492
+        2492,
+        4732,
+        9692,
+        6177
       ]
     },
     "2933588799": {
-      "last_scanned_sec": 13560,
+      "last_scanned_sec": 21618,
       "clipped_peaks": [
         12142,
         13272,
         14152
       ]
+    },
+    "2933861646": {
+      "last_scanned_sec": 3072,
+      "clipped_peaks": [
+        2262,
+        1692,
+        3567
+      ]
+    },
+    "2933767012": {
+      "last_scanned_sec": 8592,
+      "clipped_peaks": [
+        8337,
+        7907,
+        9267
+      ]
+    },
+    "2933767960": {
+      "last_scanned_sec": 8532,
+      "clipped_peaks": [
+        10537,
+        7997
+      ]
     }
   },
-  "yt_toggle": false
+  "yt_toggle": true
 }
