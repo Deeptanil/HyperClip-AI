@@ -83,6 +83,9 @@
       if (ov.priority !== undefined) {
         clip.priority = parseInt(ov.priority, 10);
       }
+      if (ov.title) {
+        clip.title = ov.title;
+      }
       if (ov.caption) {
         clip.caption = ov.caption;
       }
@@ -1461,6 +1464,7 @@
 
     const badge = document.getElementById('preview-streamer-badge');
     const title = document.getElementById('preview-modal-title');
+    const titleEdit = document.getElementById('preview-title-edit');
     const caption = document.getElementById('preview-caption-edit');
     const gameEl = document.getElementById('preview-game');
     const prioValEl = document.getElementById('preview-priority-val');
@@ -1472,7 +1476,8 @@
     const effPrio = getClipPriority(clip);
     if (badge) badge.innerText = `${clip.streamer} // Highlight`;
     if (title) title.innerText = clip.title;
-    if (caption) caption.value = clip.caption;
+    if (titleEdit) titleEdit.value = clip.title || '';
+    if (caption) caption.value = clip.caption || '';
     if (gameEl) gameEl.innerText = clip.game || 'Uncategorized';
     if (prioValEl) prioValEl.innerHTML = `<span class="prio-tier-badge tier-${effPrio.priority}">${effPrio.label}</span>`;
     if (sigma) sigma.innerText = clip.sigma || '3.5 σ';
@@ -1611,6 +1616,8 @@
     const errorEl = document.getElementById('preview-video-error');
     if (loader) loader.style.display = 'none';
     if (errorEl) errorEl.style.display = 'none';
+    const titleEdit = document.getElementById('preview-title-edit');
+    if (titleEdit) titleEdit.value = '';
     const captionEl = document.getElementById('preview-caption-edit');
     if (captionEl) captionEl.value = '';
     if (modal) modal.classList.remove('open');
@@ -1676,17 +1683,24 @@
     const p = parseInt(newPrio, 10);
     clip.priority = (p >= 1 && p <= 5) ? p : 3;
 
+    let newTitle = clip.title;
     let newCaption = clip.caption;
     if (isFromModal && selectedClip && selectedClip.id === clip.id) {
+      const titleEl = document.getElementById('preview-title-edit');
+      if (titleEl && titleEl.value.trim()) {
+        newTitle = titleEl.value.trim();
+      }
       const captionEl = document.getElementById('preview-caption-edit');
       if (captionEl && captionEl.value.trim()) {
         newCaption = captionEl.value.trim();
       }
     }
+    clip.title = newTitle;
     clip.caption = newCaption;
 
     // Immediately persist override to localStorage so it never reverts
     saveLocalOverride(clip, {
+      title: clip.title,
       priority: clip.priority,
       caption: newCaption
     });
@@ -1697,6 +1711,8 @@
     renderCalendar();
 
     if (isFromModal && selectedClip && selectedClip.id === clip.id) {
+      const modalTitle = document.getElementById('preview-modal-title');
+      if (modalTitle) modalTitle.innerText = clip.title;
       const effPrio = getClipPriority(clip);
       const prioValEl = document.getElementById('preview-priority-val');
       if (prioValEl) prioValEl.innerHTML = `<span class="prio-tier-badge tier-${effPrio.priority}">${effPrio.label}</span>`;
@@ -1707,6 +1723,7 @@
 
     // Auto-sync in background to repository
     updateGitHubClipMetadata(clip, {
+      title: clip.title,
       priority: clip.priority,
       caption: newCaption
     }).then(ok => {
