@@ -6,9 +6,9 @@
   "peak_sec": 4442,
   "hype_score": 208.75,
   "z_score": 3.74,
-  "title": "JASON FAILS THE GTA HEIST \ud83d\udc80\ud83d\udd25",
-  "caption": "The immersion is officially gone. \ud83d\ude2d #gtavi #jasontheween #gamingfails",
-  "hook": "JASON FAILS THE GTA HEIST \ud83d\udc80\ud83d\udd25",
+  "title": "JASON FAILS THE GTA HEIST 💀🔥",
+  "caption": "The immersion is officially gone. 😭 #gtavi #jasontheween #gamingfails",
+  "hook": "JASON FAILS THE GTA HEIST 💀🔥",
   "target_accounts": [
     "ig_1"
   ],
@@ -17,7 +17,7 @@
   "post_to_ig": true,
   "posted_to_instagram": false,
   "posted_to_youtube": false,
-  "priority": 4,
+  "priority": 5,
   "nsfw_censored": false,
   "nsfw_segments": [],
   "target": "Instagram (@solvikz) Only",
@@ -29,17 +29,17 @@
     {
       "start": 2.32,
       "end": 19.78,
-      "speed": 3.0
+      "speed": 3
     },
     {
       "start": 23.1,
-      "end": 30.0,
-      "speed": 3.0
+      "end": 30,
+      "speed": 3
     },
     {
       "start": 34.58,
       "end": 36.09,
-      "speed": 3.0
+      "speed": 3
     }
   ],
   "profanity_bleeped": false,
