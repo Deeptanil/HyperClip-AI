@@ -543,12 +543,12 @@ def _get_today_stats(logs: list) -> dict:
 def get_account_interval_minutes(posts_per_day: int) -> float:
     """
     Computes required gap between posts for an account:
-    Interval = (24 * 60 / posts_per_day) - 30 minutes buffer.
+    Interval = (24 * 60 / posts_per_day) - 90 minutes (1.5hr buffer).
     Minimum safe gap: 15 minutes.
     """
     if posts_per_day is None or posts_per_day <= 0:
         return float("inf")
-    gap = (24.0 * 60.0 / float(posts_per_day)) - 30.0
+    gap = (24.0 * 60.0 / float(posts_per_day)) - 90.0
     return max(15.0, gap)
 
 
@@ -674,7 +674,7 @@ def _pick_next_ig_action(acc_cfg: dict, acc_stats: dict, last_any_ig: datetime |
         print(f"[-] Daily cap reached for {acc_cfg.get('name', 'IG')} ({total_today}/{effective_cap} today). Refusing to post.")
         return None
 
-    # 2. DYNAMIC SPACING: (24h / posts_per_day) - 30m buffer (bypassed if force=True)
+    # 2. DYNAMIC SPACING: (24h / posts_per_day) - 1.5h buffer (bypassed if force=True)
     if not force:
         last_self = acc_stats.get("last")
         gap_minutes = get_account_interval_minutes(posts_per_day)

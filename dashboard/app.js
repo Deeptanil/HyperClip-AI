@@ -488,7 +488,7 @@
       const trial1 = Math.min(ig1N, safeInt(settings.ig1TrialPosts, 0));
       const reg1 = Math.max(0, ig1N - trial1);
       const ytGapText = ytN > 0
-        ? `1 Short every <strong>${(24 / ytN).toFixed(1)}h</strong> (minus 30m runner buffer)`
+        ? `1 Short every <strong>${(24 / ytN).toFixed(1)}h</strong> (minus 1.5h buffer)`
         : `<strong style="color:var(--danger)">Paused (0 Shorts/day)</strong>`;
       const igGapText = totalIg > 0
         ? `1 Reel every <strong>${intervalHours.toFixed(1)} hours (${intervalMins} mins)</strong> across active IG slots (≥ ${minCrossAccountMins}m cross-account buffer)`
@@ -2267,11 +2267,11 @@
       }
     });
 
-    // Dynamic Interval Formula: (24h / posts_per_day) - 30m buffer
+    // Dynamic Interval Formula: (24h / posts_per_day) - 1.5h buffer
     function getAccountIntervalMinutes(postsPerDay) {
       const n = safeInt(postsPerDay, 0);
       if (n <= 0) return Infinity;
-      return Math.max(15, Math.round((24 * 60 / n) - 30));
+      return Math.max(15, Math.round((24 * 60 / n) - 90));
     }
 
     const ig1N = safeInt(settings.ig1Posts, 0);
