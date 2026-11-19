@@ -48,6 +48,10 @@
           <svg class="icon" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
           Review & Pipeline <span class="tab-badge" id="pipeline-count-badge">0</span>
         </button>
+        <button class="tab-btn" data-tab="discarded" id="tab-nav-discarded">
+          <svg class="icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+          Discarded <span class="tab-badge badge-warning" id="discarded-count-badge">0</span>
+        </button>
         <button class="tab-btn" data-tab="accounts" id="tab-nav-accounts">
           <svg class="icon" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           Diagnostics & Accounts
@@ -184,7 +188,7 @@
       <div class="pipeline-header">
         <div>
           <h2 class="view-title">Staged Clips Queue</h2>
-          <p class="view-subtitle">Publishing order: <strong style="color:var(--yellow)">1. Prioritized</strong> → <strong style="color:var(--success)">2. Approved</strong> → <strong style="color:#f4f4f5">3. No Category</strong> → <strong style="color:var(--text-dim)">4. Deprioritized</strong> (FIFO within each tier).</p>
+          <p class="view-subtitle">Publishing order: <strong style="color:#ec4899">5 (Highest)</strong> → <strong style="color:var(--yellow)">4 (Prioritized)</strong> → <strong style="color:#38bdf8">3 (Default)</strong> → <strong style="color:#94a3b8">2 (Unprioritized)</strong> → <strong style="color:#64748b">1 (Lowest)</strong> (FIFO within each priority).</p>
         </div>
         <div style="display:flex;gap:8px;">
           <button class="btn btn-yellow" id="btn-harvest-fresh">
@@ -196,13 +200,34 @@
 
       <div class="priority-filter-bar" id="pipeline-priority-filters">
         <span class="pill active" data-prio-filter="all">All (<span id="prio-count-all">0</span>)</span>
-        <span class="pill prio-pill-prioritized" data-prio-filter="prioritized">Prioritized (<span id="prio-count-prioritized">0</span>)</span>
-        <span class="pill prio-pill-approved" data-prio-filter="approved">Approved (<span id="prio-count-approved">0</span>)</span>
-        <span class="pill prio-pill-normal" data-prio-filter="normal">No Category (<span id="prio-count-normal">0</span>)</span>
-        <span class="pill prio-pill-deprioritized" data-prio-filter="deprioritized">Deprioritized (<span id="prio-count-deprioritized">0</span>)</span>
+        <span class="pill prio-pill-5" data-prio-filter="5">P5 - Highest (<span id="prio-count-5">0</span>)</span>
+        <span class="pill prio-pill-4" data-prio-filter="4">P4 - Prioritized (<span id="prio-count-4">0</span>)</span>
+        <span class="pill prio-pill-3" data-prio-filter="3">P3 - Default (<span id="prio-count-3">0</span>)</span>
+        <span class="pill prio-pill-2" data-prio-filter="2">P2 - Unprioritized (<span id="prio-count-2">0</span>)</span>
+        <span class="pill prio-pill-1" data-prio-filter="1">P1 - Lowest (<span id="prio-count-1">0</span>)</span>
       </div>
 
       <div class="clips-grid" id="pipeline-clips-grid">
+        <!-- Rendered via JS -->
+      </div>
+    </main>
+
+    <!-- Tab: Discarded Clips Queue -->
+    <main class="main-view" id="view-discarded" style="display:none">
+      <div class="pipeline-header">
+        <div>
+          <h2 class="view-title">Discarded Clips Queue</h2>
+          <p class="view-subtitle">Clips marked with issues or rejected from publishing. Clips stay here for a <strong>6-hour grace period</strong> with a live countdown timer before permanent automated deletion.</p>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-outline" id="btn-purge-expired-discarded">
+            <svg class="icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            Purge Expired (>6h)
+          </button>
+        </div>
+      </div>
+
+      <div class="clips-grid" id="discarded-clips-grid">
         <!-- Rendered via JS -->
       </div>
     </main>
@@ -403,19 +428,21 @@
           <p class="view-subtitle">Control which games or keywords jump to the front of the queue and which only post as a last resort.</p>
 
           <div class="priority-legend-bar">
-            <span class="prio-tier-badge tier-prioritized">1. Prioritized (ASAP)</span>
+            <span class="prio-tier-badge tier-5">5. Highest (Manual)</span>
             <span class="prio-arrow">→</span>
-            <span class="prio-tier-badge tier-approved">2. Approved</span>
+            <span class="prio-tier-badge tier-4">4. Prioritized</span>
             <span class="prio-arrow">→</span>
-            <span class="prio-tier-badge tier-normal">3. No Category</span>
+            <span class="prio-tier-badge tier-3">3. Default</span>
             <span class="prio-arrow">→</span>
-            <span class="prio-tier-badge tier-deprioritized">4. Deprioritized (Last)</span>
+            <span class="prio-tier-badge tier-2">2. Unprioritized</span>
+            <span class="prio-arrow">→</span>
+            <span class="prio-tier-badge tier-1">1. Lowest (Manual)</span>
           </div>
 
           <div class="priority-rule-block">
             <div class="setting-info">
-              <span class="setting-label" style="color:var(--yellow)">Prioritized Categories / Keywords (Post First)</span>
-              <span class="setting-desc">Clips matching these games or keywords post before Approved, No Category, and Deprioritized clips.</span>
+              <span class="setting-label" style="color:var(--yellow)">Prioritized Categories / Keywords (Assigned Priority 4)</span>
+              <span class="setting-desc">Clips matching these games or keywords are automatically assigned Priority 4 (posting before Default and Unprioritized clips).</span>
             </div>
             <div class="tag-input-row">
               <input type="text" class="text-input" id="input-prio-cat" placeholder="e.g. Grand Theft Auto VI, GTA 6, Fortnite" style="flex:1;padding:7px 10px;font-size:12px;">
@@ -657,27 +684,24 @@
           </div>
 
           <div class="input-group">
-            <label class="input-label">Set Clip Priority Tier</label>
+            <label class="input-label">Set Priority Level (1-5)</label>
             <div class="priority-btn-group" id="preview-priority-controls">
-              <button type="button" class="btn btn-sm prio-select-btn" data-set-priority="prioritized">Prioritize</button>
-              <button type="button" class="btn btn-sm prio-select-btn" data-set-priority="approved">Approve</button>
-              <button type="button" class="btn btn-sm prio-select-btn" data-set-priority="normal">No Category</button>
-              <button type="button" class="btn btn-sm prio-select-btn" data-set-priority="deprioritized">Deprioritize</button>
+              <button type="button" class="btn btn-sm prio-select-btn prio-btn-5" data-set-priority="5">5 (Highest)</button>
+              <button type="button" class="btn btn-sm prio-select-btn prio-btn-4" data-set-priority="4">4 (Prioritized)</button>
+              <button type="button" class="btn btn-sm prio-select-btn prio-btn-3" data-set-priority="3">3 (Default)</button>
+              <button type="button" class="btn btn-sm prio-select-btn prio-btn-2" data-set-priority="2">2 (Unprioritized)</button>
+              <button type="button" class="btn btn-sm prio-select-btn prio-btn-1" data-set-priority="1">1 (Lowest)</button>
             </div>
           </div>
 
           <div style="display:flex;gap:8px;margin-top:auto">
-            <button class="btn btn-yellow" id="btn-approve-clip" style="flex:1;justify-content:center" title="Mark approved and prioritize for next upload slot (Optional: unapproved clips will still post automatically)">
-              <svg class="icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-              Approve
+            <button class="btn btn-outline" id="btn-save-caption" style="flex:1;justify-content:center" title="Save edited caption & priority">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              Save Changes
             </button>
-            <button class="btn btn-warning" id="btn-deny-clip" style="flex:1;justify-content:center" title="Deny clip: removes from publishing pipeline so it will never post">
-              <svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="18" x2="18" y2="18"/></svg>
-              Deny
-            </button>
-            <button class="btn btn-danger" id="btn-delete-clip" style="flex:1;justify-content:center" title="Permanently delete clip from storage">
+            <button class="btn btn-warning" id="btn-discard-clip" style="flex:1;justify-content:center" title="Discard clip: moves to Discarded tab with a 6-hour deletion timer">
               <svg class="icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-              Delete
+              Discard Clip
             </button>
           </div>
         </div>

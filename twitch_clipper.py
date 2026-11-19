@@ -446,8 +446,8 @@ def harvest_clips(config: dict, max_total_new: int = 4) -> list:
                     "post_to_ig": True,
                     "posted_to_instagram": False,
                     "posted_to_youtube": False,
-                    "approval_status": "pending",
-                    "priority": "auto",
+                    "priority": compute_clip_priority({"game": game_name, "title": clip_title, "caption": clip_caption}, config),
+                    "discarded": False,
                     "smart_edited": bool(fast_forward_segments),
                     "fast_forward_segments": fast_forward_segments,
                     "nsfw_censored": nsfw_res.get("action") == "censored",
@@ -541,28 +541,32 @@ def get_account_interval_minutes(posts_per_day: int) -> float:
     return max(15.0, gap)
 
 
-def compute_clip_priority(meta: dict, config: dict, filename: str = "") -> tuple[int, str]:
+def compute_clip_priority(meta: dict, config: dict, filename: str = "") -> int:
     """
-    4-Tier Posting Priority Order (lower rank posts first):
-      0 = prioritized   : Manually prioritized OR matches prioritized_categories (e.g. GTA 6)
-      1 = approved      : Manually approved
-      2 = normal        : Default / no category
-      3 = deprioritized : Manually deprioritized OR matches deprioritized_categories (posts ONLY when no higher priority exists)
-      9 = denied        : Excluded from publishing
+    5-Tier Posting Priority System (1 to 5, 5 being highest, 1 being lowest):
+      5 = Highest       : Only set if user explicitly sets it
+      4 = Prioritized   : Set if explicitly 4 OR matches prioritized_categories (e.g. GTA 6)
+      3 = Default       : Default priority for standard clips
+      2 = Unprioritized : Set if explicitly 2 OR matches deprioritized_categories
+      1 = Lowest        : Only set if user explicitly sets it
+      Discarded clips have meta.get("discarded") == True and return 0 (excluded from publishing).
     """
-    status = str(meta.get("approval_status", meta.get("status", "pending"))).lower().strip()
-    if status == "denied":
-        return 9, "denied"
+    if meta.get("discarded") is True or meta.get("approval_status") == "denied":
+        return 0
 
-    explicit = str(meta.get("priority", "")).lower().strip()
-    if explicit == "prioritized":
-        return 0, "prioritized"
-    if explicit == "approved":
-        return 1, "approved"
-    if explicit == "normal":
-        return 2, "normal"
-    if explicit in ("deprioritized", "unprioritized"):
-        return 3, "deprioritized"
+    explicit = meta.get("priority")
+    if isinstance(explicit, (int, float)):
+        p = int(explicit)
+        if 1 <= p <= 5:
+            return p
+    elif isinstance(explicit, str) and explicit.isdigit():
+        p = int(explicit)
+        if 1 <= p <= 5:
+            return p
+    elif str(explicit).lower().strip() == "prioritized":
+        return 4
+    elif str(explicit).lower().strip() in ("deprioritized", "unprioritized"):
+        return 2
 
     # Category / Game rules from config.json
     rules = config.get("publishing_schedule", {}).get("priority_rules", {})
@@ -579,12 +583,55 @@ def compute_clip_priority(meta: dict, config: dict, filename: str = "") -> tuple
     ]).lower()
 
     if any(cat in haystack for cat in prio_cats):
-        return 0, "prioritized"
-    if status == "approved":
-        return 1, "approved"
+        return 4
     if any(cat in haystack for cat in deprio_cats):
-        return 3, "deprioritized"
-    return 2, "normal"
+        return 2
+    return 3
+
+
+def cleanup_expired_discarded_clips(pipeline_dir: str = STREAM_PIPELINE_DIR, expiry_hours: float = 6.0) -> list[str]:
+    """
+    Finds clips marked discarded in pipeline_dir where discarded_at >= expiry_hours ago (6 hours).
+    Permanently deletes both .mp4 and .json files.
+    Returns list of deleted base filenames.
+    """
+    if not os.path.exists(pipeline_dir):
+        return []
+
+    deleted = []
+    now = datetime.now(timezone.utc)
+    for fname in os.listdir(pipeline_dir):
+        if not fname.endswith(".json"):
+            continue
+        json_path = os.path.join(pipeline_dir, fname)
+        base = os.path.splitext(fname)[0]
+        mp4_path = os.path.join(pipeline_dir, base + ".mp4")
+        try:
+            with open(json_path, "r", encoding="utf-8") as f:
+                meta = json.load(f)
+            if not meta.get("discarded"):
+                continue
+            discarded_at_str = meta.get("discarded_at")
+            if not discarded_at_str:
+                continue
+            discarded_at = datetime.fromisoformat(str(discarded_at_str).replace("Z", "+00:00"))
+            age_sec = (now - discarded_at).total_seconds()
+            if age_sec >= expiry_hours * 3600:
+                print(f"[*] Auto-deleting expired discarded clip (> {expiry_hours}h): {base}")
+                if os.path.exists(mp4_path):
+                    try:
+                        os.remove(mp4_path)
+                    except Exception:
+                        pass
+                if os.path.exists(json_path):
+                    try:
+                        os.remove(json_path)
+                    except Exception:
+                        pass
+                deleted.append(base)
+        except Exception as e:
+            print(f"[!] Error checking discarded expiry for {fname}: {e}")
+    return deleted
 
 
 def _pick_next_ig_action(acc_cfg: dict, acc_stats: dict, last_any_ig: datetime | None, cross_gap_min: int = 25, force: bool = False) -> str | None:
@@ -793,13 +840,14 @@ def publish_next_clip(
 
     ensure_dirs()
     enforce_storage_limits(config)
+    cleanup_expired_discarded_clips(STREAM_PIPELINE_DIR, expiry_hours=6.0)
 
     def _clip_sort_key(cname):
         cpath = os.path.join(STREAM_PIPELINE_DIR, cname)
         mpath = os.path.join(STREAM_PIPELINE_DIR, os.path.splitext(cname)[0] + ".json")
         meta = _load_json(mpath, {})
-        # 4-Tier Priority: 0=Prioritized, 1=Approved, 2=No Category, 3=Deprioritized, 9=Denied
-        priority, _ = compute_clip_priority(meta, config, filename=cname)
+        # 5-Tier Priority: 5=Highest, 4=Prioritized, 3=Default, 2=Unprioritized, 1=Lowest, 0=Discarded
+        priority = compute_clip_priority(meta, config, filename=cname)
 
         # Strict FIFO within each priority tier: sort by date/timestamp, never alphabetically
         raw_ts = meta.get("timestamp") or meta.get("staged_at") or meta.get("created_at")
@@ -822,19 +870,25 @@ def publish_next_clip(
             except Exception:
                 ts_val = 0.0
 
-        return (priority, ts_val)
+        # Higher priority posts first (-priority), FIFO within tier (ts_val)
+        return (-priority, ts_val)
 
-    queued = sorted([f for f in os.listdir(STREAM_PIPELINE_DIR) if f.endswith(".mp4")], key=_clip_sort_key)
-
-    # Check if there are publishable clips in the pipeline
+    all_mp4s = [f for f in os.listdir(STREAM_PIPELINE_DIR) if f.endswith(".mp4")]
     publishable = [
-        f for f in queued
-        if _load_json(os.path.join(STREAM_PIPELINE_DIR, os.path.splitext(f)[0] + ".json"), {}).get("approval_status") != "denied"
+        f for f in all_mp4s
+        if compute_clip_priority(_load_json(os.path.join(STREAM_PIPELINE_DIR, os.path.splitext(f)[0] + ".json"), {}), config, filename=f) > 0
     ]
-    if len(publishable) == 0:
+    queued = sorted(publishable, key=_clip_sort_key)
+
+    if len(queued) == 0:
         print("[*] Pipeline empty of publishable clips. Harvesting fresh hype clips from live streams...")
         harvest_clips(config, max_total_new=3)
-        queued = sorted([f for f in os.listdir(STREAM_PIPELINE_DIR) if f.endswith(".mp4")], key=_clip_sort_key)
+        all_mp4s = [f for f in os.listdir(STREAM_PIPELINE_DIR) if f.endswith(".mp4")]
+        publishable = [
+            f for f in all_mp4s
+            if compute_clip_priority(_load_json(os.path.join(STREAM_PIPELINE_DIR, os.path.splitext(f)[0] + ".json"), {}), config, filename=f) > 0
+        ]
+        queued = sorted(publishable, key=_clip_sort_key)
 
     if not queued:
         return {"status": "empty", "reason": "No clips found in pipeline or live streams."}
@@ -859,8 +913,8 @@ def publish_next_clip(
             mpath = os.path.splitext(cpath)[0] + ".json"
             meta = _load_json(mpath, {})
 
-            # Denied clips are never published
-            if meta.get("approval_status") == "denied" or meta.get("status") == "denied":
+            # Discarded clips are never published
+            if meta.get("discarded") or meta.get("approval_status") == "denied":
                 continue
 
             target_accounts = meta.get("target_accounts", [])

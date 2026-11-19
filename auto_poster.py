@@ -165,14 +165,19 @@ def get_queued_videos():
     def _file_sort_key(fname):
         fpath = os.path.join(PIPELINE_DIR, fname)
         mpath = os.path.splitext(fpath)[0] + ".json"
-        priority = 1
+        priority = 3
         ts_val = 0.0
         if os.path.exists(mpath):
             try:
                 with open(mpath, "r", encoding="utf-8") as f:
                     meta = json.load(f)
-                status = meta.get("approval_status", meta.get("status", "pending"))
-                priority = 0 if status == "approved" else 2 if status == "denied" else 1
+                if meta.get("discarded"):
+                    return (999, 0.0)
+                p = meta.get("priority", 3)
+                try:
+                    priority = int(p)
+                except Exception:
+                    priority = 3
                 raw_ts = meta.get("timestamp") or meta.get("staged_at") or meta.get("created_at")
                 if raw_ts:
                     ts_val = datetime.fromisoformat(str(raw_ts)).timestamp()
@@ -190,8 +195,10 @@ def get_queued_videos():
                 ts_val = os.path.getmtime(fpath)
             except Exception:
                 ts_val = 0.0
-        return (priority, ts_val)
+        # Higher priority posts first (-priority), FIFO within tier (ts_val)
+        return (-priority, ts_val)
 
+    files = [f for f in files if _file_sort_key(f)[0] != 999]
     files.sort(key=_file_sort_key)
     return [os.path.join(PIPELINE_DIR, f) for f in files]
 
