@@ -1992,28 +1992,124 @@ input:checked + .slider:before {
   white-space: nowrap;
 }
 
-.tier-prioritized {
+.tier-5 {
+  background: rgba(236, 72, 153, 0.22);
+  color: #f472b6;
+  border: 1px solid rgba(236, 72, 153, 0.65);
+}
+
+.tier-4, .tier-prioritized {
   background: rgba(250, 204, 21, 0.18);
   color: #FACC15;
   border: 1px solid rgba(250, 204, 21, 0.55);
 }
 
-.tier-approved {
-  background: rgba(34, 197, 94, 0.16);
-  color: #22C55E;
-  border: 1px solid rgba(34, 197, 94, 0.45);
+.tier-3, .tier-normal {
+  background: rgba(56, 189, 248, 0.16);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.45);
 }
 
-.tier-normal {
-  background: rgba(161, 161, 170, 0.12);
-  color: #e4e4e7;
-  border: 1px solid rgba(161, 161, 170, 0.3);
+.tier-2, .tier-deprioritized {
+  background: rgba(148, 163, 184, 0.16);
+  color: #cbd5e1;
+  border: 1px solid rgba(148, 163, 184, 0.35);
 }
 
-.tier-deprioritized {
-  background: rgba(113, 113, 122, 0.12);
-  color: #71717a;
-  border: 1px dashed rgba(113, 113, 122, 0.45);
+.tier-1 {
+  background: rgba(100, 116, 139, 0.18);
+  color: #94a3b8;
+  border: 1px dashed rgba(100, 116, 139, 0.5);
+}
+
+.tier-discarded {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.5);
+}
+
+/* Priority Filter Bar Pills */
+.prio-pill-5.active {
+  background: rgba(236, 72, 153, 0.25) !important;
+  color: #f472b6 !important;
+  border-color: #ec4899 !important;
+}
+
+.prio-pill-4.active {
+  background: rgba(250, 204, 21, 0.22) !important;
+  color: #FACC15 !important;
+  border-color: #FACC15 !important;
+}
+
+.prio-pill-3.active {
+  background: rgba(56, 189, 248, 0.2) !important;
+  color: #38bdf8 !important;
+  border-color: #38bdf8 !important;
+}
+
+.prio-pill-2.active {
+  background: rgba(148, 163, 184, 0.2) !important;
+  color: #cbd5e1 !important;
+  border-color: #94a3b8 !important;
+}
+
+.prio-pill-1.active {
+  background: rgba(100, 116, 139, 0.2) !important;
+  color: #94a3b8 !important;
+  border-color: #64748b !important;
+}
+
+/* Discarded Queue Cards & Badges */
+.discard-timer-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.discard-timer-badge.urgent {
+  background: rgba(239, 68, 68, 0.3);
+  color: #ff4545;
+  border-color: #ef4444;
+  animation: pulse-border 1.5s infinite;
+}
+
+.discard-timer-badge.expired {
+  background: rgba(185, 28, 28, 0.35);
+  color: #fca5a5;
+  border-color: #dc2626;
+}
+
+@keyframes pulse-border {
+  0%, 100% { border-color: rgba(239, 68, 68, 0.8); }
+  50% { border-color: rgba(239, 68, 68, 0.2); }
+}
+
+.discard-card {
+  border-color: rgba(239, 68, 68, 0.3) !important;
+  background: linear-gradient(180deg, var(--bg-card) 0%, rgba(239, 68, 68, 0.04) 100%) !important;
+}
+
+.discard-actions {
+  display: flex;
+  gap: 8px;
+  padding: 8px 14px;
+  background: rgba(0, 0, 0, 0.25);
+  border-top: 1px solid var(--border);
+}
+
+.discard-actions .btn {
+  flex: 1;
+  justify-content: center;
+  font-size: 11px;
 }
 
 /* Priority Rule Tag Manager */
@@ -2174,20 +2270,52 @@ input:checked + .slider:before {
 
 .priority-btn-group {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 6px;
 }
 
 .prio-select-btn {
   justify-content: center;
   font-size: 10px;
-  padding: 6px 4px;
+  padding: 6px 2px;
+  font-family: var(--font-mono);
+  font-weight: 700;
 }
 
 .prio-select-btn.active {
   border-color: var(--yellow);
   background: var(--yellow-muted);
   color: var(--yellow);
+}
+
+.prio-select-btn.prio-btn-5.active {
+  border-color: #ec4899;
+  background: rgba(236, 72, 153, 0.22);
+  color: #f472b6;
+}
+
+.prio-select-btn.prio-btn-4.active {
+  border-color: var(--yellow);
+  background: var(--yellow-muted);
+  color: var(--yellow);
+}
+
+.prio-select-btn.prio-btn-3.active {
+  border-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
+}
+
+.prio-select-btn.prio-btn-2.active {
+  border-color: #94a3b8;
+  background: rgba(148, 163, 184, 0.2);
+  color: #cbd5e1;
+}
+
+.prio-select-btn.prio-btn-1.active {
+  border-color: #64748b;
+  background: rgba(100, 116, 139, 0.2);
+  color: #94a3b8;
 }
 
 .clip-game-tag {

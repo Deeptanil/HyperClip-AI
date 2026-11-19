@@ -18,7 +18,8 @@ CLIPS = [
         "color1": "0x1a1200",
         "color2": "0xFACC15",
         "target": "Instagram (solvikz) & YouTube",
-        "approval_status": "pending"
+        "priority": 3,
+        "discarded": False
     },
     {
         "base_name": "2026-11-15-kai_cenat_warzone_impossible_clutch",
@@ -31,7 +32,8 @@ CLIPS = [
         "color1": "0x120820",
         "color2": "0xA855F7",
         "target": "Instagram (loopablez)",
-        "approval_status": "pending"
+        "priority": 3,
+        "discarded": False
     },
     {
         "base_name": "2026-11-15-xqc_among_us_nuclear_rage",
@@ -44,7 +46,8 @@ CLIPS = [
         "color1": "0x200505",
         "color2": "0xEF4444",
         "target": "YouTube Shorts",
-        "approval_status": "pending"
+        "priority": 3,
+        "discarded": False
     }
 ]
 

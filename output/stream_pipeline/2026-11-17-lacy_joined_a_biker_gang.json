@@ -17,7 +17,6 @@
   "post_to_ig": true,
   "posted_to_instagram": true,
   "posted_to_youtube": false,
-  "approval_status": "pending",
   "target": "Instagram (@loopablez) & YouTube",
   "created_at": "2026-11-17T14:51:24.771025+00:00",
   "timestamp": "2026-11-17T14:51:24.771044+00:00",
@@ -28,5 +27,7 @@
   "profanity_bleeped": false,
   "bleep_segments": [],
   "nsfw_censored": false,
-  "nsfw_segments": []
+  "nsfw_segments": [],
+  "priority": 3,
+  "discarded": false
 }

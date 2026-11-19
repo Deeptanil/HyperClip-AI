@@ -80,31 +80,50 @@
   let activeTab = 'calendar';
   let activeCalView = 'week'; // 'day', 'week', 'month'
   let activeFilter = 'all'; // 'all', 'ig1', 'ig2', 'youtube', 'staged'
-  let activePrioFilter = 'all'; // 'all', 'prioritized', 'approved', 'normal', 'deprioritized'
+  let activePrioFilter = 'all'; // 'all', '5', '4', '3', '2', '1'
   let currentDate = new Date();
   let selectedClip = null;
   let lastTodayCounts = { ig1: 0, ig2: 0, youtube: 0 };
 
-  // --- 4-Tier Posting Priority Engine (Mirrors twitch_clipper.py exactly) ---
-  // 0: Prioritized (Post ASAP) -> 1: Approved -> 2: No Category -> 3: Deprioritized (Last Resort) -> 9: Denied
+  // --- 5-Tier Posting Priority System (1 to 5, 5 being highest, 1 being lowest) ---
+  // 5: Highest (manual only)
+  // 4: Prioritized (matches prioritized categories like GTA 6, or manual)
+  // 3: Default (standard clips)
+  // 2: Unprioritized (matches deprioritized categories, or manual)
+  // 1: Lowest (manual only)
+  // Discarded clips (discarded: true) are routed to Discarded tab with a 6-hour deletion timer
   function getClipPriority(clip) {
-    const status = String(clip.approval_status || clip.status || 'pending').toLowerCase().trim();
-    if (status === 'denied') {
-      return { rank: 9, tier: 'denied', label: 'Denied', source: 'manual' };
+    if (clip.discarded) {
+      return { priority: 0, rank: 99, tier: 'discarded', label: 'Discarded', isDiscarded: true };
     }
 
-    const explicit = String(clip.priority || '').toLowerCase().trim();
-    if (explicit === 'prioritized') {
-      return { rank: 0, tier: 'prioritized', label: 'Prioritized', source: 'manual' };
+    const explicit = clip.priority;
+    if (typeof explicit === 'number' && explicit >= 1 && explicit <= 5) {
+      const labels = {
+        5: 'P5 (Highest)',
+        4: 'P4 (Prioritized)',
+        3: 'P3 (Default)',
+        2: 'P2 (Unprioritized)',
+        1: 'P1 (Lowest)'
+      };
+      return { priority: explicit, rank: 6 - explicit, tier: String(explicit), label: labels[explicit], source: 'manual' };
     }
-    if (explicit === 'approved') {
-      return { rank: 1, tier: 'approved', label: 'Approved', source: 'manual' };
+    if (typeof explicit === 'string' && /^[1-5]$/.test(explicit.trim())) {
+      const p = parseInt(explicit.trim(), 10);
+      const labels = {
+        5: 'P5 (Highest)',
+        4: 'P4 (Prioritized)',
+        3: 'P3 (Default)',
+        2: 'P2 (Unprioritized)',
+        1: 'P1 (Lowest)'
+      };
+      return { priority: p, rank: 6 - p, tier: String(p), label: labels[p], source: 'manual' };
     }
-    if (explicit === 'normal') {
-      return { rank: 2, tier: 'normal', label: 'No Category', source: 'manual' };
+    if (String(explicit).toLowerCase().trim() === 'prioritized') {
+      return { priority: 4, rank: 2, tier: '4', label: 'P4 (Prioritized)', source: 'manual' };
     }
-    if (explicit === 'deprioritized' || explicit === 'unprioritized') {
-      return { rank: 3, tier: 'deprioritized', label: 'Deprioritized', source: 'manual' };
+    if (['deprioritized', 'unprioritized'].includes(String(explicit).toLowerCase().trim())) {
+      return { priority: 2, rank: 4, tier: '2', label: 'P2 (Unprioritized)', source: 'manual' };
     }
 
     const prioCats = (settings.prioritizedCategories || []).map(c => String(c).toLowerCase().trim()).filter(Boolean);
@@ -119,16 +138,13 @@
 
     const matchedPrio = prioCats.find(cat => haystack.includes(cat));
     if (matchedPrio) {
-      return { rank: 0, tier: 'prioritized', label: `Prioritized (${matchedPrio.toUpperCase()})`, source: 'category' };
-    }
-    if (status === 'approved') {
-      return { rank: 1, tier: 'approved', label: 'Approved', source: 'manual' };
+      return { priority: 4, rank: 2, tier: '4', label: `P4 (${matchedPrio.toUpperCase()})`, source: 'category' };
     }
     const matchedDeprio = deprioCats.find(cat => haystack.includes(cat));
     if (matchedDeprio) {
-      return { rank: 3, tier: 'deprioritized', label: `Deprioritized (${matchedDeprio.toUpperCase()})`, source: 'category' };
+      return { priority: 2, rank: 4, tier: '2', label: `P2 (${matchedDeprio.toUpperCase()})`, source: 'category' };
     }
-    return { rank: 2, tier: 'normal', label: 'No Category', source: 'default' };
+    return { priority: 3, rank: 3, tier: '3', label: 'P3 (Default)', source: 'default' };
   }
 
   function getClipTimestamp(c) {
@@ -148,9 +164,14 @@
     pipelineClips.forEach(c => {
       c._prio = getClipPriority(c);
     });
+    // Active clips first by priority DESC (5 first, then 4, 3, 2, 1), then FIFO
+    // Discarded clips placed at the end
     pipelineClips.sort((a, b) => {
-      const rankDiff = (a._prio?.rank ?? 2) - (b._prio?.rank ?? 2);
-      if (rankDiff !== 0) return rankDiff;
+      if (Boolean(a.discarded) !== Boolean(b.discarded)) {
+        return a.discarded ? 1 : -1;
+      }
+      const pDiff = (b._prio?.priority ?? 3) - (a._prio?.priority ?? 3);
+      if (pDiff !== 0) return pDiff;
       return getClipTimestamp(a) - getClipTimestamp(b);
     });
   }
@@ -414,7 +435,7 @@
         <strong>Dynamic Spacing Plan:</strong> ${totalIg} Instagram Reels/day (${ig1N} @solvikz [${trial1} trial, ${reg1} standard] + ${ig2N} @loopablez) + ${ytN} YouTube Shorts/day.<br>
         • <strong>Instagram Cadence:</strong> ${igGapText}<br>
         • <strong>YouTube Cadence:</strong> ${ytGapText}<br>
-        • <strong>Priority Order:</strong> Prioritized (${(settings.prioritizedCategories || []).length} rules) → Approved → No Category → Deprioritized (${(settings.deprioritizedCategories || []).length} rules).
+        • <strong>Priority Order:</strong> 5 (Highest) → 4 (Prioritized, ${(settings.prioritizedCategories || []).length} rules) → 3 (Default) → 2 (Unprioritized, ${(settings.deprioritizedCategories || []).length} rules) → 1 (Lowest).
       `;
     }
 
@@ -726,7 +747,7 @@
 
       // Map priority-sorted staged pipeline clips onto the earliest upcoming slots
       sortPipelineClips();
-      const activeStaged = pipelineClips.filter(c => (c._prio?.tier || 'normal') !== 'denied');
+      const activeStaged = pipelineClips.filter(c => !c.discarded);
       let stagedIdx = 0;
       upcomingSlots.forEach(slot => {
         if (stagedIdx < activeStaged.length) {
@@ -1115,17 +1136,17 @@
     const grid = document.getElementById('pipeline-clips-grid');
     const badge = document.getElementById('pipeline-count-badge');
 
-    // Always sort by exact 4-tier priority + FIFO
+    // Always sort by 5-tier priority (5 down to 1) + FIFO
     sortPipelineClips();
 
-    const activeQueue = pipelineClips.filter(c => (c._prio?.tier || 'normal') !== 'denied');
+    const activeQueue = pipelineClips.filter(c => !c.discarded);
     if (badge) badge.innerText = activeQueue.length;
 
-    // Update priority filter pill counts
-    const counts = { all: activeQueue.length, prioritized: 0, approved: 0, normal: 0, deprioritized: 0 };
+    // Update priority filter pill counts: 5, 4, 3, 2, 1
+    const counts = { all: activeQueue.length, '5': 0, '4': 0, '3': 0, '2': 0, '1': 0 };
     activeQueue.forEach(c => {
-      const t = c._prio?.tier || 'normal';
-      if (typeof counts[t] === 'number') counts[t]++;
+      const p = String(c._prio?.priority || 3);
+      if (typeof counts[p] === 'number') counts[p]++;
     });
     Object.entries(counts).forEach(([k, v]) => {
       const el = document.getElementById(`prio-count-${k}`);
@@ -1137,14 +1158,14 @@
 
     const filteredClips = activePrioFilter === 'all'
       ? activeQueue
-      : activeQueue.filter(c => (c._prio?.tier || 'normal') === activePrioFilter);
+      : activeQueue.filter(c => String(c._prio?.priority || 3) === activePrioFilter);
 
     if (filteredClips.length === 0) {
       grid.innerHTML = `
         <div style="grid-column:1/-1;text-align:center;padding:60px 20px;border:1px dashed var(--border);border-radius:var(--radius-md);background:var(--bg-surface)">
           <div style="margin-bottom:12px;color:var(--text-dim)">${ICONS.film}</div>
-          <div style="font-size:16px;font-weight:700;color:#ffffff">${activeQueue.length === 0 ? 'No Staged Clips in Pipeline' : 'No Clips in This Priority Tier'}</div>
-          <div style="font-size:12px;color:var(--text-muted);margin-top:4px">${activeQueue.length === 0 ? 'All harvested clips have been published. Click "Scan Live Streams" to stage new moments.' : 'Switch filter to "All" or adjust clip priority buttons.'}</div>
+          <div style="font-size:16px;font-weight:700;color:#ffffff">${activeQueue.length === 0 ? 'No Staged Clips in Pipeline' : 'No Clips in This Priority Level'}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:4px">${activeQueue.length === 0 ? 'All harvested clips have been published. Click "Scan Live Streams" to stage new moments.' : 'Switch filter to "All" or adjust clip priority level.'}</div>
         </div>
       `;
       return;
@@ -1169,11 +1190,7 @@
       const card = document.createElement('div');
       card.className = `clip-card card-${prio.tier}`;
 
-      const tierClass = `tier-${prio.tier}`;
-      const isManualPrio = clip.priority === 'prioritized';
-      const isManualAppr = clip.priority === 'approved' || (!clip.priority && clip.approval_status === 'approved');
-      const isManualDeprio = clip.priority === 'deprioritized';
-
+      const tierClass = `tier-${prio.priority}`;
       const cachedBlob = clipBlobCache.get(clip.id) || clip._blobUrl;
 
       card.innerHTML = `
@@ -1212,14 +1229,16 @@
           </div>
         </div>
         <div class="clip-prio-bar">
-          <button class="btn btn-sm btn-prio-up ${isManualPrio ? 'prio-active-prioritized' : ''}" title="Prioritize: Post ASAP before Approved &amp; No Category">▲ Prioritize</button>
-          <button class="btn btn-sm btn-approve ${isManualAppr ? 'prio-active-approved' : ''}" title="Approve: Post after Prioritized, before No Category">✓ Approve</button>
-          <button class="btn btn-sm btn-prio-down ${isManualDeprio ? 'prio-active-deprioritized' : ''}" title="Deprioritize: Post ONLY if no higher priority clips remain">▼ Deprioritize</button>
+          <span style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim);align-self:center;margin-right:2px;">PRIO:</span>
+          <button class="btn btn-sm ${prio.priority === 5 ? 'btn-yellow' : ''}" style="flex:1;padding:2px 0;" onclick="window.setPriorityDirect('${clip.id}', 5)" title="P5 (Highest)">5</button>
+          <button class="btn btn-sm ${prio.priority === 4 ? 'btn-yellow' : ''}" style="flex:1;padding:2px 0;" onclick="window.setPriorityDirect('${clip.id}', 4)" title="P4 (Prioritized)">4</button>
+          <button class="btn btn-sm ${prio.priority === 3 ? 'btn-yellow' : ''}" style="flex:1;padding:2px 0;" onclick="window.setPriorityDirect('${clip.id}', 3)" title="P3 (Default)">3</button>
+          <button class="btn btn-sm ${prio.priority === 2 ? 'btn-yellow' : ''}" style="flex:1;padding:2px 0;" onclick="window.setPriorityDirect('${clip.id}', 2)" title="P2 (Unprioritized)">2</button>
+          <button class="btn btn-sm ${prio.priority === 1 ? 'btn-yellow' : ''}" style="flex:1;padding:2px 0;" onclick="window.setPriorityDirect('${clip.id}', 1)" title="P1 (Lowest)">1</button>
         </div>
         <div class="clip-actions">
-          <button class="btn btn-yellow btn-sm btn-preview" style="flex:1;justify-content:center">Preview</button>
-          <button class="btn btn-warning btn-sm btn-deny" title="Deny clip (removes from pipeline)">Deny</button>
-          <button class="btn btn-danger btn-sm btn-delete" title="Permanently delete clip">Delete</button>
+          <button class="btn btn-yellow btn-sm btn-preview" style="flex:2;justify-content:center">Preview</button>
+          <button class="btn btn-warning btn-sm btn-discard" style="flex:1;justify-content:center" title="Discard clip (6h timer before automated deletion)">🗑️ Discard</button>
         </div>
       `;
 
@@ -1235,11 +1254,92 @@
       }
 
       card.querySelector('.btn-preview').onclick = () => window.openPreviewModal(clip);
-      card.querySelector('.btn-prio-up').onclick = () => setClipPriority(clip, isManualPrio ? 'auto' : 'prioritized', false);
-      card.querySelector('.btn-approve').onclick = () => setClipPriority(clip, isManualAppr ? 'normal' : 'approved', false);
-      card.querySelector('.btn-prio-down').onclick = () => setClipPriority(clip, isManualDeprio ? 'auto' : 'deprioritized', false);
-      card.querySelector('.btn-deny').onclick = () => denyClip(clip);
-      card.querySelector('.btn-delete').onclick = () => deleteClip(clip);
+      card.querySelector('.btn-discard').onclick = () => discardClip(clip, false);
+
+      grid.appendChild(card);
+    });
+  }
+
+  // --- Discarded Clips Queue (6-Hour Deletion Window) ---
+  function renderDiscardedQueue() {
+    const grid = document.getElementById('discarded-clips-grid');
+    const badge = document.getElementById('discarded-count-badge');
+    const discardedClips = pipelineClips.filter(c => Boolean(c.discarded));
+
+    if (badge) {
+      badge.innerText = discardedClips.length;
+      badge.style.display = discardedClips.length > 0 ? 'inline-block' : 'none';
+    }
+
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    if (discardedClips.length === 0) {
+      grid.innerHTML = `
+        <div style="grid-column:1/-1;text-align:center;padding:60px 20px;border:1px dashed var(--border);border-radius:var(--radius-md);background:var(--bg-surface)">
+          <div style="margin-bottom:12px;color:var(--text-dim)">
+            <svg class="icon icon-lg" viewBox="0 0 24 24" style="width:36px;height:36px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </div>
+          <div style="font-size:16px;font-weight:700;color:#ffffff">No Discarded Clips</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:4px;max-width:440px;margin-left:auto;margin-right:auto">
+            Clips marked with issues or discarded from publishing will appear here. They are held for <strong>6 hours</strong> before automated permanent deletion.
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    discardedClips.forEach(clip => {
+      const discAt = clip.discarded_at ? new Date(clip.discarded_at).getTime() : Date.now();
+      const expiresAt = discAt + (6 * 3600 * 1000);
+      const remainingMs = expiresAt - Date.now();
+
+      let timerText = '';
+      let timerClass = 'discard-timer-badge';
+      if (remainingMs <= 0) {
+        timerText = '⚠️ Expired (>6h) - Ready to Purge';
+        timerClass += ' expired';
+      } else {
+        const hrs = Math.floor(remainingMs / (3600 * 1000));
+        const mins = Math.floor((remainingMs % (3600 * 1000)) / (60 * 1000));
+        timerText = `⏰ Deletes in ${hrs}h ${mins}m`;
+        if (hrs < 1) timerClass += ' urgent';
+      }
+
+      const origPrio = clip.pre_discard_priority || 3;
+      const streamer = clip.streamer || clip.username || 'Streamer';
+      const game = clip.game || 'Game';
+      const dur = clip.duration || (clip.duration_sec ? `${Math.round(clip.duration_sec)}s` : '30s');
+
+      const card = document.createElement('div');
+      card.className = 'clip-card discard-card';
+      card.innerHTML = `
+        <div class="clip-preview-wrap" style="position:relative;background:#000;aspect-ratio:9/16;max-height:280px;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+          ${clip.videoUrl ? `<video src="${clip.videoUrl}" style="width:100%;height:100%;object-fit:cover;" preload="none" muted playsinline></video>` : `<div class="text-muted font-mono" style="font-size:12px;">Video Staged</div>`}
+          <span class="${timerClass}" style="position:absolute;top:8px;left:8px;z-index:2;">${timerText}</span>
+          <span class="prio-tier-badge tier-${origPrio}" style="position:absolute;top:8px;right:8px;z-index:2;">Prior: P${origPrio}</span>
+        </div>
+        <div class="clip-body" style="padding:12px;">
+          <div style="font-weight:700;font-size:13px;line-height:1.3;margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${clip.title}">${clip.title}</div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-muted);margin-bottom:8px;">
+            <span>${streamer}</span> • <span>${game}</span> • <span>${dur}</span>
+          </div>
+          <div class="clip-caption" style="font-size:11px;max-height:38px;overflow:hidden;color:var(--text-dim);">${clip.caption || ''}</div>
+        </div>
+        <div class="discard-actions">
+          <button class="btn btn-sm btn-outline btn-restore" style="flex:1;justify-content:center;">
+            <svg class="icon" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+            Restore
+          </button>
+          <button class="btn btn-sm btn-danger btn-delete-perm" style="flex:1;justify-content:center;">
+            <svg class="icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            Delete Permanently
+          </button>
+        </div>
+      `;
+
+      card.querySelector('.btn-restore').onclick = () => restoreClip(clip);
+      card.querySelector('.btn-delete-perm').onclick = () => deletePermanently(clip);
 
       grid.appendChild(card);
     });
@@ -1314,14 +1414,14 @@
     if (title) title.innerText = clip.title;
     if (caption) caption.value = clip.caption;
     if (gameEl) gameEl.innerText = clip.game || 'Uncategorized';
-    if (prioValEl) prioValEl.innerHTML = `<span class="prio-tier-badge tier-${effPrio.tier}">${effPrio.label}</span>`;
+    if (prioValEl) prioValEl.innerHTML = `<span class="prio-tier-badge tier-${effPrio.priority}">${effPrio.label}</span>`;
     if (sigma) sigma.innerText = clip.sigma || '3.5 σ';
     if (motion) motion.innerText = clip.motion || 'High Action Active';
     if (layout) layout.innerText = clip.layout || 'Dual Stack 9:16';
     if (target) target.innerText = clip.target || 'Instagram & YouTube';
 
     document.querySelectorAll('#preview-priority-controls .prio-select-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.setPriority === effPrio.tier);
+      btn.classList.toggle('active', parseInt(btn.dataset.setPriority, 10) === effPrio.priority);
     });
 
     const trialPill = document.getElementById('preview-trial-pill');
@@ -1485,7 +1585,7 @@
         method: 'PUT',
         headers,
         body: JSON.stringify({
-          message: `chore: update clip metadata (${updates.priority || updates.approval_status || 'updated'}) for ${clip.filename}`,
+          message: `chore: update clip metadata (${updates.priority ? 'prio ' + updates.priority : (updates.discarded ? 'discarded' : 'updated')}) for ${clip.filename}`,
           content: newBase64,
           sha: getData.sha,
           branch: cBranch
@@ -1506,7 +1606,11 @@
     }
   }
 
-  async function setClipPriority(clip, newTier, isFromModal = false) {
+  async function setClipPriority(clip, newPrio, isFromModal = false) {
+    if (!clip) return;
+    const p = parseInt(newPrio, 10);
+    clip.priority = (p >= 1 && p <= 5) ? p : 3;
+
     let newCaption = clip.caption;
     if (isFromModal && selectedClip && selectedClip.id === clip.id) {
       const captionEl = document.getElementById('preview-caption-edit');
@@ -1515,12 +1619,6 @@
       }
     }
     clip.caption = newCaption;
-    clip.priority = newTier;
-    if (newTier === 'approved') {
-      clip.approval_status = 'approved';
-    } else if (clip.approval_status === 'denied' || newTier === 'normal' || newTier === 'deprioritized' || newTier === 'auto') {
-      clip.approval_status = 'pending';
-    }
 
     sortPipelineClips();
     renderPipelineQueue();
@@ -1529,36 +1627,72 @@
     if (isFromModal && selectedClip && selectedClip.id === clip.id) {
       const effPrio = getClipPriority(clip);
       const prioValEl = document.getElementById('preview-priority-val');
-      if (prioValEl) prioValEl.innerHTML = `<span class="prio-tier-badge tier-${effPrio.tier}">${effPrio.label}</span>`;
+      if (prioValEl) prioValEl.innerHTML = `<span class="prio-tier-badge tier-${effPrio.priority}">${effPrio.label}</span>`;
       document.querySelectorAll('#preview-priority-controls .prio-select-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.setPriority === effPrio.tier);
+        btn.classList.toggle('active', parseInt(btn.dataset.setPriority, 10) === effPrio.priority);
       });
     }
 
     await updateGitHubClipMetadata(clip, {
       priority: clip.priority,
-      approval_status: clip.approval_status,
       caption: newCaption
     });
   }
 
-  function approveClip(clip, isFromModal = false) {
-    setClipPriority(clip, 'approved', isFromModal);
-    window.closePreviewModal();
-  }
+  async function discardClip(clip, isFromModal = false) {
+    if (!clip) return;
+    const nowIso = new Date().toISOString();
+    const currentPrio = clip._prio ? clip._prio.priority : (clip.priority || 3);
 
-  function denyClip(clip) {
-    clip.approval_status = 'denied';
-    updateGitHubClipMetadata(clip, { approval_status: 'denied' });
-    pipelineClips = pipelineClips.filter(c => c.id !== clip.id);
+    clip.discarded = true;
+    clip.discarded_at = nowIso;
+    clip.pre_discard_priority = currentPrio;
+
+    sortPipelineClips();
     renderPipelineQueue();
+    renderDiscardedQueue();
     renderCalendar();
-    alert(`Clip "${clip.title}" denied. It has been removed from the publishing queue.`);
-    window.closePreviewModal();
+
+    if (isFromModal) {
+      window.closePreviewModal();
+    }
+
+    await updateGitHubClipMetadata(clip, {
+      discarded: true,
+      discarded_at: nowIso,
+      pre_discard_priority: currentPrio
+    });
+
+    alert(`Clip "${clip.title}" discarded. It will be held for 6 hours before permanent automated deletion.`);
   }
 
-  async function deleteClip(clip) {
-    if (!confirm(`Are you sure you want to permanently delete "${clip.title}" from storage?`)) return;
+  async function restoreClip(clip) {
+    if (!clip) return;
+    const restoredPrio = clip.pre_discard_priority || 3;
+    clip.discarded = false;
+    clip.priority = restoredPrio;
+    delete clip.discarded_at;
+    delete clip.pre_discard_priority;
+
+    sortPipelineClips();
+    renderPipelineQueue();
+    renderDiscardedQueue();
+    renderCalendar();
+
+    await updateGitHubClipMetadata(clip, {
+      discarded: false,
+      priority: restoredPrio,
+      discarded_at: null,
+      pre_discard_priority: null
+    });
+
+    alert(`Clip "${clip.title}" restored back to Priority ${restoredPrio}!`);
+  }
+
+  async function deletePermanently(clip) {
+    if (!clip) return;
+    const confirmed = confirm(`Are you sure you want to permanently delete "${clip.title}"?\n\nThis will immediately remove both the video and metadata files. This action cannot be undone.`);
+    if (!confirmed) return;
 
     if (auth.pat && !auth.isDemo && clip.path && clip.sha) {
       try {
@@ -1597,10 +1731,48 @@
     }
 
     pipelineClips = pipelineClips.filter(c => c.id !== clip.id);
+    sortPipelineClips();
     renderPipelineQueue();
+    renderDiscardedQueue();
     renderCalendar();
     window.closePreviewModal();
+    alert(`Clip "${clip.title}" permanently deleted.`);
   }
+
+  async function purgeExpiredDiscarded() {
+    const expired = pipelineClips.filter(c => {
+      if (!c.discarded || !c.discarded_at) return false;
+      const ageMs = Date.now() - new Date(c.discarded_at).getTime();
+      return ageMs >= (6 * 3600 * 1000);
+    });
+
+    if (expired.length === 0) {
+      alert('No discarded clips have exceeded the 6-hour deletion window yet.');
+      return;
+    }
+
+    const confirmed = confirm(`Found ${expired.length} discarded clip(s) older than 6 hours. Permanently delete them now?`);
+    if (!confirmed) return;
+
+    for (const c of expired) {
+      await deletePermanently(c);
+    }
+  }
+
+  window.setPriorityDirect = function(id, p) {
+    const c = pipelineClips.find(x => x.id === id);
+    if (c) setClipPriority(c, p, false);
+  };
+
+  window.restoreClipById = function(id) {
+    const c = pipelineClips.find(x => x.id === id);
+    if (c) restoreClip(c);
+  };
+
+  window.deletePermanentlyById = function(id) {
+    const c = pipelineClips.find(x => x.id === id);
+    if (c) deletePermanently(c);
+  };
 
   // --- Real GitHub REST API Integration & Data Engine ---
   let isSyncing = false;
@@ -1811,8 +1983,10 @@
                   account: assignedAcc,
                   isTrial: isTrial,
                   status: 'staged',
-                  approval_status: meta.approval_status || meta.status || 'pending',
-                  priority: meta.priority || 'auto',
+                  priority: meta.priority ?? 3,
+                  discarded: Boolean(meta.discarded),
+                  discarded_at: meta.discarded_at || null,
+                  pre_discard_priority: meta.pre_discard_priority || null,
                   smart_edited: Boolean(meta.smart_edited || (Array.isArray(meta.fast_forward_segments) && meta.fast_forward_segments.length > 0)),
                   fast_forward_segments: Array.isArray(meta.fast_forward_segments) ? meta.fast_forward_segments : [],
                   nsfw_censored: Boolean(meta.nsfw_censored),
@@ -1889,7 +2063,7 @@
 
       // Diff data against last sync to prevent unnecessary DOM destruction
       const currentSignature = (
-        realPipeline.map(c => `${c.id}:${c.priority}:${c.approval_status}:${c.caption}`).join(';') +
+        realPipeline.map(c => `${c.id}:${c.priority}:${c.discarded}:${c.caption}`).join(';') +
         '###' +
         realPosted.map(p => `${p.id}:${p.status}`).join(';')
       );
@@ -2191,6 +2365,7 @@
 
         if (activeTab === 'calendar') renderCalendar();
         if (activeTab === 'pipeline') renderPipelineQueue();
+        if (activeTab === 'discarded') renderDiscardedQueue();
       });
     });
 
@@ -2327,14 +2502,31 @@
       }
     });
 
-    const btnApproveClip = document.getElementById('btn-approve-clip');
-    if (btnApproveClip) {
-      btnApproveClip.addEventListener('click', () => {
-        if (selectedClip) approveClip(selectedClip, true);
+    const btnSaveCaption = document.getElementById('btn-save-caption');
+    if (btnSaveCaption) {
+      btnSaveCaption.addEventListener('click', () => {
+        if (selectedClip) {
+          setClipPriority(selectedClip, selectedClip.priority, true);
+          window.closePreviewModal();
+        }
       });
     }
 
-    // Preview Modal 4-Tier Priority Buttons
+    const btnDiscardClip = document.getElementById('btn-discard-clip');
+    if (btnDiscardClip) {
+      btnDiscardClip.addEventListener('click', () => {
+        if (selectedClip) discardClip(selectedClip, true);
+      });
+    }
+
+    const btnPurgeExpired = document.getElementById('btn-purge-expired-discarded');
+    if (btnPurgeExpired) {
+      btnPurgeExpired.addEventListener('click', () => {
+        purgeExpiredDiscarded();
+      });
+    }
+
+    // Preview Modal 5-Tier Priority Buttons (1 to 5)
     document.querySelectorAll('#preview-priority-controls .prio-select-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         if (selectedClip) {
@@ -2343,7 +2535,7 @@
       });
     });
 
-    // Pipeline Priority Tier Filter Bar
+    // Pipeline Priority Filter Bar (All, 5, 4, 3, 2, 1)
     document.querySelectorAll('#pipeline-priority-filters .pill').forEach(pill => {
       pill.addEventListener('click', () => {
         document.querySelectorAll('#pipeline-priority-filters .pill').forEach(p => p.classList.remove('active'));
@@ -2352,20 +2544,6 @@
         renderPipelineQueue();
       });
     });
-
-    const btnDenyClip = document.getElementById('btn-deny-clip');
-    if (btnDenyClip) {
-      btnDenyClip.addEventListener('click', () => {
-        if (selectedClip) denyClip(selectedClip);
-      });
-    }
-
-    const btnDeleteClip = document.getElementById('btn-delete-clip');
-    if (btnDeleteClip) {
-      btnDeleteClip.addEventListener('click', () => {
-        if (selectedClip) deleteClip(selectedClip);
-      });
-    }
 
     // Start Real-Time Current Time Indicator Loop
     setInterval(updateCurrentTimeIndicator, 30000);

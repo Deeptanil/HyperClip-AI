@@ -18,8 +18,7 @@
   "post_to_ig": true,
   "posted_to_instagram": false,
   "posted_to_youtube": false,
-  "approval_status": "pending",
-  "priority": "auto",
+  "priority": 4,
   "nsfw_censored": false,
   "nsfw_segments": [],
   "profanity_bleeped": false,
@@ -35,5 +34,6 @@
       "end": 31.42,
       "speed": 3.0
     }
-  ]
+  ],
+  "discarded": false
 }

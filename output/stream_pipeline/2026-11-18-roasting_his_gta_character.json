@@ -18,8 +18,7 @@
   "post_to_ig": true,
   "posted_to_instagram": false,
   "posted_to_youtube": false,
-  "approval_status": "pending",
-  "priority": "auto",
+  "priority": 4,
   "nsfw_censored": false,
   "nsfw_segments": [],
   "target": "Instagram (@loopablez) & YouTube",
@@ -68,5 +67,6 @@
       22.6,
       23.08
     ]
-  ]
+  ],
+  "discarded": false
 }
