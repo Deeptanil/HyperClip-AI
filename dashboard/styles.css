@@ -138,33 +138,42 @@ body {
   min-height: 100vh;
 }
 
-/* Top Navigation Bar */
+/* Top Navigation Bar - Single Row Architecture */
 .top-nav {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 24px;
+  gap: 12px;
+  height: 52px;
+  min-height: 52px;
+  max-height: 52px;
+  padding: 0 16px;
   background-color: var(--bg-surface);
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
   z-index: 50;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  box-sizing: border-box;
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  flex-shrink: 0;
 }
 
 .brand-logo {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 900;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.12em;
   color: #ffffff;
   display: flex;
   align-items: center;
   gap: 6px;
+  user-select: none;
 }
 
 .brand-logo span.accent {
@@ -172,37 +181,55 @@ body {
 }
 
 .brand-badge {
-  background: var(--yellow-muted);
-  border: 1px solid var(--yellow-border);
-  color: var(--yellow);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  padding: 2px 6px;
-  border-radius: var(--radius-sm);
-  text-transform: uppercase;
-  font-family: var(--font-mono);
+  display: none; /* Removed unnecessary clutter */
 }
 
 .nav-center {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
+  flex-shrink: 1;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.nav-center::-webkit-scrollbar {
+  display: none;
 }
 
 .tab-btn {
   background: transparent;
   border: 1px solid transparent;
   color: var(--text-muted);
-  padding: 8px 16px;
-  font-size: 13px;
+  padding: 6px 10px;
+  font-size: 12px;
   font-weight: 600;
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all 0.15s ease;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.tab-btn .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.nav-actions .btn {
+  padding: 6px 12px;
+  font-size: 12px;
+  gap: 5px;
 }
 
 .tab-btn:hover {
@@ -223,12 +250,6 @@ body {
   font-weight: 800;
   padding: 1px 5px;
   border-radius: 10px;
-}
-
-.nav-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
 }
 
 /* Buttons */
@@ -1706,59 +1727,60 @@ input:checked + .slider:before {
 
 @media (max-width: 768px) {
   .app-container {
-    padding: 0 8px;
+    padding: 0 4px;
   }
 
   .top-nav {
-    flex-direction: column;
-    gap: 12px;
-    align-items: stretch;
-    padding: 12px 14px;
-  }
-
-  .brand {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    flex-wrap: wrap;
+    flex-direction: row;
+    height: 52px;
+    padding: 0 10px;
     gap: 8px;
-  }
-
-  .nav-center {
     overflow-x: auto;
-    display: flex;
-    flex-wrap: nowrap;
-    gap: 6px;
-    padding-bottom: 4px;
-    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
     scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
   }
-
-  .nav-center::-webkit-scrollbar {
+  .top-nav::-webkit-scrollbar {
     display: none;
   }
 
-  .tab-btn {
-    white-space: nowrap;
+  .brand {
+    gap: 6px;
     flex-shrink: 0;
-    padding: 8px 12px;
+  }
+
+  .brand-logo {
     font-size: 13px;
-    border-radius: var(--radius-sm);
+  }
+
+  .nav-center {
+    gap: 4px;
+    flex-shrink: 1;
+    overflow-x: auto;
+  }
+
+  .tab-btn {
+    padding: 5px 8px;
+    font-size: 11px;
+    gap: 4px;
+  }
+
+  .tab-btn .icon {
+    width: 13px;
+    height: 13px;
   }
 
   .nav-actions {
-    display: grid;
-    grid-template-columns: 1fr 1.5fr 1fr;
-    gap: 8px;
-    width: 100%;
+    display: flex;
+    flex-direction: row;
+    gap: 4px;
+    flex-shrink: 0;
   }
 
   .nav-actions .btn {
-    justify-content: center;
-    width: 100%;
-    min-height: 42px;
-    font-size: 13px;
+    padding: 5px 8px;
+    font-size: 11px;
+    min-height: 32px;
   }
 
   .token-alert-banner {
@@ -1885,8 +1907,34 @@ input:checked + .slider:before {
 }
 
 @media (max-width: 480px) {
+  .top-nav {
+    height: 48px;
+    min-height: 48px;
+    max-height: 48px;
+    padding: 0 8px;
+    gap: 6px;
+  }
+
   .brand-logo {
-    font-size: 13px;
+    font-size: 12px;
+    gap: 4px;
+  }
+
+  .status-pill {
+    padding: 2px 6px;
+    font-size: 10px;
+  }
+
+  .tab-btn {
+    padding: 4px 6px;
+    font-size: 11px;
+    gap: 3px;
+  }
+
+  .nav-actions .btn {
+    padding: 4px 6px;
+    font-size: 10px;
+    min-height: 28px;
   }
 
   .brand-badge {
