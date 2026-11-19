@@ -1943,7 +1943,9 @@
 
       // 2. Fetch config.json from production branch (master)
       const pBranch = auth.branch || 'master';
-      const configRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json?ref=${pBranch}`, { headers });
+      const configRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json?ref=${pBranch}&_t=${Date.now()}`, {
+        headers: { ...headers, 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache' }
+      });
       if (configRes.ok) {
         const configData = await configRes.json();
         const contentStr = decodeURIComponent(escape(atob(configData.content)));
@@ -2424,7 +2426,7 @@
   }
 
   function applyRemoteConfig(cfg) {
-    if (activeTab === 'settings' || isSettingsDirty) {
+    if (activeTab === 'settings' || isSettingsDirty || document.querySelector('#view-settings.active') || document.activeElement?.closest('#view-settings')) {
       // Do not overwrite user controls while user is actively editing or reviewing settings
       return;
     }
@@ -2922,10 +2924,17 @@
               'Accept': 'application/vnd.github.v3+json',
               'Content-Type': 'application/json'
             };
+            const noCacheHeaders = {
+              ...headers,
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache'
+            };
             const pBranch = auth.branch || 'master';
 
-            // 1. Get current config.json to get sha and existing structure
-            const curRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json?ref=${pBranch}`, { headers });
+            // 1. Get current config.json with cache-busting to get true latest sha and structure
+            const curRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json?ref=${pBranch}&_t=${Date.now()}`, {
+              headers: noCacheHeaders
+            });
             if (!curRes.ok) {
               const errJson = await curRes.json().catch(() => ({}));
               throw new Error(errJson.message || `Could not read config.json (HTTP ${curRes.status})`);
@@ -2934,64 +2943,63 @@
             const curStr = decodeURIComponent(escape(atob(curData.content)));
             const cfg = JSON.parse(curStr);
 
-            // 2. Update Daily Limits (explicitly supporting 0 = paused)
-            if (!cfg.publishing_schedule) cfg.publishing_schedule = {};
-            if (!cfg.publishing_schedule.youtube) cfg.publishing_schedule.youtube = {};
+            const applyFormToConfig = (targetCfg) => {
+              if (!targetCfg.publishing_schedule) targetCfg.publishing_schedule = {};
+              if (!targetCfg.publishing_schedule.youtube) targetCfg.publishing_schedule.youtube = {};
+              const ytN = Math.max(0, safeInt(settings.ytPosts, 0));
+              targetCfg.publishing_schedule.youtube.enabled = ytN > 0;
+              targetCfg.publishing_schedule.youtube.shorts_per_day = ytN;
+              targetCfg.publishing_schedule.youtube.hard_daily_ceiling = ytN;
+
+              if (Array.isArray(targetCfg.publishing_schedule.instagram_accounts)) {
+                const ig1N = Math.max(0, safeInt(settings.ig1Posts, 0));
+                const ig1Trial = Math.min(ig1N, Math.max(0, safeInt(settings.ig1TrialPosts, 0)));
+                const acc1 = targetCfg.publishing_schedule.instagram_accounts.find(a => a.slot === 1);
+                if (acc1) {
+                  acc1.enabled = ig1N > 0;
+                  acc1.trial_per_day = ig1Trial;
+                  acc1.regular_per_day = Math.max(0, ig1N - ig1Trial);
+                  acc1.hard_daily_ceiling = ig1N;
+                  if (ig1N > 0) delete acc1.disabled_reason;
+                }
+
+                const ig2N = Math.max(0, safeInt(settings.ig2Posts, 0));
+                const acc2 = targetCfg.publishing_schedule.instagram_accounts.find(a => a.slot === 2);
+                if (acc2) {
+                  acc2.enabled = ig2N > 0;
+                  acc2.regular_per_day = ig2N;
+                  acc2.trial_per_day = 0;
+                  acc2.hard_daily_ceiling = ig2N;
+                  if (ig2N > 0) delete acc2.disabled_reason;
+                }
+              }
+
+              targetCfg.publishing_schedule.token_expiry_date = settings.tokenExpiryDate || '2027-01-17';
+              if (Array.isArray(targetCfg.publishing_schedule.instagram_accounts)) {
+                targetCfg.publishing_schedule.instagram_accounts.forEach(a => {
+                  a.token_expiry_date = settings.tokenExpiryDate || '2027-01-17';
+                });
+              }
+
+              targetCfg.publishing_schedule.priority_rules = {
+                prioritized_categories: [...(settings.prioritizedCategories || [])],
+                deprioritized_categories: [...(settings.deprioritizedCategories || [])]
+              };
+
+              if (!targetCfg.twitch_clipper) targetCfg.twitch_clipper = {};
+              targetCfg.twitch_clipper.max_clips_per_vod = safeInt(settings.streamYield, 10);
+              targetCfg.twitch_clipper.min_clip_spacing_sec = safeInt(settings.clipSpacing, 300);
+
+              targetCfg.content_safety = {
+                ...(targetCfg.content_safety || {}),
+                auto_censor_nsfw: Boolean(settings.autoCensorNsfw),
+                censor_mode: settings.censorMode || 'blur',
+                max_nsfw_ratio_before_reject: (targetCfg.content_safety && targetCfg.content_safety.max_nsfw_ratio_before_reject) || 0.65
+              };
+            };
+
+            applyFormToConfig(cfg);
             const ytN = Math.max(0, safeInt(settings.ytPosts, 0));
-            cfg.publishing_schedule.youtube.enabled = ytN > 0;
-            cfg.publishing_schedule.youtube.shorts_per_day = ytN;
-            cfg.publishing_schedule.youtube.hard_daily_ceiling = ytN;
-
-            if (Array.isArray(cfg.publishing_schedule.instagram_accounts)) {
-              const ig1N = Math.max(0, safeInt(settings.ig1Posts, 0));
-              const ig1Trial = Math.min(ig1N, Math.max(0, safeInt(settings.ig1TrialPosts, 0)));
-              const acc1 = cfg.publishing_schedule.instagram_accounts.find(a => a.slot === 1);
-              if (acc1) {
-                acc1.enabled = ig1N > 0;
-                acc1.trial_per_day = ig1Trial;
-                acc1.regular_per_day = Math.max(0, ig1N - ig1Trial);
-                acc1.hard_daily_ceiling = ig1N;
-                if (ig1N > 0) delete acc1.disabled_reason;
-              }
-
-              const ig2N = Math.max(0, safeInt(settings.ig2Posts, 0));
-              const acc2 = cfg.publishing_schedule.instagram_accounts.find(a => a.slot === 2);
-              if (acc2) {
-                acc2.enabled = ig2N > 0;
-                acc2.regular_per_day = ig2N;
-                acc2.trial_per_day = 0;
-                acc2.hard_daily_ceiling = ig2N;
-                if (ig2N > 0) delete acc2.disabled_reason;
-              }
-            }
-
-            // 2b. Update Token Expiry Date
-            cfg.publishing_schedule.token_expiry_date = settings.tokenExpiryDate || '2027-01-17';
-            if (Array.isArray(cfg.publishing_schedule.instagram_accounts)) {
-              cfg.publishing_schedule.instagram_accounts.forEach(a => {
-                a.token_expiry_date = settings.tokenExpiryDate || '2027-01-17';
-              });
-            }
-
-            // 3. Update Category / Game Priority Rules
-            cfg.publishing_schedule.priority_rules = {
-              prioritized_categories: [...(settings.prioritizedCategories || [])],
-              deprioritized_categories: [...(settings.deprioritizedCategories || [])]
-            };
-
-            // 4. Update Clipper Yield & Spacing
-            if (!cfg.twitch_clipper) cfg.twitch_clipper = {};
-            cfg.twitch_clipper.max_clips_per_vod = safeInt(settings.streamYield, 10);
-            cfg.twitch_clipper.min_clip_spacing_sec = safeInt(settings.clipSpacing, 300);
-
-            // 5. Update NSFW Auto-Censor Safety Settings
-            cfg.content_safety = {
-              ...(cfg.content_safety || {}),
-              auto_censor_nsfw: Boolean(settings.autoCensorNsfw),
-              censor_mode: settings.censorMode || 'blur',
-              max_nsfw_ratio_before_reject: (cfg.content_safety && cfg.content_safety.max_nsfw_ratio_before_reject) || 0.65
-            };
-
             const updatedJsonStr = JSON.stringify(cfg, null, 2);
             const b64 = btoa(unescape(encodeURIComponent(updatedJsonStr)));
 
@@ -3007,17 +3015,25 @@
               })
             });
 
-            // If 409 conflict occurs (concurrent commit / stale sha), fetch fresh sha and retry once
-            if (putRes.status === 409) {
-              const freshRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json?ref=${pBranch}&_t=${Date.now()}`, { headers });
+            // If 409 conflict or 422 SHA mismatch occurs, fetch fresh sha directly and retry once
+            if (putRes.status === 409 || putRes.status === 422) {
+              const freshRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json?ref=${pBranch}&_t=${Date.now()}`, {
+                headers: noCacheHeaders
+              });
               if (freshRes.ok) {
                 const freshData = await freshRes.json();
+                const freshStr = decodeURIComponent(escape(atob(freshData.content)));
+                const freshCfg = JSON.parse(freshStr);
+                applyFormToConfig(freshCfg);
+                const freshJsonStr = JSON.stringify(freshCfg, null, 2);
+                const freshB64 = btoa(unescape(encodeURIComponent(freshJsonStr)));
+
                 putRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json`, {
                   method: 'PUT',
                   headers,
                   body: JSON.stringify({
                     message: `chore(config): update daily limits (YT=${ytN}, IG1=${settings.ig1Posts}, IG2=${settings.ig2Posts}) & priority rules via dashboard`,
-                    content: b64,
+                    content: freshB64,
                     sha: freshData.sha,
                     branch: pBranch
                   })
@@ -3181,11 +3197,18 @@
               'Accept': 'application/vnd.github.v3+json',
               'Content-Type': 'application/json'
             };
-            const curRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json?ref=${pBranch}`, { headers });
+            const noCacheHeaders = {
+              ...headers,
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache'
+            };
+            let curRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json?ref=${pBranch}&_t=${Date.now()}`, {
+              headers: noCacheHeaders
+            });
             if (curRes.ok) {
-              const curData = await curRes.json();
-              const curStr = decodeURIComponent(escape(atob(curData.content)));
-              const cfg = JSON.parse(curStr);
+              let curData = await curRes.json();
+              let curStr = decodeURIComponent(escape(atob(curData.content)));
+              let cfg = JSON.parse(curStr);
               if (!cfg.publishing_schedule) cfg.publishing_schedule = {};
               cfg.publishing_schedule.token_expiry_date = val;
               if (Array.isArray(cfg.publishing_schedule.instagram_accounts)) {
@@ -3193,8 +3216,8 @@
                   a.token_expiry_date = val;
                 });
               }
-              const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(cfg, null, 2))));
-              const putRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json`, {
+              let b64 = btoa(unescape(encodeURIComponent(JSON.stringify(cfg, null, 2))));
+              let putRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json`, {
                 method: 'PUT',
                 headers,
                 body: JSON.stringify({
@@ -3204,6 +3227,34 @@
                   branch: pBranch
                 })
               });
+              if (putRes.status === 409 || putRes.status === 422) {
+                const freshRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json?ref=${pBranch}&_t=${Date.now()}`, {
+                  headers: noCacheHeaders
+                });
+                if (freshRes.ok) {
+                  curData = await freshRes.json();
+                  curStr = decodeURIComponent(escape(atob(curData.content)));
+                  cfg = JSON.parse(curStr);
+                  if (!cfg.publishing_schedule) cfg.publishing_schedule = {};
+                  cfg.publishing_schedule.token_expiry_date = val;
+                  if (Array.isArray(cfg.publishing_schedule.instagram_accounts)) {
+                    cfg.publishing_schedule.instagram_accounts.forEach(a => {
+                      a.token_expiry_date = val;
+                    });
+                  }
+                  b64 = btoa(unescape(encodeURIComponent(JSON.stringify(cfg, null, 2))));
+                  putRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json`, {
+                    method: 'PUT',
+                    headers,
+                    body: JSON.stringify({
+                      message: `chore(config): update Meta token expiration date to ${val}`,
+                      content: b64,
+                      sha: curData.sha,
+                      branch: pBranch
+                    })
+                  });
+                }
+              }
               if (putRes.ok) {
                 alert(`Token expiration date (${val}) committed to config.json!`);
               }

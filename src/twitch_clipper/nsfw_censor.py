@@ -181,15 +181,8 @@ Return strictly valid JSON matching this schema:
 }}
 """
 
-    # Prefer vision-capable models; allow moderation call to inspect without refusing
-    configured = _get_configured_models()
-    models_to_try = []
-    for preferred in ("gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-3.8-flash", "gemini-3.6-flash"):
-        if preferred in configured and preferred not in models_to_try:
-            models_to_try.append(preferred)
-    for m in configured:
-        if m not in models_to_try:
-            models_to_try.append(m)
+    # Use configured model cascade in exact priority order
+    models_to_try = _get_configured_models()
 
     safety_settings = [
         types.SafetySetting(category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold=types.HarmBlockThreshold.BLOCK_NONE),

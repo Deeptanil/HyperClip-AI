@@ -459,7 +459,7 @@ def harvest_clips(config: dict, max_total_new: int = 10) -> list:
                     "post_to_ig": True,
                     "posted_to_instagram": False,
                     "posted_to_youtube": False,
-                    "priority": compute_clip_priority({"game": game_name, "title": clip_title, "caption": clip_caption}, config),
+                    "priority": compute_clip_priority({"game": target.get("game", ""), "title": clip_title, "caption": clip_caption}, config),
                     "discarded": False,
                     "smart_edited": bool(fast_forward_segments),
                     "fast_forward_segments": fast_forward_segments,
