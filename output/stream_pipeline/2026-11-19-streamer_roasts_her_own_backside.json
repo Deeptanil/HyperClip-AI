@@ -6,9 +6,9 @@
   "peak_sec": 15437,
   "hype_score": 78,
   "z_score": 3.18,
-  "title": "STREAMER ROASTS HER OWN BACKSIDE 💀",
-  "caption": "Cinna is way too honest on main 😂 #cinna #gta6 #funny",
-  "hook": "STREAMER ROASTS HER OWN BACKSIDE 💀",
+  "title": "CINna ROASTS HER OWN BACKSIDE 💀🍑",
+  "caption": "Cinna completely lost her filter while playing GTA 6 and decided to ruthlessly roast her own backside live on stream. I still can't believe she actually went there, but chat was absolutely losing it. Would you ever roast yourself on stream or keep that quiet? #GTA6 #Cinna #GamingMoments #StreamerFails",
+  "hook": "SHE DID NOT JUST SAY THAT 😭",
   "target_accounts": [
     "ig_2",
     "youtube"
@@ -18,7 +18,7 @@
   "post_to_ig": true,
   "posted_to_instagram": false,
   "posted_to_youtube": false,
-  "priority": 3,
+  "priority": 4,
   "nsfw_censored": false,
   "nsfw_segments": [],
   "profanity_bleeped": false,
@@ -35,5 +35,6 @@
       "speed": 3
     }
   ],
-  "discarded": false
+  "discarded": false,
+  "ai_retitled": true
 }

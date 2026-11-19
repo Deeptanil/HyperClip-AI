@@ -6,9 +6,9 @@
   "peak_sec": 25652,
   "hype_score": 269.75,
   "z_score": 3.56,
-  "title": "KAI CENAT STEALS A PLANE ✈️🔥",
-  "caption": "Bro thinks he is an actual pilot on day one of GTA 6 💀 #kaicenat #gta6 #gaming",
-  "hook": "KAI CENAT STEALS A PLANE ✈️🔥",
+  "title": "KAI CENAT HIJACKS A JET ✈️🔥",
+  "caption": "Kai Cenat completely loses his mind after pulling off the wildest airport heist in GTA 6 history. Would you have survived this insane takeoff? #GTA6 #KaiCenat #GamingMoments #ViralGaming",
+  "hook": "BRO REALLY STOLE THE PLANE 💀",
   "target_accounts": [
     "ig_2",
     "youtube"
@@ -49,7 +49,8 @@
       "speed": 3
     }
   ],
-  "discarded": true,
+  "discarded": false,
   "discarded_at": "2026-11-19T14:40:58.950Z",
-  "pre_discard_priority": 4
+  "pre_discard_priority": 4,
+  "ai_retitled": true
 }

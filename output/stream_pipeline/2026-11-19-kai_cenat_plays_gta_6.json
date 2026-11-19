@@ -6,9 +6,9 @@
   "peak_sec": 24902,
   "hype_score": 280.5,
   "z_score": 3.76,
-  "title": "KAI CENAT PLAYS GTA 6 🌴🔥",
-  "caption": "Bro lost his mind playing GTA 6 for the first time! 💀🎮 #GTA6 #KaiCenat",
-  "hook": "KAI CENAT PLAYS GTA 6 🌴🔥",
+  "title": "KAI CENAT LOSES IT IN GTA 6 🌴💀",
+  "caption": "Kai Cenat completely loses his mind exploring the wildest streets of Vice City in GTA 6. Would you have survived this insane encounter on your first day? #GTA6 #KaiCenat #GamingMoments #ViralGaming",
+  "hook": "BRO FOUND THE GLITCH 😭",
   "target_accounts": [
     "ig_2"
   ],
@@ -17,7 +17,7 @@
   "post_to_ig": true,
   "posted_to_instagram": false,
   "posted_to_youtube": false,
-  "priority": 1,
+  "priority": 4,
   "nsfw_censored": false,
   "nsfw_segments": [],
   "profanity_bleeped": false,
@@ -44,5 +44,6 @@
       "speed": 3
     }
   ],
-  "discarded": false
+  "discarded": false,
+  "ai_retitled": true
 }

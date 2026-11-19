@@ -6,9 +6,9 @@
   "peak_sec": 27657,
   "hype_score": 21,
   "z_score": 6.4,
-  "title": "ENTIRE PD TRAPPED IN A BOX 📦",
-  "caption": "Deansocool and the whole PD end up in an absolute mess! 💀 #NoPixel #GTA5RP",
-  "hook": "ENTIRE PD TRAPPED IN A BOX 📦",
+  "title": "ENTIRE POLICE DEPARTMENT TRAPPED INSIDE A BOX 📦😂",
+  "caption": "Deansocool somehow managed to trap an entire police department inside a tiny box during chat chaos, leaving everyone completely speechless. Would you have survived being boxed in with the whole cop squad? #Deansocool #GamingMoments #FunnyStreamer #JustChatting",
+  "hook": "TRAPPED THE ENTIRE PD 📦💀",
   "target_accounts": [
     "ig_1"
   ],
@@ -58,8 +58,9 @@
   ],
   "nsfw_censored": false,
   "nsfw_segments": [],
-  "priority": 3,
-  "discarded": true,
+  "priority": 4,
+  "discarded": false,
   "discarded_at": "2026-11-19T14:33:30.926Z",
-  "pre_discard_priority": 3
+  "pre_discard_priority": 3,
+  "ai_retitled": true
 }

@@ -6,9 +6,9 @@
   "peak_sec": 4442,
   "hype_score": 208.75,
   "z_score": 3.74,
-  "title": "JASON FAILS THE GTA HEIST 💀🔥",
-  "caption": "The immersion is officially gone. 😭 #gtavi #jasontheween #gamingfails",
-  "hook": "JASON FAILS THE GTA HEIST 💀🔥",
+  "title": "JASON THREW THE MILLION DOLLAR HEIST 💀💸",
+  "caption": "Jason thought he was pulling off the ultimate GTA VI crime spree until his absolute zero IQ play ruined the entire getaway in seconds. Would you have trusted him on your team after that disaster? #GTA6 #jasontheween #GamingMoments #Fail",
+  "hook": "BRO RUINED THE ENTIRE HEIST 😭",
   "target_accounts": [
     "ig_1"
   ],
@@ -17,7 +17,7 @@
   "post_to_ig": true,
   "posted_to_instagram": false,
   "posted_to_youtube": false,
-  "priority": 5,
+  "priority": 4,
   "nsfw_censored": false,
   "nsfw_segments": [],
   "target": "Instagram (@solvikz) Only",
@@ -44,5 +44,6 @@
   ],
   "profanity_bleeped": false,
   "bleep_segments": [],
-  "discarded": false
+  "discarded": false,
+  "ai_retitled": true
 }

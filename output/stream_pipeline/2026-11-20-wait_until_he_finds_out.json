@@ -1,0 +1,47 @@
+{
+  "streamer": "KaiCenat",
+  "username": "kaicenat",
+  "vod_id": "2932305259",
+  "game": "Grand Theft Auto VI",
+  "peak_sec": 107197,
+  "hype_score": 165.25,
+  "z_score": 2.97,
+  "title": "KAI CENAT SHOCKED BY GTA 6 \ud83d\udc80",
+  "caption": "Kai Cenat's jaw completely dropped to the floor during his first playthrough of GTA 6 after seeing something wild pop up on screen. Chat went absolutely insane with reactions once they realized what he was looking at. Would you survive a full session of this chaos? #KaiCenat #GTA6 #GamingMoments #FunnyStreamers",
+  "hook": "WAIT UNTIL HE FINDS OUT \ud83d\ude2d",
+  "target_accounts": [
+    "ig_2"
+  ],
+  "assigned_ig": "ig_2",
+  "post_to_yt": false,
+  "post_to_ig": true,
+  "posted_to_instagram": false,
+  "posted_to_youtube": false,
+  "priority": 4,
+  "discarded": false,
+  "smart_edited": true,
+  "fast_forward_segments": [
+    {
+      "start": 1.2,
+      "end": 2.76,
+      "speed": 3.0
+    },
+    {
+      "start": 5.0,
+      "end": 21.0,
+      "speed": 3.0
+    },
+    {
+      "start": 23.0,
+      "end": 33.88,
+      "speed": 3.0
+    }
+  ],
+  "nsfw_censored": false,
+  "nsfw_segments": [],
+  "profanity_bleeped": false,
+  "bleep_segments": [],
+  "target": "Instagram (@loopablez) Only",
+  "created_at": "2026-11-19T20:17:09.436086+00:00",
+  "timestamp": "2026-11-19T20:17:09.436110+00:00"
+}

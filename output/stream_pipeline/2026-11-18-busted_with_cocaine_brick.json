@@ -6,9 +6,9 @@
   "peak_sec": 7352,
   "hype_score": 51.25,
   "z_score": 8.31,
-  "title": "BUSTED WITH CONTRABAND BRICK ✈️👮‍♂️",
-  "caption": "Bro thought he was safe in flight school until SWAT pulled up! 💀 #gtav #nopixel #rp",
-  "hook": "BUSTED WITH CONTRABAND BRICK ✈️👮‍♂️",
+  "title": "BUSTED SMUGGLING A CONTRABAND BRICK ✈️🚨",
+  "caption": "Deansocool thought he was slick trying to fly away with a massive contraband brick, but the cops had other plans. Would you have tried to run or just surrendered immediately? #Deansocool #GTAV #GamingMoments #Busted",
+  "hook": "TSA IS NOT HAPPY 💀",
   "target_accounts": [
     "ig_2"
   ],
@@ -43,8 +43,9 @@
   ],
   "nsfw_censored": false,
   "nsfw_segments": [],
-  "priority": 3,
-  "discarded": true,
+  "priority": 4,
+  "discarded": false,
   "discarded_at": "2026-11-19T13:49:25.886Z",
-  "pre_discard_priority": 3
+  "pre_discard_priority": 3,
+  "ai_retitled": true
 }
