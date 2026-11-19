@@ -1,0 +1,29 @@
+{
+  "streamer": "KaiCenat",
+  "username": "kaicenat",
+  "vod_id": "2932305259",
+  "game": "Grand Theft Auto VI",
+  "peak_sec": 24902,
+  "hype_score": 280.5,
+  "z_score": 3.76,
+  "title": "KAI CENAT PLAYS GTA 6 \ud83c\udf34\ud83d\udd25",
+  "caption": "Bro lost his mind playing GTA 6 for the first time! \ud83d\udc80\ud83c\udfae #GTA6 #KaiCenat",
+  "hook": "KAI CENAT PLAYS GTA 6 \ud83c\udf34\ud83d\udd25",
+  "target_accounts": [
+    "ig_2"
+  ],
+  "assigned_ig": "ig_2",
+  "post_to_yt": false,
+  "post_to_ig": true,
+  "posted_to_instagram": false,
+  "posted_to_youtube": false,
+  "approval_status": "pending",
+  "priority": "auto",
+  "nsfw_censored": false,
+  "nsfw_segments": [],
+  "profanity_bleeped": false,
+  "bleep_segments": [],
+  "target": "Instagram (@loopablez) Only",
+  "created_at": "2026-11-19T03:12:18.208058+00:00",
+  "timestamp": "2026-11-19T03:12:18.208073+00:00"
+}

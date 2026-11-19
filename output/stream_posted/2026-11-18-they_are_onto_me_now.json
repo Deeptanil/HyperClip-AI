@@ -9,16 +9,15 @@
   "title": "THEY ARE ONTO ME NOW \ud83d\udea8",
   "caption": "DarkViperAU instantly regrets his life choices during the GTA 6 launch! \ud83d\udc80 #GTA6 #DarkViperAU #GamingMoments",
   "hook": "THEY ARE ONTO ME NOW \ud83d\udea8",
-  "target_accounts": [
-    "youtube"
-  ],
+  "target_accounts": [],
   "assigned_ig": null,
   "post_to_yt": true,
   "post_to_ig": true,
   "posted_to_instagram": false,
-  "posted_to_youtube": false,
+  "posted_to_youtube": true,
   "approval_status": "pending",
   "target": "YouTube Shorts",
   "created_at": "2026-11-18T15:00:01.123971+00:00",
-  "timestamp": "2026-11-18T15:00:01.123995+00:00"
+  "timestamp": "2026-11-18T15:00:01.123995+00:00",
+  "youtube_url": "https://youtube.com/shorts/JZE4yv8Y9YE"
 }
