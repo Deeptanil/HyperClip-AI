@@ -81,5 +81,13 @@ def main():
             api_key=args.api_key
         ))
 
+def app(environ, start_response):
+    """Vercel serverless compatibility handler."""
+    start_response("200 OK", [("Content-Type", "text/plain")])
+    return [b"HyperClip AI API Handler"]
+
+application = app
+handler = app
+
 if __name__ == "__main__":
     main()

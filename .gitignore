@@ -6,10 +6,8 @@ temp_twitch/
 tools/bin/
 client_secrets.json
 cookies.txt
-ig_session.json
-ig_session_2.json
+ig_session*.json
 .env*
-*.png
 *.wav
 *.pdb
 *.exe

@@ -34,7 +34,16 @@ def get_youtube_client(client_id=None, client_secret=None, refresh_token=None):
     credentials.refresh(Request())
     return build("youtube", "v3", credentials=credentials)
 
-def upload_short(video_path, title, description=None, tags=None, privacy="public", client=None):
+def upload_short(
+    video_path,
+    title,
+    description=None,
+    tags=None,
+    privacy="public",
+    client=None,
+    category_id="23",
+    title_suffix="#Shorts",
+):
     """
     Uploads a vertical video as a YouTube Short.
     Adding #Shorts in title and description ensures YouTube indexes it into the Shorts feed.
@@ -42,11 +51,9 @@ def upload_short(video_path, title, description=None, tags=None, privacy="public
     if client is None:
         client = get_youtube_client()
 
-    full_title = f"{title} #Shorts #animation"
-    full_desc = description or f"{title}\n\n#Shorts #stickman #animation #comedy #viral"
-    default_tags = ["shorts", "stickman", "animation", "humor", "relatable"]
-    if tags:
-        default_tags.extend(tags)
+    full_title = f"{title} {title_suffix}".strip() if title_suffix else title
+    full_desc = description or f"{title}\n\n#Shorts #viral"
+    default_tags = list(tags) if tags else ["shorts", "viral", "clips"]
 
     media = MediaFileUpload(video_path, chunksize=-1, resumable=True, mimetype="video/mp4")
     
@@ -55,7 +62,7 @@ def upload_short(video_path, title, description=None, tags=None, privacy="public
             "title": full_title[:100],
             "description": full_desc,
             "tags": default_tags,
-            "categoryId": "23"  # Comedy category
+            "categoryId": str(category_id)
         },
         "status": {
             "privacyStatus": privacy,

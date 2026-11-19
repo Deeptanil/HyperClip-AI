@@ -61,7 +61,10 @@
         ]
       }
     },
-    "target_games": [],
+    "target_games": [
+      "Grand Theft Auto VI",
+      "Grand Theft Auto V"
+    ],
     "min_stream_minutes": 30,
     "intro_skip_sec": 480,
     "outro_skip_sec": 360,
@@ -82,6 +85,15 @@
   },
   "publishing_schedule": {
     "min_cross_account_gap_minutes": 25,
+    "token_expiry_date": "2027-01-17",
+    "priority_rules": {
+      "prioritized_categories": [
+        "Grand Theft Auto VI",
+        "GTA 6",
+        "GTA VI"
+      ],
+      "deprioritized_categories": []
+    },
     "youtube": {
       "enabled": true,
       "shorts_per_day": 3,
@@ -90,21 +102,21 @@
     "instagram_accounts": [
       {
         "slot": 1,
-        "name": "Main IG",
-        "enabled": false,
-        "disabled_reason": "Automations stopped. Moving to official Meta Graph API.",
-        "regular_per_day": 0,
-        "trial_per_day": 0,
-        "hard_daily_ceiling": 0
+        "name": "Main IG (Solvikz)",
+        "enabled": true,
+        "regular_per_day": 2,
+        "trial_per_day": 1,
+        "hard_daily_ceiling": 3,
+        "token_expiry_date": "2027-01-17"
       },
       {
         "slot": 2,
-        "name": "Clip Page IG",
-        "enabled": false,
-        "disabled_reason": "Automations stopped. Moving to official Meta Graph API.",
-        "regular_per_day": 0,
+        "name": "Clip Page IG (Loopablez)",
+        "enabled": true,
+        "regular_per_day": 3,
         "trial_per_day": 0,
-        "hard_daily_ceiling": 0
+        "hard_daily_ceiling": 3,
+        "token_expiry_date": "2027-01-17"
       }
     ]
   },
@@ -114,6 +126,21 @@
     "cleanup_threshold_percent": 80,
     "aggressive_threshold_percent": 90,
     "max_posted_archive_days": 7
+  },
+  "content_safety": {
+    "auto_censor_nsfw": true,
+    "censor_mode": "blur",
+    "max_nsfw_ratio_before_reject": 0.65,
+    "auto_bleep_profanity": true,
+    "censor_caption_profanity": true
+  },
+  "smart_editing": {
+    "enabled": true,
+    "speed_multiplier": 3.0,
+    "min_pause_sec": 1.3,
+    "silence_threshold_db": -25.0,
+    "max_motion_threshold": 18.0,
+    "show_fast_forward_badge": true
   },
   "story_studio": {
     "enabled": false,

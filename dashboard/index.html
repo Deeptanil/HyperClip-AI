@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <title>HyperClip AI // Command Center</title>
+  <meta name="description" content="Autonomous AI stream clipping, dual-stack 9:16 portrait rendering, and intelligent anti-shadowban publisher for gaming live streams.">
+  <meta name="keywords" content="hyperclip, ai clipping, autonomous stream clipper, twitch clips, youtube shorts, instagram reels, gta 6, gaming highlights">
+  <meta name="author" content="HyperClip AI">
+  <meta name="theme-color" content="#000000">
+  <meta name="color-scheme" content="dark">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="HyperClip AI">
+  <meta property="og:title" content="HyperClip AI // Command Center">
+  <meta property="og:description" content="Autonomous AI stream clipping, dual-stack portrait rendering, and intelligent anti-shadowban publisher.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="HyperClip AI">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="HyperClip AI // Command Center">
+  <meta name="twitter:description" content="Autonomous AI stream clipping, dual-stack portrait rendering, and intelligent anti-shadowban publisher.">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23FACC15'><polygon points='13 2 3 14 12 14 11 22 21 10 12 10 13 2'/></svg>">
+</head>
+<body>
+  <div class="app-container">
+
+    <!-- Top Navigation Header -->
+    <header class="top-nav">
+      <div class="brand">
+        <div class="brand-logo">
+          <svg class="icon icon-yellow" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          HYPERCLIP <span class="accent">// AI</span>
+        </div>
+        <div class="brand-badge">DARK OPS EDITION</div>
+        <div class="status-pill cursor-pointer" id="conn-status-pill" title="Click to configure repository and PAT">
+          <span class="dot yellow" id="conn-dot"></span>
+          <span id="conn-status-text">Demo Mode</span>
+        </div>
+      </div>
+
+      <nav class="nav-center">
+        <button class="tab-btn active" data-tab="calendar" id="tab-nav-calendar">
+          <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Schedule Calendar
+        </button>
+        <button class="tab-btn" data-tab="pipeline" id="tab-nav-pipeline">
+          <svg class="icon" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+          Review & Pipeline <span class="tab-badge" id="pipeline-count-badge">0</span>
+        </button>
+        <button class="tab-btn" data-tab="accounts" id="tab-nav-accounts">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Diagnostics & Accounts
+        </button>
+        <button class="tab-btn" data-tab="settings" id="tab-nav-settings">
+          <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          Settings & Spacing
+        </button>
+      </nav>
+
+      <div class="nav-actions">
+        <button class="btn" id="btn-sync" title="Sync live state from GitHub repository">
+          <svg class="icon" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          Sync
+        </button>
+        <button class="btn btn-yellow" id="btn-run-action" title="Trigger clipping or publishing cycle">
+          <svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Run Action
+        </button>
+        <button class="btn" id="btn-open-setup" onclick="window.openSetupModal && window.openSetupModal()" title="Configure GitHub Token & Repository">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M21 2l-2 2m-1.5 1.5L14 9l-1.5-1.5-1.5 1.5-1.5-1.5L8 9a5 5 0 1 0 7 7l5.5-5.5a2.12 2.12 0 0 0 0-3L21 2z"/></svg>
+          Setup
+        </button>
+      </div>
+    </header>
+
+    <!-- Global Token Expiry Warning/Error Banner -->
+    <div id="token-expiry-banner" class="token-alert-banner" style="display:none;"></div>
+
+    <!-- Real-Time Top Stats Strip -->
+    <section class="stats-strip">
+      <div class="stat-card" id="stat-ig1">
+        <div class="stat-header">
+          <span class="stat-title">IG 1 (solvikz)</span>
+          <span class="status-pill"><span class="dot online"></span> Active</span>
+        </div>
+        <div class="stat-value" id="ig1-stat-val">0 / 3 <small class="text-dim-unit">today</small></div>
+        <div class="stat-desc" id="ig1-stat-desc">Calculating cooldown...</div>
+      </div>
+
+      <div class="stat-card" id="stat-ig2">
+        <div class="stat-header">
+          <span class="stat-title">IG 2 (loopablez)</span>
+          <span class="status-pill"><span class="dot online"></span> Active</span>
+        </div>
+        <div class="stat-value" id="ig2-stat-val">0 / 3 <small class="text-dim-unit">today</small></div>
+        <div class="stat-desc" id="ig2-stat-desc">Calculating cooldown...</div>
+      </div>
+
+      <div class="stat-card" id="stat-yt">
+        <div class="stat-header">
+          <span class="stat-title">YouTube Shorts</span>
+          <span class="status-pill"><span class="dot online"></span> Ready</span>
+        </div>
+        <div class="stat-value" id="yt-stat-val">0 / 3 <small class="text-dim-unit">today</small></div>
+        <div class="stat-desc" id="yt-stat-desc">Calculating cooldown...</div>
+      </div>
+
+      <div class="stat-card" id="stat-storage">
+        <div class="stat-header">
+          <span class="stat-title">Pipeline & Storage</span>
+          <span class="status-pill"><span class="dot yellow"></span> Governor ON</span>
+        </div>
+        <div class="stat-value" id="storage-stat-val">48 MB <small class="text-dim-unit">/ 1500 MB</small></div>
+        <div class="stat-desc" id="storage-stat-desc">3.2% used • Unposted clips protected</div>
+      </div>
+    </section>
+
+    <!-- Tab 1: 24-Hour Calendar View -->
+    <main class="main-view active" id="view-calendar">
+      <div class="calendar-bar">
+        <div class="view-switchers">
+          <button class="view-btn" data-cal-view="day">Day</button>
+          <button class="view-btn active" data-cal-view="week">Week</button>
+          <button class="view-btn" data-cal-view="month">Month</button>
+        </div>
+
+        <div class="cal-nav">
+          <button class="btn btn-sm btn-icon-nav" id="cal-prev" title="Previous Week">
+            <svg class="icon icon-nav-arrow" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+            <span>Prev</span>
+          </button>
+          <div class="date-heading" id="cal-heading">Loading...</div>
+          <button class="btn btn-sm" id="cal-today">Today</button>
+          <button class="btn btn-sm btn-icon-nav" id="cal-next" title="Next Week">
+            <span>Next</span>
+            <svg class="icon icon-nav-arrow" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+
+        <div class="filter-pills">
+          <span class="pill active" data-filter="all">All Accounts</span>
+          <span class="pill" data-filter="ig1">solvikz</span>
+          <span class="pill" data-filter="ig2">loopablez</span>
+          <span class="pill" data-filter="youtube">YouTube</span>
+          <span class="pill" data-filter="staged">Staged Only</span>
+        </div>
+      </div>
+
+      <!-- 24-Hour Vertical Week Grid -->
+      <div class="week-grid-container" id="week-view-wrapper">
+        <div class="week-grid-header" id="week-header-row">
+          <div class="col-header time-label-spacer">TIME</div>
+          <!-- Days populated via JS -->
+        </div>
+        <div class="week-grid-scroll" id="week-scroll-container">
+          <div class="week-grid-body" id="week-body-grid">
+            <!-- Full-week current time horizontal line -->
+            <div class="current-time-line" id="cal-current-time-line">
+              <span class="current-time-badge" id="cal-current-time-badge">--:--</span>
+              <span class="current-time-dot"></span>
+            </div>
+            <div class="time-axis" id="time-axis-col">
+              <!-- 24 hours 00:00 - 23:00 -->
+            </div>
+            <!-- 7 day columns populated via JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Day View (Hidden by default) -->
+      <div class="day-timeline" id="day-view-wrapper" style="display: none;">
+        <!-- Day hours populated via JS -->
+      </div>
+
+      <!-- Month View (Hidden by default) -->
+      <div class="month-grid" id="month-view-wrapper" style="display: none;">
+        <!-- Month cells populated via JS -->
+      </div>
+    </main>
+
+    <!-- Tab 2: Review & Pipeline Queue -->
+    <main class="main-view" id="view-pipeline">
+      <div class="pipeline-header">
+        <div>
+          <h2 class="view-title">Staged Clips Queue</h2>
+          <p class="view-subtitle">Publishing order: <strong style="color:var(--yellow)">1. Prioritized</strong> → <strong style="color:var(--success)">2. Approved</strong> → <strong style="color:#f4f4f5">3. No Category</strong> → <strong style="color:var(--text-dim)">4. Deprioritized</strong> (FIFO within each tier).</p>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-yellow" id="btn-harvest-fresh">
+            <svg class="icon" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            Scan Live Streams
+          </button>
+        </div>
+      </div>
+
+      <div class="priority-filter-bar" id="pipeline-priority-filters">
+        <span class="pill active" data-prio-filter="all">All (<span id="prio-count-all">0</span>)</span>
+        <span class="pill prio-pill-prioritized" data-prio-filter="prioritized">Prioritized (<span id="prio-count-prioritized">0</span>)</span>
+        <span class="pill prio-pill-approved" data-prio-filter="approved">Approved (<span id="prio-count-approved">0</span>)</span>
+        <span class="pill prio-pill-normal" data-prio-filter="normal">No Category (<span id="prio-count-normal">0</span>)</span>
+        <span class="pill prio-pill-deprioritized" data-prio-filter="deprioritized">Deprioritized (<span id="prio-count-deprioritized">0</span>)</span>
+      </div>
+
+      <div class="clips-grid" id="pipeline-clips-grid">
+        <!-- Rendered via JS -->
+      </div>
+    </main>
+
+    <!-- Tab 3: Diagnostics & Accounts -->
+    <main class="main-view" id="view-accounts">
+      <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <h2 class="view-title">Platform Accounts & Shadowban Shield</h2>
+          <p class="view-subtitle">Real-time session health, trial reel eligibility, and anti-spam interval verification.</p>
+        </div>
+        <button class="btn btn-yellow" id="btn-test-diag">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Run Credentials Test
+        </button>
+      </div>
+
+      <div class="accounts-grid" id="accounts-grid-wrapper">
+        <!-- Instagram solvikz -->
+        <div class="account-box">
+          <div class="account-box-header">
+            <div>
+              <div class="acc-name">Instagram Primary</div>
+              <div class="acc-handle">@solvikz (Slot 1)</div>
+            </div>
+            <span class="status-pill"><span class="dot online"></span> Healthy</span>
+          </div>
+          <div class="diag-list">
+            <div class="diag-row"><span class="diag-label">Session Status:</span><span class="diag-val" style="color:var(--success)">Saved & Verified</span></div>
+            <div class="diag-row"><span class="diag-label">Trial Reels:</span><span class="diag-val" style="color:var(--yellow)">Eligible (Active)</span></div>
+            <div class="diag-row"><span class="diag-label">Daily Capacity:</span><span class="diag-val">3 Posts / Day Max</span></div>
+            <div class="diag-row"><span class="diag-label">Today's Posts:</span><span class="diag-val">1 / 3 Posted</span></div>
+            <div class="diag-row"><span class="diag-label">Min Separation:</span><span class="diag-val">3.0 Hours (Strict)</span></div>
+            <div class="diag-row"><span class="diag-label">Next Post Window:</span><span class="diag-val" style="color:var(--success)">Eligible Now</span></div>
+            <div class="diag-row"><span class="diag-label">Token Expiry:</span><span class="diag-val" id="diag-ig1-token-expiry">2027-01-17</span></div>
+          </div>
+          <div class="acc-footer-note">Uses direct Reels API with automatic retry and instant verification.</div>
+        </div>
+
+        <!-- Instagram loopablez -->
+        <div class="account-box">
+          <div class="account-box-header">
+            <div>
+              <div class="acc-name">Instagram Secondary</div>
+              <div class="acc-handle">@loopablez (Slot 2)</div>
+            </div>
+            <span class="status-pill"><span class="dot online"></span> Healthy</span>
+          </div>
+          <div class="diag-list">
+            <div class="diag-row"><span class="diag-label">Session Status:</span><span class="diag-val" style="color:var(--success)">Saved & Verified</span></div>
+            <div class="diag-row"><span class="diag-label">Trial Reels:</span><span class="diag-val" style="color:var(--text-dim)">Ineligible (Auto Fallback)</span></div>
+            <div class="diag-row"><span class="diag-label">Fallback Mode:</span><span class="diag-val" style="color:var(--yellow)">Standard Reel Active</span></div>
+            <div class="diag-row"><span class="diag-label">Daily Capacity:</span><span class="diag-val">3 Posts / Day Max</span></div>
+            <div class="diag-row"><span class="diag-label">Today's Posts:</span><span class="diag-val">1 / 3 Posted</span></div>
+            <div class="diag-row"><span class="diag-label">Min Separation:</span><span class="diag-val">3.0 Hours (Strict)</span></div>
+            <div class="diag-row"><span class="diag-label">Cross-Account Buffer:</span><span class="diag-val">20 Min Anti-Bot Buffer</span></div>
+            <div class="diag-row"><span class="diag-label">Token Expiry:</span><span class="diag-val" id="diag-ig2-token-expiry">2027-01-17</span></div>
+          </div>
+          <div class="acc-footer-note">Verified live upload to @loopablez without trial rejection errors.</div>
+        </div>
+
+        <!-- YouTube Shorts -->
+        <div class="account-box">
+          <div class="account-box-header">
+            <div>
+              <div class="acc-name">YouTube Shorts</div>
+              <div class="acc-handle">Autonomous Channel</div>
+            </div>
+            <span class="status-pill"><span class="dot online"></span> Connected</span>
+          </div>
+          <div class="diag-list">
+            <div class="diag-row"><span class="diag-label">OAuth 2.0 Token:</span><span class="diag-val" style="color:var(--success)">Valid & Auto-Refreshing</span></div>
+            <div class="diag-row"><span class="diag-label">Daily Shorts Limit:</span><span class="diag-val">3 Shorts / Day</span></div>
+            <div class="diag-row"><span class="diag-label">API Quota Usage:</span><span class="diag-val">1,600 / 10,000 pts</span></div>
+            <div class="diag-row"><span class="diag-label">Today's Uploads:</span><span class="diag-val">1 / 3 Shorts</span></div>
+            <div class="diag-row"><span class="diag-label">Min Separation:</span><span class="diag-val">3.0 Hours</span></div>
+            <div class="diag-row"><span class="diag-label">Category / Format:</span><span class="diag-val">Gaming (20) / #Shorts</span></div>
+          </div>
+          <div class="acc-footer-note">Dual upload system with automatic category tagging and #Shorts suffix.</div>
+        </div>
+      </div>
+
+      <!-- Meta Graph API Token Lifecycle Management -->
+      <div class="settings-card" id="token-lifecycle-card" style="margin-top:20px;">
+        <div class="settings-card-title">
+          <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Meta Graph API Access Token Expiration Shield
+        </div>
+        <p class="view-subtitle" style="margin-bottom:14px;">The dashboard actively monitors token health. Warnings start 30 days before expiration, and errors flag expired tokens to prevent failed publishing jobs.</p>
+
+        <div class="setting-row">
+          <div class="setting-info">
+            <span class="setting-label">Meta Long-Lived Token Expiration Date</span>
+            <span class="setting-desc">Enter the exact expiration date reported by Meta Graph API Explorer (e.g. 2027-01-17)</span>
+          </div>
+          <div class="setting-ctrl" style="display:flex;gap:8px;align-items:center;">
+            <input type="date" id="input-token-expiry" class="text-input" style="padding:6px 10px;font-size:12px;color:var(--text-main);background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);">
+            <button type="button" class="btn btn-sm btn-yellow" id="btn-save-token-expiry">Save Expiry Date</button>
+          </div>
+        </div>
+
+        <div id="token-lifecycle-status-box" style="margin-top:12px;padding:12px 14px;border-radius:var(--radius-sm);border:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg-elevated);">
+          <!-- Dynamically filled with days remaining, badge, and health status -->
+        </div>
+      </div>
+    </main>
+
+    <!-- Tab 4: Settings & Automation -->
+    <main class="main-view" id="view-settings">
+      <div class="settings-container">
+        <!-- Frequency and Spacing Card -->
+        <div class="settings-card">
+          <div class="settings-card-title">
+            <svg class="icon" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            Daily Frequency & Equal Spacing
+          </div>
+          <p class="view-subtitle">Configure target uploads per account. The algorithm automatically groups and spaces all Instagram posts equally throughout the 24 hours.</p>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">Instagram 1 (@solvikz) Posts / Day</span>
+              <span class="setting-desc">Set to 0 to pause completely, or 1–8 reels across the 24h cycle</span>
+            </div>
+            <div class="setting-ctrl">
+              <button type="button" class="btn btn-sm btn-stepper" data-step-target="slider-ig1" data-step="-1">−</button>
+              <input type="range" id="slider-ig1" min="0" max="8" value="0">
+              <button type="button" class="btn btn-sm btn-stepper" data-step-target="slider-ig1" data-step="1">+</button>
+              <span class="range-val" id="val-ig1">0</span>
+            </div>
+          </div>
+
+          <!-- Trial Reels Allocation Sub-Setting for Eligible Accounts (Slot 1) -->
+          <div class="setting-sub-row" id="row-ig1-trial">
+            <div class="setting-info">
+              <span class="setting-label">
+                <svg class="icon icon-sm" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                Trial Reels Share (@solvikz)
+              </span>
+              <span class="setting-desc" id="desc-ig1-trial">0 of 0 posts will test with non-followers</span>
+            </div>
+            <div class="setting-ctrl">
+              <input type="range" id="slider-ig1-trial" min="0" max="8" value="0">
+              <span class="range-val" id="val-ig1-trial">0</span>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">Instagram 2 (@loopablez) Posts / Day</span>
+              <span class="setting-desc">Set to 0 to pause, or 1–8 reels (treated independently)</span>
+            </div>
+            <div class="setting-ctrl">
+              <button type="button" class="btn btn-sm btn-stepper" data-step-target="slider-ig2" data-step="-1">−</button>
+              <input type="range" id="slider-ig2" min="0" max="8" value="0">
+              <button type="button" class="btn btn-sm btn-stepper" data-step-target="slider-ig2" data-step="1">+</button>
+              <span class="range-val" id="val-ig2">0</span>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">YouTube Shorts / Day</span>
+              <span class="setting-desc">Set to 0 to pause, or 1–8 shorts/day (respects 10,000 unit daily API quota)</span>
+            </div>
+            <div class="setting-ctrl">
+              <button type="button" class="btn btn-sm btn-stepper" data-step-target="slider-yt" data-step="-1">−</button>
+              <input type="range" id="slider-yt" min="0" max="8" value="3">
+              <button type="button" class="btn btn-sm btn-stepper" data-step-target="slider-yt" data-step="1">+</button>
+              <span class="range-val" id="val-yt">3</span>
+            </div>
+          </div>
+
+          <!-- Dynamic Spacing Visualizer -->
+          <div class="spacing-box" id="spacing-summary-box">
+            <div class="spacing-summary" id="spacing-summary-text">
+              Loading dynamic spacing calculation...
+            </div>
+          </div>
+
+          <!-- Shadowban & Rate-Limit Hazard Warning -->
+          <div class="danger-box" id="shadowban-hazard-box" style="display: none;">
+            <div class="danger-box-title">
+              <svg class="icon icon-danger" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <span id="shadowban-hazard-title">CRITICAL SPAM HAZARD: FREQUENCY LIMIT EXCEEDED</span>
+            </div>
+            <div class="danger-box-desc" id="shadowban-hazard-desc">
+              Warning details...
+            </div>
+          </div>
+        </div>
+
+        <!-- Posting Priority Rules Card -->
+        <div class="settings-card">
+          <div class="settings-card-title">
+            <svg class="icon" viewBox="0 0 24 24"><polyline points="17 11 12 6 7 11"/><polyline points="17 18 12 13 7 18"/></svg>
+            Posting Priority Rules (Categories &amp; Games)
+          </div>
+          <p class="view-subtitle">Control which games or keywords jump to the front of the queue and which only post as a last resort.</p>
+
+          <div class="priority-legend-bar">
+            <span class="prio-tier-badge tier-prioritized">1. Prioritized (ASAP)</span>
+            <span class="prio-arrow">→</span>
+            <span class="prio-tier-badge tier-approved">2. Approved</span>
+            <span class="prio-arrow">→</span>
+            <span class="prio-tier-badge tier-normal">3. No Category</span>
+            <span class="prio-arrow">→</span>
+            <span class="prio-tier-badge tier-deprioritized">4. Deprioritized (Last)</span>
+          </div>
+
+          <div class="priority-rule-block">
+            <div class="setting-info">
+              <span class="setting-label" style="color:var(--yellow)">Prioritized Categories / Keywords (Post First)</span>
+              <span class="setting-desc">Clips matching these games or keywords post before Approved, No Category, and Deprioritized clips.</span>
+            </div>
+            <div class="tag-input-row">
+              <input type="text" class="text-input" id="input-prio-cat" placeholder="e.g. Grand Theft Auto VI, GTA 6, Fortnite" style="flex:1;padding:7px 10px;font-size:12px;">
+              <button type="button" class="btn btn-yellow btn-sm" id="btn-add-prio-cat">+ Add</button>
+            </div>
+            <div class="quick-presets-row">
+              <span class="preset-label">Quick add:</span>
+              <button type="button" class="preset-chip" data-preset-target="prioritized" data-preset-val="Grand Theft Auto VI">Grand Theft Auto VI</button>
+              <button type="button" class="preset-chip" data-preset-target="prioritized" data-preset-val="GTA 6">GTA 6</button>
+              <button type="button" class="preset-chip" data-preset-target="prioritized" data-preset-val="Fortnite">Fortnite</button>
+              <button type="button" class="preset-chip" data-preset-target="prioritized" data-preset-val="Elden Ring">Elden Ring</button>
+              <button type="button" class="preset-chip" data-preset-target="prioritized" data-preset-val="Valorant">Valorant</button>
+            </div>
+            <div class="cat-chips-container" id="prio-cat-chips"></div>
+          </div>
+
+          <div class="priority-rule-block">
+            <div class="setting-info">
+              <span class="setting-label" style="color:var(--text-muted)">Deprioritized Categories / Keywords (Post Only If No Higher Priority)</span>
+              <span class="setting-desc">Even uncategorized clips post BEFORE these. Only published when no higher priority clips remain.</span>
+            </div>
+            <div class="tag-input-row">
+              <input type="text" class="text-input" id="input-deprio-cat" placeholder="e.g. Just Chatting, Chess, GTA V" style="flex:1;padding:7px 10px;font-size:12px;">
+              <button type="button" class="btn btn-sm" id="btn-add-deprio-cat">+ Add</button>
+            </div>
+            <div class="quick-presets-row">
+              <span class="preset-label">Quick add:</span>
+              <button type="button" class="preset-chip" data-preset-target="deprioritized" data-preset-val="Just Chatting">Just Chatting</button>
+              <button type="button" class="preset-chip" data-preset-target="deprioritized" data-preset-val="Grand Theft Auto V">Grand Theft Auto V</button>
+              <button type="button" class="preset-chip" data-preset-target="deprioritized" data-preset-val="Chess">Chess</button>
+              <button type="button" class="preset-chip" data-preset-target="deprioritized" data-preset-val="Lethal Company">Lethal Company</button>
+            </div>
+            <div class="cat-chips-container" id="deprio-cat-chips"></div>
+          </div>
+        </div>
+
+        <!-- Content Safety & NSFW Auto-Censor Card -->
+        <div class="settings-card">
+          <div class="settings-card-title">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            NSFW / Sexual Content Shield &amp; Auto-Censor
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">Auto-Detect &amp; Censor Sexual / Nudity Scenes</span>
+              <span class="setting-desc">Scans every harvested clip with Gemini Vision (1 fps) to protect accounts from adult-content bans (e.g. GTA 6 strip clubs)</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="toggle-nsfw-censor" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">Censoring Action Mode</span>
+              <span class="setting-desc">How detected unsafe timestamp windows are handled automatically</span>
+            </div>
+            <div class="setting-ctrl">
+              <select id="select-censor-mode" class="text-input" style="padding:6px 10px;font-size:12px;">
+                <option value="blur">Blur + CENSORED Overlay (Recommended)</option>
+                <option value="cut">Cut / Trim Unsafe Seconds</option>
+                <option value="reject">Reject Entire Clip</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hype Mode & Quality Card -->
+        <div class="settings-card">
+          <div class="settings-card-title">
+            <svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            Hype Event Boost & Multi-Clip Yield
+          </div>
+          
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">GTA 6 / Special Hype Weekend Mode</span>
+              <span class="setting-desc">Temporarily boosts frequency to 4 posts/account and captures more stream peaks</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="toggle-hype">
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">Clips Per Stream Yield</span>
+              <span class="setting-desc">Extract 2 to 3 highlights per downloaded chat to maximize efficiency</span>
+            </div>
+            <div class="setting-ctrl">
+              <input type="range" id="slider-stream-yield" min="1" max="3" value="3">
+              <span class="range-val" id="val-stream-yield">3</span>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">Min Spacing Between Clips in Same Stream</span>
+              <span class="setting-desc">Ensures highlights are distinct (seconds)</span>
+            </div>
+            <div class="setting-ctrl">
+              <input type="range" id="slider-clip-spacing" min="180" max="600" step="30" value="300">
+              <span class="range-val" id="val-clip-spacing">300s</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Storage Governor Card -->
+        <div class="settings-card">
+          <div class="settings-card-title">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Storage Governor & Safeguards
+          </div>
+          
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">Cleanup Watermark (80% Full)</span>
+              <span class="setting-desc">Deletes temp scratch files and posted clips older than 5 days</span>
+            </div>
+            <span class="status-pill" style="color:var(--yellow)">Active at 1200 MB</span>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">Aggressive Purge Watermark (90% Full)</span>
+              <span class="setting-desc">Purges oldest posted clips in stream_posted/ until back below 80%</span>
+            </div>
+            <span class="status-pill" style="color:var(--danger)">Active at 1350 MB</span>
+          </div>
+
+          <div class="spacing-box" style="border-color: rgba(34, 197, 94, 0.4)">
+            <div style="font-size:12px;color:var(--success);font-weight:700;display:flex;align-items:center;gap:6px;">
+              <svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              CRITICAL SAFEGUARD ACTIVE:
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">
+              Clips waiting in <code>stream_pipeline/</code> are NEVER deleted by the automated governor. Warning logs will be dispatched if queue storage exceeds threshold.
+            </div>
+          </div>
+
+          <button class="btn btn-yellow" id="btn-save-settings" style="width:100%;justify-content:center;padding:12px;">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Save Settings to Repository
+          </button>
+        </div>
+      </div>
+    </main>
+
+    <!-- Setup / Auth Modal -->
+    <div class="modal-overlay" id="modal-setup">
+      <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <div class="modal-title">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M21 2l-2 2m-1.5 1.5L14 9l-1.5-1.5-1.5 1.5-1.5-1.5L8 9a5 5 0 1 0 7 7l5.5-5.5a2.12 2.12 0 0 0 0-3L21 2z"/></svg>
+            Connect GitHub Repository
+          </div>
+          <button class="modal-close" id="btn-close-setup" onclick="window.closeSetupModal && window.closeSetupModal()" aria-label="Close">&times;</button>
+        </div>
+        <p class="modal-desc">
+          Enter your GitHub Personal Access Token (with <code>repo</code> and <code>workflow</code> scopes) to manage, approve, and review clips directly on GitHub.
+        </p>
+
+        <div class="input-group">
+          <label class="input-label">GitHub Personal Access Token (PAT)</label>
+          <input type="password" class="text-input" id="setup-pat" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+        </div>
+
+        <div class="input-group">
+          <label class="input-label">Repository (owner/repo)</label>
+          <input type="text" class="text-input" id="setup-repo" value="Deeptanil/HyperClip-AI" autocomplete="off">
+        </div>
+
+        <div class="input-group">
+          <label class="input-label">Production Branch (Code & Config)</label>
+          <input type="text" class="text-input" id="setup-branch" value="master" autocomplete="off">
+        </div>
+
+        <div class="input-group">
+          <label class="input-label">Content Branch (Stores Pipeline Clips & Logs)</label>
+          <input type="text" class="text-input" id="setup-content-branch" value="content" autocomplete="off">
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:10px;">
+          <button class="btn btn-yellow" id="btn-save-pat" style="flex:1;justify-content:center">
+            <svg class="icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            Connect & Save
+          </button>
+          <button class="btn" id="btn-use-demo" style="flex:1;justify-content:center">
+            Explore with Demo Data
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 9:16 Portrait Video Preview Modal -->
+    <div class="modal-overlay" id="modal-preview">
+      <div class="modal-content preview-modal" onclick="event.stopPropagation()">
+        <div class="preview-video-pane" style="position:relative;display:flex;align-items:center;justify-content:center;background:#09090b;overflow:hidden;">
+          <video id="preview-player" controls playsinline webkit-playsinline preload="auto" style="width:100%;height:100%;object-fit:contain;transition:opacity 0.2s ease;opacity:0;"></video>
+          <div id="preview-video-loader" style="position:absolute;display:none;flex-direction:column;align-items:center;gap:12px;color:var(--text-dim);font-size:12px;font-family:var(--font-mono);pointer-events:none;">
+            <div class="spinner" style="width:28px;height:28px;border:3px solid rgba(250,204,21,0.2);border-top-color:var(--yellow);border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+            <span>Loading stream highlight...</span>
+          </div>
+          <div id="preview-video-error" style="position:absolute;display:none;flex-direction:column;align-items:center;gap:8px;color:#ef4444;text-align:center;padding:20px;pointer-events:none;">
+            <svg class="icon icon-lg" viewBox="0 0 24 24" style="stroke:#ef4444;width:32px;height:32px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span style="font-weight:600;font-size:13px;color:#f4f4f5;">Video Stream Preview Unavailable</span>
+            <small style="color:var(--text-dim);font-size:11px;">Staged in pipeline queue for automated processing</small>
+          </div>
+        </div>
+        <div class="preview-details-pane">
+          <div class="modal-header">
+            <div>
+              <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
+                <div class="status-pill" id="preview-streamer-badge" style="color:var(--yellow)">Streamer // Highlight</div>
+                <span id="preview-trial-pill" class="clip-trial-tag" style="display:none">TRIAL REEL</span>
+              </div>
+              <h3 class="modal-title" id="preview-modal-title">Clip Title</h3>
+            </div>
+            <button class="modal-close" id="btn-close-preview" onclick="window.closePreviewModal && window.closePreviewModal()" aria-label="Close">&times;</button>
+          </div>
+
+          <div class="input-group">
+            <label class="input-label">Generated Caption & Hashtags</label>
+            <textarea class="text-input" id="preview-caption-edit" rows="4" style="resize:vertical"></textarea>
+          </div>
+
+          <div class="diag-list">
+            <div class="diag-row"><span class="diag-label">Game / Category:</span><span class="diag-val" id="preview-game">Unknown</span></div>
+            <div class="diag-row"><span class="diag-label">Effective Priority:</span><span class="diag-val" id="preview-priority-val">No Category</span></div>
+            <div class="diag-row"><span class="diag-label">Hype Spike Sigma:</span><span class="diag-val" id="preview-sigma">3.4 σ</span></div>
+            <div class="diag-row"><span class="diag-label">Visual Motion Score:</span><span class="diag-val" id="preview-motion">High Delta (Active)</span></div>
+            <div class="diag-row"><span class="diag-label">Facecam Framing:</span><span class="diag-val" id="preview-layout">Dual Stack 9:16</span></div>
+            <div class="diag-row"><span class="diag-label">Target Platform:</span><span class="diag-val" id="preview-target">Instagram & YouTube</span></div>
+            <div class="diag-row"><span class="diag-label">Format / Strategy:</span><span class="diag-val" id="preview-post-format">Standard Feed Reel</span></div>
+            <div class="diag-row"><span class="diag-label">Smart Pacing:</span><span class="diag-val" id="preview-smart-edit">Normal 1x Playback</span></div>
+          </div>
+
+          <div class="input-group">
+            <label class="input-label">Set Clip Priority Tier</label>
+            <div class="priority-btn-group" id="preview-priority-controls">
+              <button type="button" class="btn btn-sm prio-select-btn" data-set-priority="prioritized">Prioritize</button>
+              <button type="button" class="btn btn-sm prio-select-btn" data-set-priority="approved">Approve</button>
+              <button type="button" class="btn btn-sm prio-select-btn" data-set-priority="normal">No Category</button>
+              <button type="button" class="btn btn-sm prio-select-btn" data-set-priority="deprioritized">Deprioritize</button>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:8px;margin-top:auto">
+            <button class="btn btn-yellow" id="btn-approve-clip" style="flex:1;justify-content:center" title="Mark approved and prioritize for next upload slot (Optional: unapproved clips will still post automatically)">
+              <svg class="icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              Approve
+            </button>
+            <button class="btn btn-warning" id="btn-deny-clip" style="flex:1;justify-content:center" title="Deny clip: removes from publishing pipeline so it will never post">
+              <svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="18" x2="18" y2="18"/></svg>
+              Deny
+            </button>
+            <button class="btn btn-danger" id="btn-delete-clip" style="flex:1;justify-content:center" title="Permanently delete clip from storage">
+              <svg class="icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

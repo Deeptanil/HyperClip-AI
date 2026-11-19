@@ -118,7 +118,7 @@ def check_can_post_now(force=False, min_gap_hours=5.0, max_daily_posts=2):
         msg = f"Daily limit reached ({len(today_posts)}/{max_daily_posts} posted today in IST). All daily posts fulfilled."
         return False, msg
 
-    # Rule 2: Minimum Interval Gap (Cooldown)
+    # Rule 2: Minimum Interval Gap (Cooldown) - posts 24/7 without regional time-of-day gating
     if last_post_time:
         elapsed_hours = (now_ist - last_post_time).total_seconds() / 3600.0
         if elapsed_hours < min_gap_hours:
@@ -126,19 +126,7 @@ def check_can_post_now(force=False, min_gap_hours=5.0, max_daily_posts=2):
             msg = f"Cooldown active: Last post was {elapsed_hours:.1f}h ago. Need {remaining:.1f}h more separation."
             return False, msg
 
-    # Rule 3: Peak Viewing Window for Indian Audience
-    if len(today_posts) == 0:
-        # First post of the day: Target lunch window (after 11:30 AM IST)
-        if current_hour_ist < 11.5:
-            msg = f"Awaiting Indian Lunch Peak Window (Current IST: {now_ist.strftime('%I:%M %p')}; window opens at 11:30 AM IST)."
-            return False, msg
-    elif len(today_posts) == 1:
-        # Second post of the day: Target evening prime time window (after 6:30 PM IST)
-        if current_hour_ist < 18.5:
-            msg = f"Awaiting Indian Evening Prime Time Window (Current IST: {now_ist.strftime('%I:%M %p')}; window opens at 06:30 PM IST)."
-            return False, msg
-
-    return True, f"Eligible for post {len(today_posts) + 1}/{max_daily_posts} (Current IST: {now_ist.strftime('%I:%M %p')})"
+    return True, f"Eligible for post {len(today_posts) + 1}/{max_daily_posts} (24/7 Global Schedule)"
 
 def prune_posted_archive(days=7):
     """Deletes posted videos older than 7 days to keep repository lean."""
@@ -170,9 +158,41 @@ def prune_posted_archive(days=7):
                 print(f"[*] Pruned expired archive by mtime (>7 days): {fname}")
 
 def get_queued_videos():
-    """Returns sorted list of videos waiting in output/pipeline/."""
+    """Returns sorted list of videos waiting in output/pipeline/ by date (FIFO, never alphabetically)."""
     ensure_directories()
-    files = sorted([f for f in os.listdir(PIPELINE_DIR) if f.endswith(".mp4")])
+    files = [f for f in os.listdir(PIPELINE_DIR) if f.endswith(".mp4")]
+
+    def _file_sort_key(fname):
+        fpath = os.path.join(PIPELINE_DIR, fname)
+        mpath = os.path.splitext(fpath)[0] + ".json"
+        priority = 1
+        ts_val = 0.0
+        if os.path.exists(mpath):
+            try:
+                with open(mpath, "r", encoding="utf-8") as f:
+                    meta = json.load(f)
+                status = meta.get("approval_status", meta.get("status", "pending"))
+                priority = 0 if status == "approved" else 2 if status == "denied" else 1
+                raw_ts = meta.get("timestamp") or meta.get("staged_at") or meta.get("created_at")
+                if raw_ts:
+                    ts_val = datetime.fromisoformat(str(raw_ts)).timestamp()
+            except Exception:
+                pass
+        if ts_val <= 0:
+            m = re.match(r"^(\d{4}-\d{2}-\d{2})", fname)
+            if m:
+                try:
+                    ts_val = datetime.strptime(m.group(1), "%Y-%m-%d").timestamp()
+                except Exception:
+                    pass
+        if ts_val <= 0:
+            try:
+                ts_val = os.path.getmtime(fpath)
+            except Exception:
+                ts_val = 0.0
+        return (priority, ts_val)
+
+    files.sort(key=_file_sort_key)
     return [os.path.join(PIPELINE_DIR, f) for f in files]
 
 async def stage_new_video(category=None, topic=None, style_mode="historical_cartoon"):
@@ -230,7 +250,20 @@ async def stage_new_video(category=None, topic=None, style_mode="historical_cart
 
 async def run_pipeline(platforms=None, force=False):
     if platforms is None:
-        platforms = ["youtube", "instagram"]
+        platforms = ["youtube"]
+    # Safety: Filter out Instagram to protect account from automated scraping bans
+    platforms = [p for p in platforms if p != "instagram"]
+
+    if os.path.exists("config.json"):
+        try:
+            with open("config.json", "r", encoding="utf-8") as cf:
+                cfg = json.load(cf)
+            if cfg.get("mode") == "twitch_hype" and cfg.get("disable_stickman_during_hype", False):
+                print("[*] Hype mode active ('disable_stickman_during_hype=true'). Handing off to Twitch Clipper publisher...")
+                from twitch_clipper import publish_next_clip
+                return publish_next_clip(cfg, platforms=platforms, force=force)
+        except Exception as e:
+            print(f"[!] Error during hype publisher handoff: {e}")
 
     ensure_directories()
     prune_posted_archive(days=7)
@@ -322,12 +355,18 @@ async def run_pipeline(platforms=None, force=False):
 
     save_log_entry(results)
 
-    # Move posted video and metadata to output/posted/
-    posted_dest_mp4 = os.path.join(POSTED_DIR, os.path.basename(video_to_post))
-    shutil.move(video_to_post, posted_dest_mp4)
+    # Delete posted video and metadata to prevent storage clutter (URLs recorded in logs)
+    if os.path.exists(video_to_post):
+        try:
+            os.remove(video_to_post)
+        except Exception:
+            pass
     if os.path.exists(json_path):
-        shutil.move(json_path, os.path.join(POSTED_DIR, os.path.basename(json_path)))
-    print(f"[+] Archived posted video to: {posted_dest_mp4}")
+        try:
+            os.remove(json_path)
+        except Exception:
+            pass
+    print(f"[+] Posted video and metadata deleted from pipeline (Storage freed).")
 
     # Ensure pipeline has the NEXT video staged and ready
     remaining = get_queued_videos()
@@ -344,7 +383,7 @@ async def run_pipeline(platforms=None, force=False):
 
 def main():
     parser = argparse.ArgumentParser(description="Autonomous Storytelling Pipeline & Publisher")
-    parser.add_argument("--platforms", nargs="+", choices=["youtube", "instagram", "tiktok"], default=["youtube", "instagram"])
+    parser.add_argument("--platforms", nargs="+", choices=["youtube", "instagram", "tiktok"], default=["youtube"])
     parser.add_argument("--force", action="store_true", help="Force publish immediately, bypassing time window & quota checks")
     parser.add_argument("--stage-only", action="store_true", help="Stage a new video in pipeline without publishing")
     args = parser.parse_args()
