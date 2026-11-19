@@ -180,6 +180,12 @@
   let pipelineClips = [];
   let postedClips = [];
   let scheduledSlots = [];
+  const clipBlobCache = new Map(); // bounded cache for loaded clip blobs
+  let activePreviewAbortController = null;
+  let isPreviewModalActive = false;
+  let pendingRenderAfterModal = false;
+  let lastSyncSignature = '';
+  const metadataCacheBySha = new Map(); // jsonSha -> parsedMetadata cache
 
   // --- Clean SVG Icon Helpers (No Emojis) ---
   const ICONS = {
@@ -1168,17 +1174,25 @@
       const isManualAppr = clip.priority === 'approved' || (!clip.priority && clip.approval_status === 'approved');
       const isManualDeprio = clip.priority === 'deprioritized';
 
+      const cachedBlob = clipBlobCache.get(clip.id) || clip._blobUrl;
+
       card.innerHTML = `
-        <div class="clip-preview-container">
-          <video src="${clip._blobUrl || clip.videoUrl || ('media/' + clip.filename)}" onerror="if(!this.dataset.triedLocal){this.dataset.triedLocal=1;this.src='media/${clip.filename}';}" preload="metadata" muted playsinline></video>
+        <div class="clip-preview-container" role="button" tabindex="0" title="Click to preview video">
+          <div class="clip-poster-placeholder">
+            <div class="clip-play-orb">
+              ${ICONS.play}
+            </div>
+            <div class="clip-poster-label">${clip.streamer || 'Streamer'}</div>
+          </div>
+          ${cachedBlob ? `<video src="${cachedBlob}" preload="none" muted playsinline></video>` : ''}
           <div class="clip-overlay-badge">
             <span>${clip.streamer}</span>
           </div>
           <div class="clip-rank-badge ${queuePos === 1 ? 'is-first' : ''}">
             ${queuePos === 1 ? '#1 NEXT UP' : '#' + queuePos}
           </div>
-          ${isTrial ? '<div style="position:absolute;bottom:8px;left:8px;z-index:2;"><span class="clip-trial-tag">TRIAL REEL</span></div>' : ''}
-          <div class="clip-duration-badge">${clip.duration}</div>
+          ${isTrial ? '<div style="position:absolute;bottom:8px;left:8px;z-index:4;"><span class="clip-trial-tag">TRIAL REEL</span></div>' : ''}
+          <div class="clip-duration-badge" style="z-index:4;">${clip.duration}</div>
         </div>
         <div class="clip-body">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;flex-wrap:wrap;">
@@ -1207,6 +1221,17 @@
           <button class="btn btn-danger btn-sm btn-delete" title="Permanently delete clip">Delete</button>
         </div>
       `;
+
+      const prevBox = card.querySelector('.clip-preview-container');
+      if (prevBox) {
+        prevBox.onclick = () => window.openPreviewModal(clip);
+        prevBox.onkeydown = (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            window.openPreviewModal(clip);
+          }
+        };
+      }
 
       card.querySelector('.btn-preview').onclick = () => window.openPreviewModal(clip);
       card.querySelector('.btn-prio-up').onclick = () => setClipPriority(clip, isManualPrio ? 'auto' : 'prioritized', false);
@@ -1246,6 +1271,15 @@
   window.openPreviewModal = async function (clip) {
     const currentSession = ++activePreviewSessionId;
     selectedClip = clip;
+    isPreviewModalActive = true;
+
+    // Abort any previous pending blob download to save bandwidth and memory
+    if (activePreviewAbortController) {
+      activePreviewAbortController.abort();
+    }
+    activePreviewAbortController = new AbortController();
+    const abortSignal = activePreviewAbortController.signal;
+
     const modal = document.getElementById('modal-preview');
     const player = document.getElementById('preview-player');
     if (!modal || !player) return;
@@ -1302,26 +1336,41 @@
 
     modal.classList.add('open');
 
+    // Retrieve from memory cache if available
+    if (clipBlobCache.has(clip.id)) {
+      clip._blobUrl = clipBlobCache.get(clip.id);
+    }
+
     // Secure streaming loader: If authenticated to GitHub, stream binary via Blob URL
     // This allows private repository MP4s to play seamlessly in HTML5 <video> without auth blocks!
-    if (auth.pat && !auth.isDemo && clip.path) {
+    if (auth.pat && !auth.isDemo && clip.path && !clip._blobUrl) {
       try {
-        if (!clip._blobUrl) {
-          const res = await fetch(`https://api.github.com/repos/${auth.repo}/contents/${clip.path}?ref=${auth.contentBranch || 'content'}`, {
-            headers: {
-              'Authorization': `token ${auth.pat.trim()}`,
-              'Accept': 'application/vnd.github.v3.raw'
-            }
-          });
+        const res = await fetch(`https://api.github.com/repos/${auth.repo}/contents/${clip.path}?ref=${auth.contentBranch || 'content'}`, {
+          headers: {
+            'Authorization': `token ${auth.pat.trim()}`,
+            'Accept': 'application/vnd.github.v3.raw'
+          },
+          signal: abortSignal
+        });
+        if (currentSession !== activePreviewSessionId) return;
+        if (res.ok) {
+          const blob = await res.blob();
           if (currentSession !== activePreviewSessionId) return;
-          if (res.ok) {
-            const blob = await res.blob();
-            if (currentSession !== activePreviewSessionId) return;
-            clip._blobUrl = URL.createObjectURL(blob);
+          const newBlobUrl = URL.createObjectURL(blob);
+          clip._blobUrl = newBlobUrl;
+          // Maintain a bounded LRU cache (max 3 items) to avoid device memory bloat
+          if (clipBlobCache.size >= 3) {
+            const oldestKey = clipBlobCache.keys().next().value;
+            const oldUrl = clipBlobCache.get(oldestKey);
+            clipBlobCache.delete(oldestKey);
+            try { URL.revokeObjectURL(oldUrl); } catch (e) {}
           }
+          clipBlobCache.set(clip.id, newBlobUrl);
         }
       } catch (err) {
-        console.warn('Blob stream fallback to direct URL:', err);
+        if (err.name !== 'AbortError') {
+          console.warn('Blob stream fallback to direct URL:', err);
+        }
       }
     }
 
@@ -1330,12 +1379,12 @@
     // Build candidate source list with local and remote fallbacks
     const candidates = [];
     if (clip._blobUrl) candidates.push(clip._blobUrl);
-    if (clip.filename) {
+    if (clip.filename && (auth.isDemo || !auth.pat)) {
       candidates.push(`media/${clip.filename}`);
-      candidates.push(`output/stream_pipeline/${clip.filename}`);
-      candidates.push(`../output/stream_pipeline/${clip.filename}`);
     }
-    if (clip.videoUrl) candidates.push(clip.videoUrl);
+    if (clip.videoUrl && !clip.videoUrl.includes('raw.githubusercontent.com')) {
+      candidates.push(clip.videoUrl);
+    }
 
     let candidateIdx = 0;
     function loadNextSource() {
@@ -1364,7 +1413,7 @@
       player.style.opacity = '1';
     };
 
-    player.onerror = function (e) {
+    player.onerror = function () {
       if (currentSession !== activePreviewSessionId) return;
       console.warn('Source playback failed, falling back to next candidate:', player.src);
       loadNextSource();
@@ -1375,11 +1424,16 @@
 
   window.closePreviewModal = function () {
     activePreviewSessionId++; // Invalidate any running session
+    isPreviewModalActive = false;
+    if (activePreviewAbortController) {
+      activePreviewAbortController.abort();
+      activePreviewAbortController = null;
+    }
     const modal = document.getElementById('modal-preview');
     const player = document.getElementById('preview-player');
     if (player) {
       player.pause();
-      player.onerror = null; // Detach error listener to prevent re-triggering loadNextSource
+      player.onerror = null;
       player.oncanplay = null;
       player.onloadeddata = null;
       player.removeAttribute('src');
@@ -1394,6 +1448,14 @@
     if (captionEl) captionEl.value = '';
     if (modal) modal.classList.remove('open');
     selectedClip = null;
+
+    // Apply any deferred queue and calendar update that completed while preview was open
+    if (pendingRenderAfterModal) {
+      pendingRenderAfterModal = false;
+      calculateDynamicSpacing();
+      renderCalendar();
+      renderPipelineQueue();
+    }
   };
 
   async function updateGitHubClipMetadata(clip, updates) {
@@ -1681,16 +1743,21 @@
                 if (jsonFile) {
                   totalMediaBytes += (jsonFile.size || 0);
                   jsonSha = jsonFile.sha;
-                  try {
-                    const mRes = await fetch(jsonFile.url, { headers });
-                    if (mRes.ok) {
-                      const mData = await mRes.json();
-                      const mStr = decodeURIComponent(escape(atob(mData.content)));
-                      const parsedMeta = JSON.parse(mStr);
-                      meta = { ...meta, ...parsedMeta };
+                  if (metadataCacheBySha.has(jsonSha)) {
+                    meta = { ...meta, ...metadataCacheBySha.get(jsonSha) };
+                  } else {
+                    try {
+                      const mRes = await fetch(jsonFile.url, { headers });
+                      if (mRes.ok) {
+                        const mData = await mRes.json();
+                        const mStr = decodeURIComponent(escape(atob(mData.content)));
+                        const parsedMeta = JSON.parse(mStr);
+                        meta = { ...meta, ...parsedMeta };
+                        metadataCacheBySha.set(jsonSha, parsedMeta);
+                      }
+                    } catch (e) {
+                      console.warn('Metadata fetch error for', jsonFile.name, e);
                     }
-                  } catch (e) {
-                    console.warn('Metadata fetch error for', jsonFile.name, e);
                   }
                 }
 
@@ -1811,10 +1878,23 @@
       // Update Live Cooldown Timers from exact ISO timestamps
       updateCooldownDisplays();
 
-      // Update Calendar & Queue with real GitHub data
-      calculateDynamicSpacing();
-      renderCalendar();
-      renderPipelineQueue();
+      // Diff data against last sync to prevent unnecessary DOM destruction
+      const currentSignature = (
+        realPipeline.map(c => `${c.id}:${c.priority}:${c.approval_status}:${c.caption}`).join(';') +
+        '###' +
+        realPosted.map(p => `${p.id}:${p.status}`).join(';')
+      );
+      const dataChanged = currentSignature !== lastSyncSignature;
+      lastSyncSignature = currentSignature;
+
+      // Guard: If preview modal is open, NEVER rebuild DOM underneath the active player!
+      if (isPreviewModalActive) {
+        pendingRenderAfterModal = true;
+      } else if (dataChanged || isManual) {
+        calculateDynamicSpacing();
+        renderCalendar();
+        renderPipelineQueue();
+      }
 
       lastSyncDate = new Date();
       const timeStr = lastSyncDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
