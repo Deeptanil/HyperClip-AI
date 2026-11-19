@@ -116,12 +116,12 @@ def upload_reel_meta_graph(video_path_or_url: str, caption: str, account_slot: i
 def upload_reel(video_path: str, caption: str, account_slot: int = 1, trial: bool = False, **kwargs) -> str:
     """
     Smart hybrid Instagram Reel uploader:
-    1. Primary: Official Meta Graph API (resumable local file upload) - Zero bot blocks or shadowbans.
-    2. Fallback: instagrapi session-based uploader if Meta Graph API token is not configured.
+    1. Primary: Official Meta Graph API for standard public reels (resumable local file upload) - Zero bot blocks.
+    2. Trial Reels & Direct Fallback: instagrapi session-based uploader (Meta Graph API does not support Trial Reels).
     """
     token = os.getenv("META_ACCESS_TOKEN")
     ig_id = os.getenv("INSTAGRAM_ACCOUNT_ID_2" if account_slot == 2 else "INSTAGRAM_ACCOUNT_ID")
-    if token and ig_id:
+    if not trial and token and ig_id:
         try:
             _, permalink = upload_reel_meta_graph(video_path, caption, account_slot=account_slot)
             return permalink
