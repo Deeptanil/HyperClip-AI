@@ -26,6 +26,7 @@ from src.twitch_clipper.smart_editor import (
 )
 from src.twitch_clipper.captioner import generate_clip_captions
 from src.twitch_clipper.nsfw_censor import scan_and_censor_nsfw
+from src.twitch_clipper.text_censor import sanitize_text_for_reach
 
 
 def process_pipeline_clip(video_path: str, meta_path: str | None = None, work_dir: str = "temp_pipeline_edit") -> dict:
@@ -108,6 +109,13 @@ def process_pipeline_clip(video_path: str, meta_path: str | None = None, work_di
             meta["bleep_segments"] = bleep_segments
             meta["nsfw_censored"] = nsfw_info.get("action") == "censored"
             meta["nsfw_segments"] = nsfw_info.get("segments", [])
+
+            if "title" in meta:
+                meta["title"] = sanitize_text_for_reach(meta["title"])
+            if "caption" in meta:
+                meta["caption"] = sanitize_text_for_reach(meta["caption"])
+            if "hook" in meta:
+                meta["hook"] = sanitize_text_for_reach(meta["hook"])
 
             with open(meta_path, "w", encoding="utf-8") as f:
                 json.dump(meta, f, indent=2)

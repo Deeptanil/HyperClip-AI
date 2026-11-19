@@ -31,6 +31,7 @@ sys.path.append(os.path.dirname(__file__))
 from src.uploaders.youtube_uploader import upload_short
 from src.uploaders.instagram_uploader import upload_reel_direct, upload_reel_meta_graph
 from src.uploaders.tiktok_uploader import upload_tiktok
+from src.twitch_clipper.text_censor import sanitize_text_for_reach
 from generate_story import build_story_video
 
 LOG_FILE = "posted_log.json"
@@ -128,34 +129,17 @@ def check_can_post_now(force=False, min_gap_hours=5.0, max_daily_posts=2):
 
     return True, f"Eligible for post {len(today_posts) + 1}/{max_daily_posts} (24/7 Global Schedule)"
 
-def prune_posted_archive(days=7):
-    """Deletes posted videos older than 7 days to keep repository lean."""
+def prune_posted_archive(days=0):
+    """Deletes posted videos immediately to keep repository lean."""
     ensure_directories()
-    now = datetime.now(timezone.utc)
-    cutoff = now - timedelta(days=days)
-
     for fname in os.listdir(POSTED_DIR):
-        if not fname.endswith((".mp4", ".json")):
-            continue
         fpath = os.path.join(POSTED_DIR, fname)
-        is_pruned = False
-
-        match = re.match(r"^(\d{4}-\d{2}-\d{2})", fname)
-        if match:
+        if fname.endswith(".mp4"):
             try:
-                f_date = datetime.strptime(match.group(1), "%Y-%m-%d").replace(tzinfo=timezone.utc)
-                if f_date < cutoff:
-                    os.remove(fpath)
-                    print(f"[*] Pruned expired archive (>7 days): {fname}")
-                    is_pruned = True
+                os.remove(fpath)
+                print(f"[*] Pruned posted video to free storage: {fname}")
             except Exception:
                 pass
-
-        if not is_pruned:
-            mtime = datetime.fromtimestamp(os.path.getmtime(fpath), tz=timezone.utc)
-            if mtime < cutoff:
-                os.remove(fpath)
-                print(f"[*] Pruned expired archive by mtime (>7 days): {fname}")
 
 def get_queued_videos():
     """Returns sorted list of videos waiting in output/pipeline/ by date (FIFO, never alphabetically)."""
@@ -307,8 +291,10 @@ async def run_pipeline(platforms=None, force=False):
         except Exception:
             pass
 
-    title = meta.get("title", os.path.basename(video_to_post).replace(".mp4", "").replace("-", " ").title())
-    caption = meta.get("caption", f"{title} #shorts #animation #storytime #reels")
+    raw_title = meta.get("title", os.path.basename(video_to_post).replace(".mp4", "").replace("-", " ").title())
+    raw_caption = meta.get("caption", f"{raw_title} #shorts #animation #storytime #reels")
+    title = sanitize_text_for_reach(raw_title)
+    caption = sanitize_text_for_reach(raw_caption)
 
     print("\n" + "=" * 60)
     print(f"🚀 PUBLISHING PIPELINE VIDEO: {video_to_post}")

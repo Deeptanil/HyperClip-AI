@@ -9,11 +9,18 @@ import os
 import re
 import subprocess
 
-# Root stems for swear / profanity words to censor and bleep
+# Root stems for swear / profanity / shadowban words to censor in subtitles and bleep in audio
 PROFANITY_ROOTS = [
-    r"fuck", r"fck", r"fuk", r"shit", r"bitch", r"asshole", r"dumbass", r"jackass",
-    r"dick", r"pussy", r"cunt", r"cock", r"nigg", r"fag", r"retard", r"whore", r"slut",
-    r"bastard", r"motherfuck", r"bullshit", r"dipshit"
+    # Vulgarity / Swearing
+    r"fuck", r"fck", r"fuk", r"shit", r"bitch", r"btch", r"asshole", r"dumbass", r"jackass",
+    r"dick", r"pussy", r"cunt", r"cock", r"motherfuck", r"bullshit", r"dipshit",
+    r"bastard", r"whore", r"slut", r"tits", r"boobs", r"blowjob", r"dildo",
+    # Hate Speech / Slurs
+    r"nigg", r"fag", r"retard", r"chink", r"spic", r"kike", r"tranny",
+    # Drugs & Controlled Substances (Algorithm shadowban triggers)
+    r"cocaine", r"heroin", r"meth", r"fentanyl", r"percocet", r"overdose", r"percs",
+    # Extreme Violence & Taboo
+    r"suicide", r"murder", r"rape"
 ]
 PROFANITY_REGEX = re.compile(r"^(" + "|".join(PROFANITY_ROOTS) + r")[a-z]*$", re.IGNORECASE)
 

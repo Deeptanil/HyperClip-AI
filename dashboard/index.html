@@ -661,14 +661,19 @@
                 <div class="status-pill" id="preview-streamer-badge" style="color:var(--yellow)">Streamer // Highlight</div>
                 <span id="preview-trial-pill" class="clip-trial-tag" style="display:none">TRIAL REEL</span>
               </div>
-              <h3 class="modal-title" id="preview-modal-title">Clip Title</h3>
+              <h3 class="modal-title" id="preview-modal-title">Edit Clip Details</h3>
             </div>
             <button class="modal-close" id="btn-close-preview" onclick="window.closePreviewModal && window.closePreviewModal()" aria-label="Close">&times;</button>
           </div>
 
           <div class="input-group">
-            <label class="input-label">Generated Caption & Hashtags</label>
-            <textarea class="text-input" id="preview-caption-edit" rows="4" style="resize:vertical"></textarea>
+            <label class="input-label">Video Title (YouTube Shorts & Hook Headline)</label>
+            <input type="text" class="text-input" id="preview-title-edit" placeholder="Enter video title..." style="font-weight:700;font-size:13px;">
+          </div>
+
+          <div class="input-group">
+            <label class="input-label">Caption & Hashtags (Instagram & Feed)</label>
+            <textarea class="text-input" id="preview-caption-edit" rows="3" style="resize:vertical"></textarea>
           </div>
 
           <div class="diag-list">

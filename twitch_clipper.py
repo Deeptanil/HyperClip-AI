@@ -28,6 +28,7 @@ from src.twitch_clipper.hook_generator import generate_hook_text, render_hook_ba
 from src.twitch_clipper.content_judge import evaluate_clip_quality
 from src.twitch_clipper.nsfw_censor import scan_and_censor_nsfw
 from src.twitch_clipper.smart_editor import fast_forward_dead_air
+from src.twitch_clipper.text_censor import sanitize_text_for_reach
 from src.uploaders.youtube_uploader import upload_short
 from src.uploaders.instagram_uploader import upload_reel, upload_reel_direct
 
@@ -181,17 +182,25 @@ def enforce_storage_limits(config: dict):
         print("[!] SAFEGUARD: Pending posts will NOT be deleted. Existing queue should be published before staging more clips.")
 
 
-def prune_stream_archive(days: int = 7):
+def prune_stream_archive(days: int = 0):
+    """Deletes completed videos from stream_posted immediately to conserve storage."""
     ensure_dirs()
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
     for fname in os.listdir(STREAM_POSTED_DIR):
-        if not fname.endswith((".mp4", ".json")):
-            continue
         fpath = os.path.join(STREAM_POSTED_DIR, fname)
-        mtime = datetime.fromtimestamp(os.path.getmtime(fpath), tz=timezone.utc)
-        if mtime < cutoff:
-            os.remove(fpath)
-            print(f"[*] Pruned expired clip (>7 days): {fname}")
+        if fname.endswith(".mp4"):
+            try:
+                os.remove(fpath)
+                print(f"[*] Pruned posted video to free storage: {fname}")
+            except OSError:
+                pass
+        elif fname.endswith(".json") and days > 0:
+            cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+            try:
+                mtime = datetime.fromtimestamp(os.path.getmtime(fpath), tz=timezone.utc)
+                if mtime < cutoff:
+                    os.remove(fpath)
+            except OSError:
+                pass
 
 
 def harvest_clips(config: dict, max_total_new: int = 4) -> list:
@@ -357,6 +366,7 @@ def harvest_clips(config: dict, max_total_new: int = 4) -> list:
                         sample_chat=m.get("sample_chat", []),
                         transcript=transcript_text or None,
                     )
+                hook_headline = sanitize_text_for_reach(hook_headline)
                 render_hook_banner(hook_headline, banner_path)
 
                 hook_slug = slugify_hook(hook_headline)
@@ -380,7 +390,7 @@ def harvest_clips(config: dict, max_total_new: int = 4) -> list:
 
                 game_tag = slugify(target.get("game", "gaming")).replace("_", "")
                 hashtags = tc.get("default_hashtags", "#twitch #gaming #shorts #reels")
-                clip_title = hook_headline
+                clip_title = sanitize_text_for_reach(hook_headline)
                 clip_caption = eval_res.get("caption")
                 if not clip_caption:
                     clip_caption = (
@@ -388,6 +398,7 @@ def harvest_clips(config: dict, max_total_new: int = 4) -> list:
                         f"{target['display_name']} on {target.get('game', 'stream')}! "
                         f"#{target['username']} #{game_tag} {hashtags}"
                     )
+                clip_caption = sanitize_text_for_reach(clip_caption)
 
                 # Account Assignment & YouTube Ratio:
                 sched = config.get("publishing_schedule", {})
@@ -988,8 +999,10 @@ def publish_next_clip(
 
             if clip_info[0]:
                 cname, cpath, _ = clip_info
-                title = meta.get("title", cname.replace(".mp4", "").replace("_", " ").title())
-                caption = meta.get("caption", f"{title} #shorts #twitch #gaming")
+                raw_title = meta.get("title", cname.replace(".mp4", "").replace("_", " ").title())
+                raw_caption = meta.get("caption", f"{raw_title} #shorts #twitch #gaming")
+                title = sanitize_text_for_reach(raw_title)
+                caption = sanitize_text_for_reach(raw_caption)
                 try:
                     yt_url = upload_short(
                         cpath,
@@ -1057,8 +1070,10 @@ def publish_next_clip(
                 continue
 
             cname, cpath, _ = clip_info
-            title = meta.get("title", cname.replace(".mp4", "").replace("_", " ").title())
-            caption = meta.get("caption", f"{title} #reels #twitch #gaming")
+            raw_title = meta.get("title", cname.replace(".mp4", "").replace("_", " ").title())
+            raw_caption = meta.get("caption", f"{raw_title} #reels #twitch #gaming")
+            title = sanitize_text_for_reach(raw_title)
+            caption = sanitize_text_for_reach(raw_caption)
 
             try:
                 permalink = upload_reel(cpath, caption, account_slot=slot, trial=(action_kind == "trial"))
@@ -1113,14 +1128,20 @@ def publish_next_clip(
 
             # Check if all assigned destinations are complete
             if len(targets) == 0:
-                # Move to stream_posted/ to preserve for 7 days
-                posted_mp4 = os.path.join(STREAM_POSTED_DIR, cname)
-                posted_json = os.path.join(STREAM_POSTED_DIR, os.path.splitext(cname)[0] + ".json")
+                # Video has been posted to all target platforms (YT and/or IG)
+                # Immediately delete the bulky MP4 video to free storage!
                 if os.path.exists(cpath):
-                    shutil.move(cpath, posted_mp4)
+                    try:
+                        os.remove(cpath)
+                        print(f"[+] Storage freed: Deleted posted video '{cname}' (All targets completed).")
+                    except Exception as e:
+                        print(f"[-] Could not delete '{cname}': {e}")
+
+                # Move the lightweight JSON metadata to stream_posted/ for archive history
+                posted_json = os.path.join(STREAM_POSTED_DIR, os.path.splitext(cname)[0] + ".json")
                 if os.path.exists(mpath):
                     shutil.move(mpath, posted_json)
-                print(f"[+] Clip '{cname}' completed all assigned destinations -> Moved to stream_posted/ (Retained for 7 days).")
+                print(f"[+] Clip metadata '{cname}' preserved in stream_posted/ (Video deleted).")
             else:
                 remaining_desc = ", ".join(targets)
                 print(f"[*] Clip '{cname}' retained in stream_pipeline/ for remaining destination: {remaining_desc}")
