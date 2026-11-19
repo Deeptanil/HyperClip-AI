@@ -692,6 +692,11 @@ def _pick_next_ig_action(acc_cfg: dict, acc_stats: dict, last_any_ig: datetime |
                 print(f"[-] Cross-account IG cooldown active: {elapsed_cross_m:.1f}m since last IG upload. Must wait {cross_gap_min - int(elapsed_cross_m)}m.")
                 return None
 
+    # If trial reels are configured and quota remains, prioritize or alternate trial
+    if trial_target > 0 and trial_count < trial_target:
+        if reg_count >= reg_target or reg_count > 0:
+            return "trial"
+
     if reg_count < reg_target:
         return "regular"
     if trial_count < trial_target:
