@@ -2212,3 +2212,15 @@ input:checked + .slider:before {
   padding: 1px 5px;
   border-radius: 3px;
 }
+
+.clip-smart-edit-tag {
+  display: inline-block;
+  font-size: 9px;
+  font-family: var(--font-mono);
+  font-weight: 800;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  padding: 1px 5px;
+  border-radius: 3px;
+}

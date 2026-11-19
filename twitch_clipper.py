@@ -27,6 +27,7 @@ from src.twitch_clipper.video_framer import frame_to_portrait, detect_facecam_re
 from src.twitch_clipper.hook_generator import generate_hook_text, render_hook_banner, slugify_hook
 from src.twitch_clipper.content_judge import evaluate_clip_quality
 from src.twitch_clipper.nsfw_censor import scan_and_censor_nsfw
+from src.twitch_clipper.smart_editor import fast_forward_dead_air
 from src.uploaders.youtube_uploader import upload_short
 from src.uploaders.instagram_uploader import upload_reel, upload_reel_direct
 
@@ -283,6 +284,24 @@ def harvest_clips(config: dict, max_total_new: int = 4) -> list:
                     raw_clip, raw_w, raw_h, streamer=target["username"], game=target.get("game", "")
                 )
 
+                # Smart Editing: Fast-forward silences and low-activity screen moments
+                smart_cfg = config.get("smart_editing", {})
+                fast_forward_segments = []
+                if smart_cfg.get("enabled", True):
+                    smart_raw = os.path.join(TEMP_DIR, f"smart_raw_{vod_id}_{peak}.mp4")
+                    db_val = smart_cfg.get("silence_threshold_db")
+                    silence_db = float(db_val) if db_val is not None and db_val != "auto" else None
+                    raw_clip, fast_forward_segments = fast_forward_dead_air(
+                        raw_clip,
+                        smart_raw,
+                        speed_multiplier=float(smart_cfg.get("speed_multiplier", 3.0)),
+                        silence_threshold_db=silence_db,
+                        min_pause_sec=float(smart_cfg.get("min_pause_sec", 1.4)),
+                        max_motion_threshold=float(smart_cfg.get("max_motion_threshold", 3.5)),
+                        show_badge=bool(smart_cfg.get("show_fast_forward_badge", True)),
+                        facecam=facecam_box,
+                    )
+
                 sub_file = None
                 bleep_segments = []
                 safety_cfg = config.get("content_safety", {})
@@ -429,6 +448,8 @@ def harvest_clips(config: dict, max_total_new: int = 4) -> list:
                     "posted_to_youtube": False,
                     "approval_status": "pending",
                     "priority": "auto",
+                    "smart_edited": bool(fast_forward_segments),
+                    "fast_forward_segments": fast_forward_segments,
                     "nsfw_censored": nsfw_res.get("action") == "censored",
                     "nsfw_segments": nsfw_res.get("segments", []),
                     "profanity_bleeped": bool(bleep_segments),

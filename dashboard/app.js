@@ -1201,6 +1201,7 @@
           </div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
             ${clip.game ? `<span class="clip-game-tag">${clip.game}</span>` : ''}
+            ${clip.smart_edited ? '<span class="clip-smart-edit-tag">⏩ SMART EDITED</span>' : ''}
             ${clip.nsfw_censored ? '<span class="clip-censored-tag">AUTO-CENSORED</span>' : ''}
             ${isTrial ? '<span class="clip-trial-tag">TRIAL REEL</span>' : ''}
           </div>
@@ -1325,6 +1326,12 @@
 
     const trialPill = document.getElementById('preview-trial-pill');
     const postFormat = document.getElementById('preview-post-format');
+    const smartPacingEl = document.getElementById('preview-smart-edit');
+    if (smartPacingEl) {
+      smartPacingEl.innerHTML = clip.smart_edited
+        ? '<span style="color:#38bdf8;font-weight:700">⏩ Fast-Forwarded Dead Air (3x)</span>'
+        : '<span style="color:var(--text-muted)">Original 1x Tempo</span>';
+    }
     if (trialPill) {
       trialPill.style.display = clip.isTrial ? 'inline-flex' : 'none';
     }
@@ -1806,6 +1813,8 @@
                   status: 'staged',
                   approval_status: meta.approval_status || meta.status || 'pending',
                   priority: meta.priority || 'auto',
+                  smart_edited: Boolean(meta.smart_edited || (Array.isArray(meta.fast_forward_segments) && meta.fast_forward_segments.length > 0)),
+                  fast_forward_segments: Array.isArray(meta.fast_forward_segments) ? meta.fast_forward_segments : [],
                   nsfw_censored: Boolean(meta.nsfw_censored),
                   nsfw_segments: Array.isArray(meta.nsfw_segments) ? meta.nsfw_segments : [],
                   timestamp: meta.timestamp || meta.staged_at || meta.created_at || null,
