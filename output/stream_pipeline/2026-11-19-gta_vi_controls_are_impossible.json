@@ -24,5 +24,36 @@
   "nsfw_segments": [],
   "target": "Instagram (@loopablez) & YouTube",
   "created_at": "2026-11-18T18:33:53.718958+00:00",
-  "timestamp": "2026-11-18T18:33:53.718975+00:00"
+  "timestamp": "2026-11-18T18:33:53.718975+00:00",
+  "duration_sec": 27.2,
+  "smart_edited": true,
+  "fast_forward_segments": [
+    {
+      "start": 1.5,
+      "end": 3.14,
+      "speed": 3.0
+    },
+    {
+      "start": 8.16,
+      "end": 11.42,
+      "speed": 3.0
+    },
+    {
+      "start": 17.23,
+      "end": 18.88,
+      "speed": 3.0
+    },
+    {
+      "start": 20.38,
+      "end": 25.43,
+      "speed": 3.0
+    },
+    {
+      "start": 32.82,
+      "end": 36.02,
+      "speed": 3.0
+    }
+  ],
+  "profanity_bleeped": false,
+  "bleep_segments": []
 }

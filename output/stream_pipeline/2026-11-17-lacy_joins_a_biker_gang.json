@@ -20,5 +20,28 @@
   "approval_status": "pending",
   "target": "Instagram (@solvikz) Only",
   "created_at": "2026-11-17T14:59:45.820228+00:00",
-  "timestamp": "2026-11-17T14:59:45.820261+00:00"
+  "timestamp": "2026-11-17T14:59:45.820261+00:00",
+  "duration_sec": 30.57,
+  "smart_edited": true,
+  "fast_forward_segments": [
+    {
+      "start": 3.72,
+      "end": 9.68,
+      "speed": 3.0
+    },
+    {
+      "start": 10.98,
+      "end": 13.48,
+      "speed": 3.0
+    },
+    {
+      "start": 30.39,
+      "end": 31.71,
+      "speed": 3.0
+    }
+  ],
+  "profanity_bleeped": false,
+  "bleep_segments": [],
+  "nsfw_censored": false,
+  "nsfw_segments": []
 }

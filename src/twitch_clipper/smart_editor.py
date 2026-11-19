@@ -100,17 +100,87 @@ def get_stream_audio_levels(video_path: str) -> tuple[float, float]:
         return -24.0, -1.0
 
 
+def extract_speech_pauses(video_path: str, min_pause_sec: float = 1.3) -> list[tuple[float, float]]:
+    """
+    Extracts speech pause intervals where the streamer stops speaking for >= min_pause_sec.
+    Uses faster-whisper word timestamps on 16kHz PCM audio to detect dead-air even
+    when loud background game audio / music is playing.
+    """
+    if not os.path.exists(video_path):
+        return []
+
+    try:
+        from faster_whisper import WhisperModel
+        import wave
+    except ImportError:
+        return []
+
+    wav_path = os.path.splitext(video_path)[0] + "_smart_pause.wav"
+    try:
+        subprocess.run(
+            ["ffmpeg", "-y", "-i", video_path, "-vn", "-acodec", "pcm_s16le", "-ar", "16000", "-ac", "1", wav_path],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        with wave.open(wav_path, "rb") as wf:
+            raw_bytes = wf.readframes(wf.getnframes())
+        audio_np = np.frombuffer(raw_bytes, dtype=np.int16).astype(np.float32) / 32768.0
+
+        model = WhisperModel("tiny.en", device="cpu", compute_type="int8")
+        segments, _ = model.transcribe(audio_np, word_timestamps=True)
+
+        words = []
+        for s in segments:
+            for w in (s.words or []):
+                txt = (w.word or "").strip()
+                if txt:
+                    words.append((float(w.start), float(w.end)))
+
+        if not words:
+            return []
+
+        pauses = []
+        duration = get_video_duration(video_path)
+
+        # Leading speech pause
+        if words[0][0] >= min_pause_sec + 1.2:
+            pauses.append((1.5, words[0][0]))
+
+        # Inter-word speech pauses
+        for i in range(len(words) - 1):
+            gap = words[i + 1][0] - words[i][1]
+            if gap >= min_pause_sec:
+                pauses.append((words[i][1], words[i + 1][0]))
+
+        # Trailing speech pause
+        if duration - words[-1][1] >= min_pause_sec + 1.0:
+            pauses.append((words[-1][1], max(words[-1][1], duration - 1.0)))
+
+        return pauses
+    except Exception as e:
+        print(f"[!] extract_speech_pauses error: {e}")
+        return []
+    finally:
+        if os.path.exists(wav_path):
+            try:
+                os.remove(wav_path)
+            except Exception:
+                pass
+
+
 def detect_dead_air_segments(
     video_path: str,
     silence_threshold_db: float | None = None,
     min_pause_sec: float = 1.3,
-    max_motion_threshold: float = 18.0,
-    facecam: dict | None = None
+    max_motion_threshold: float = 22.0,
+    facecam: dict | None = None,
+    use_whisper_pauses: bool = True
 ) -> list[tuple[float, float]]:
     """
-    Detects dead air intervals where audio is below silence_threshold_db
+    Detects dead air intervals where audio is quiet or streamer is not speaking
     and visual motion is below max_motion_threshold for >= min_pause_sec.
-    If silence_threshold_db is None or <= -45, automatically adapts to stream audio profile.
+    Combines faster-whisper speech pauses and FFmpeg silencedetect.
     """
     if not os.path.exists(video_path):
         return []
@@ -119,10 +189,16 @@ def detect_dead_air_segments(
     if duration < min_pause_sec:
         return []
 
-    # Dynamic adaptive noise floor calculation based on actual stream volume
+    raw_segments = []
+
+    # 1. Speech pause extraction via faster-whisper
+    if use_whisper_pauses:
+        speech_pauses = extract_speech_pauses(video_path, min_pause_sec=min_pause_sec)
+        raw_segments.extend(speech_pauses)
+
+    # 2. Audio silence detection via FFmpeg
     if silence_threshold_db is None or silence_threshold_db < -40.0:
         mean_vol, _ = get_stream_audio_levels(video_path)
-        # Speech drops ~1.5dB to 2.5dB below mean stream loudness during pauses
         eff_thresh = round(min(-24.0, mean_vol - 1.5), 1)
     else:
         eff_thresh = float(silence_threshold_db)
@@ -136,29 +212,21 @@ def detect_dead_air_segments(
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True)
         raw_log = proc.stderr or ""
+        current_start = None
+        for line in raw_log.splitlines():
+            start_m = re.search(r"silence_start:\s*([\d\.]+)", line)
+            if start_m:
+                current_start = float(start_m.group(1))
+            end_m = re.search(r"silence_end:\s*([\d\.]+)", line)
+            if end_m and current_start is not None:
+                end_val = float(end_m.group(1))
+                if end_val - current_start >= min_pause_sec:
+                    raw_segments.append((current_start, end_val))
+                current_start = None
+        if current_start is not None and (duration - current_start) >= min_pause_sec:
+            raw_segments.append((current_start, duration))
     except Exception as e:
         print(f"[!] silencedetect execution failed: {e}")
-        return []
-
-    # Parse silence_start and silence_end
-    raw_segments = []
-    current_start = None
-
-    for line in raw_log.splitlines():
-        start_m = re.search(r"silence_start:\s*([\d\.]+)", line)
-        if start_m:
-            current_start = float(start_m.group(1))
-
-        end_m = re.search(r"silence_end:\s*([\d\.]+)", line)
-        if end_m and current_start is not None:
-            end_val = float(end_m.group(1))
-            if end_val - current_start >= min_pause_sec:
-                raw_segments.append((current_start, end_val))
-            current_start = None
-
-    # Handle trailing silence till video end
-    if current_start is not None and (duration - current_start) >= min_pause_sec:
-        raw_segments.append((current_start, duration))
 
     if not raw_segments:
         return []
@@ -179,8 +247,8 @@ def detect_dead_air_segments(
     # If high action is occurring on screen despite low speech (e.g. intense boss battle), do NOT fast-forward!
     dead_air_segments = []
     for start, end in merged:
-        # Don't fast-forward within the first 1.5s (intro hook) or last 1.0s (outro landing)
-        adj_start = max(1.5, start)
+        # Don't fast-forward within the first 1.2s (intro hook) or last 1.0s (outro landing)
+        adj_start = max(1.2, start)
         adj_end = min(duration - 1.0, end)
         if adj_end - adj_start < min_pause_sec:
             continue
@@ -316,3 +384,45 @@ def fast_forward_dead_air(
         return output_video_path, meta_list
     else:
         return input_video_path, []
+
+
+def apply_audio_bleeping(video_path: str, output_path: str, bleep_segments: list[tuple[float, float]]) -> bool:
+    """
+    Applies 1000Hz sine beep gating to mute and bleep swear words in video_path.
+    Uses -c:v copy to preserve video quality without re-encoding frames.
+    """
+    if not bleep_segments or not os.path.exists(video_path):
+        return False
+
+    duration = get_video_duration(video_path)
+    conds = "+".join([f"between(t,{s:.3f},{e:.3f})" for s, e in bleep_segments])
+    audio_filter = (
+        f"[0:a]volume=enable='{conds}':volume=0[clean_a];"
+        f"sine=frequency=1000:duration={duration + 5.0}[beep_raw];"
+        f"[beep_raw]volume=enable='{conds}':volume=0.30,volume=enable='not({conds})':volume=0[beep_gated];"
+        f"[clean_a][beep_gated]amix=inputs=2:duration=first:dropout_transition=0,loudnorm=I=-16:TP=-1.5:LRA=11[aout]"
+    )
+
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", video_path,
+        "-filter_complex", audio_filter,
+        "-map", "0:v", "-map", "[aout]",
+        "-c:v", "copy",
+        "-c:a", "aac", "-b:a", "192k",
+        "-shortest",
+        output_path
+    ]
+
+    try:
+        res = subprocess.run(cmd, capture_output=True, text=True)
+        if res.returncode == 0 and os.path.exists(output_path) and os.path.getsize(output_path) > 1000:
+            print(f"[+] Successfully bleeped {len(bleep_segments)} profanity audio segment(s) -> {os.path.basename(output_path)}")
+            return True
+        else:
+            print(f"[!] Bleeping failed: {res.stderr[-400:] if res.stderr else 'unknown error'}")
+            return False
+    except Exception as e:
+        print(f"[!] Bleeping exception: {e}")
+        return False
+

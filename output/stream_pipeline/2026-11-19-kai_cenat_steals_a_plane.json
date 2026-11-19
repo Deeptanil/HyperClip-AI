@@ -25,15 +25,29 @@
   "profanity_bleeped": true,
   "bleep_segments": [
     [
-      10.8,
-      11.7
+      2.48,
+      3.2
     ],
     [
-      33.58,
-      33.96
+      10.26,
+      10.52
     ]
   ],
   "target": "Instagram (@loopablez) & YouTube",
   "created_at": "2026-11-19T03:14:19.448405+00:00",
-  "timestamp": "2026-11-19T03:14:19.448421+00:00"
+  "timestamp": "2026-11-19T03:14:19.448421+00:00",
+  "duration_sec": 30.97,
+  "smart_edited": true,
+  "fast_forward_segments": [
+    {
+      "start": 22.12,
+      "end": 25.11,
+      "speed": 3.0
+    },
+    {
+      "start": 26.42,
+      "end": 32.59,
+      "speed": 3.0
+    }
+  ]
 }
