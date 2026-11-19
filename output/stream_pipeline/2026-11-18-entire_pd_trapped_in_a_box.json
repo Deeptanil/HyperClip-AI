@@ -4,11 +4,11 @@
   "vod_id": "2931381500",
   "game": "Just Chatting",
   "peak_sec": 27657,
-  "hype_score": 21.0,
+  "hype_score": 21,
   "z_score": 6.4,
-  "title": "ENTIRE PD TRAPPED IN A BOX \ud83d\udce6",
-  "caption": "Deansocool and the whole PD end up in an absolute mess! \ud83d\udc80 #NoPixel #GTA5RP",
-  "hook": "ENTIRE PD TRAPPED IN A BOX \ud83d\udce6",
+  "title": "ENTIRE PD TRAPPED IN A BOX 📦",
+  "caption": "Deansocool and the whole PD end up in an absolute mess! 💀 #NoPixel #GTA5RP",
+  "hook": "ENTIRE PD TRAPPED IN A BOX 📦",
   "target_accounts": [
     "ig_1"
   ],
@@ -26,27 +26,27 @@
     {
       "start": 2.16,
       "end": 3.86,
-      "speed": 3.0
+      "speed": 3
     },
     {
       "start": 4.58,
       "end": 7.27,
-      "speed": 3.0
+      "speed": 3
     },
     {
       "start": 9.77,
       "end": 11.7,
-      "speed": 3.0
+      "speed": 3
     },
     {
       "start": 13.9,
       "end": 16.06,
-      "speed": 3.0
+      "speed": 3
     },
     {
       "start": 18.7,
       "end": 20.28,
-      "speed": 3.0
+      "speed": 3
     }
   ],
   "profanity_bleeped": true,
@@ -59,5 +59,7 @@
   "nsfw_censored": false,
   "nsfw_segments": [],
   "priority": 3,
-  "discarded": false
+  "discarded": true,
+  "discarded_at": "2026-11-19T14:33:30.926Z",
+  "pre_discard_priority": 3
 }
