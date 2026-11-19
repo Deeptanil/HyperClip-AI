@@ -111,7 +111,7 @@
     ig2Posts: 2,
     ytPosts: 3,
     hypeMode: false,
-    streamYield: 3,
+    streamYield: 10,
     clipSpacing: 300,
     prioritizedCategories: ['Grand Theft Auto VI', 'GTA 6', 'GTA VI'],
     deprioritizedCategories: [],
@@ -2460,7 +2460,7 @@
 
     const tc = cfg.twitch_clipper || {};
     if (typeof tc.max_clips_per_vod !== 'undefined') {
-      settings.streamYield = safeInt(tc.max_clips_per_vod, 3);
+      settings.streamYield = safeInt(tc.max_clips_per_vod, 10);
     }
     if (typeof tc.min_clip_spacing_sec !== 'undefined') {
       settings.clipSpacing = safeInt(tc.min_clip_spacing_sec, 300);
@@ -2981,7 +2981,7 @@
 
             // 4. Update Clipper Yield & Spacing
             if (!cfg.twitch_clipper) cfg.twitch_clipper = {};
-            cfg.twitch_clipper.max_clips_per_vod = safeInt(settings.streamYield, 3);
+            cfg.twitch_clipper.max_clips_per_vod = safeInt(settings.streamYield, 10);
             cfg.twitch_clipper.min_clip_spacing_sec = safeInt(settings.clipSpacing, 300);
 
             // 5. Update NSFW Auto-Censor Safety Settings

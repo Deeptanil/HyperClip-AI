@@ -43,10 +43,13 @@ def upload_short(
     client=None,
     category_id="23",
     title_suffix="#Shorts",
+    publish_at: str = None,
 ):
     """
     Uploads a vertical video as a YouTube Short.
     Adding #Shorts in title and description ensures YouTube indexes it into the Shorts feed.
+    If publish_at (ISO 8601 string, e.g. '2026-11-20T18:00:00Z') is provided,
+    YouTube schedules the video privately and publishes it automatically at that exact time.
     """
     if client is None:
         client = get_youtube_client()
@@ -56,7 +59,14 @@ def upload_short(
     default_tags = list(tags) if tags else ["shorts", "viral", "clips"]
 
     media = MediaFileUpload(video_path, chunksize=-1, resumable=True, mimetype="video/mp4")
-    
+
+    status_dict = {
+        "privacyStatus": "private" if publish_at else privacy,
+        "selfDeclaredMadeForKids": False
+    }
+    if publish_at:
+        status_dict["publishAt"] = publish_at
+
     body = {
         "snippet": {
             "title": full_title[:100],
@@ -64,16 +74,14 @@ def upload_short(
             "tags": default_tags,
             "categoryId": str(category_id)
         },
-        "status": {
-            "privacyStatus": privacy,
-            "selfDeclaredMadeForKids": False
-        }
+        "status": status_dict
     }
 
-    print(f"[*] Uploading '{video_path}' to YouTube Shorts...")
+    sched_label = f" [Scheduled publishAt: {publish_at}]" if publish_at else ""
+    print(f"[*] Uploading '{video_path}' to YouTube Shorts{sched_label}...")
     request = client.videos().insert(part="snippet,status", body=body, media_body=media)
     response = request.execute()
     video_id = response.get("id")
     video_url = f"https://youtube.com/shorts/{video_id}"
-    print(f"[+] Uploaded successfully: {video_url}")
+    print(f"[+] Uploaded successfully{' (Scheduled)' if publish_at else ''}: {video_url}")
     return video_url
