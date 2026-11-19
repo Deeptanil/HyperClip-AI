@@ -277,13 +277,14 @@
       ]
     },
     "2933739024": {
-      "last_scanned_sec": 10308,
+      "last_scanned_sec": 17802,
       "clipped_peaks": [
         1427,
         2492,
         4732,
         9692,
-        6177
+        6177,
+        13882
       ]
     },
     "2933588799": {
@@ -318,5 +319,5 @@
       ]
     }
   },
-  "yt_toggle": false
+  "yt_toggle": true
 }
