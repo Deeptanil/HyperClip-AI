@@ -1,0 +1,20 @@
+{
+  "streamer": "Streamer",
+  "username": "streamer",
+  "game": "Grand Theft Auto VI",
+  "title": "GTA 6 NPC UNHINGED DIALOGUE 🗣️🔥",
+  "hook": "NPC WENT COMPLETELY FERAL 💀",
+  "caption": "Streamer discovered the most unhinged and bizarre NPC dialogue ever coded into Grand Theft Auto VI while just walking down the street. Have you run into any weird NPC glitches in the game yet? #GTA6 #GamingMoments #Streamer #FunnyNPC",
+  "target_accounts": [
+    "ig_1",
+    "youtube"
+  ],
+  "assigned_ig": "ig_1",
+  "post_to_yt": true,
+  "post_to_ig": true,
+  "posted_to_instagram": false,
+  "posted_to_youtube": false,
+  "priority": 4,
+  "discarded": false,
+  "ai_retitled": true
+}

@@ -1,0 +1,51 @@
+{
+  "streamer": "Deansocool",
+  "username": "deansocool",
+  "vod_id": "2931381500",
+  "game": "Grand Theft Auto V",
+  "peak_sec": 7352,
+  "hype_score": 51.25,
+  "z_score": 8.31,
+  "title": "BUSTED SMUGGLING A CONTRABAND BRICK ✈️🚨",
+  "caption": "Deansocool thought he was slick trying to fly away with a massive contraband brick, but the cops had other plans. Would you have tried to run or just surrendered immediately? #Deansocool #GTAV #GamingMoments #Busted",
+  "hook": "TSA IS NOT HAPPY 💀",
+  "target_accounts": [
+    "ig_2"
+  ],
+  "assigned_ig": "ig_2",
+  "post_to_yt": false,
+  "post_to_ig": true,
+  "posted_to_instagram": false,
+  "posted_to_youtube": false,
+  "target": "Instagram (@loopablez) Only",
+  "created_at": "2026-11-17T20:55:28.023981+00:00",
+  "timestamp": "2026-11-17T20:55:28.023997+00:00",
+  "duration_sec": 28.93,
+  "smart_edited": true,
+  "fast_forward_segments": [
+    {
+      "start": 10.44,
+      "end": 13.52,
+      "speed": 3
+    },
+    {
+      "start": 18.06,
+      "end": 27.24,
+      "speed": 3
+    }
+  ],
+  "profanity_bleeped": true,
+  "bleep_segments": [
+    [
+      23.07,
+      23.41
+    ]
+  ],
+  "nsfw_censored": false,
+  "nsfw_segments": [],
+  "priority": 4,
+  "discarded": false,
+  "discarded_at": "2026-11-19T13:49:25.886Z",
+  "pre_discard_priority": 3,
+  "ai_retitled": true
+}

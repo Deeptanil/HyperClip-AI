@@ -1,0 +1,56 @@
+{
+  "streamer": "KaiCenat",
+  "username": "kaicenat",
+  "vod_id": "2932305259",
+  "game": "Grand Theft Auto VI",
+  "peak_sec": 105582,
+  "hype_score": 161.0,
+  "z_score": 2.85,
+  "title": "KAI CENAT LOSES IT IN GTA 6 \ud83d\udc80",
+  "caption": "Kai Cenat completely loses his mind during his first playthrough of GTA 6 when an unexpected character moment goes completely off the rails. Would you shut the whole stream down over this? #KaiCenat #GTA6 #GamingMoments #StreamerFails",
+  "hook": "ROXY WENT TOO FAR \ud83d\ude2d",
+  "target_accounts": [
+    "ig_1",
+    "youtube"
+  ],
+  "assigned_ig": "ig_1",
+  "post_to_yt": true,
+  "post_to_ig": true,
+  "posted_to_instagram": false,
+  "posted_to_youtube": false,
+  "priority": 4,
+  "discarded": false,
+  "smart_edited": true,
+  "fast_forward_segments": [
+    {
+      "start": 17.16,
+      "end": 19.36,
+      "speed": 3.0
+    },
+    {
+      "start": 20.44,
+      "end": 33.26,
+      "speed": 3.0
+    }
+  ],
+  "nsfw_censored": false,
+  "nsfw_segments": [],
+  "profanity_bleeped": true,
+  "bleep_segments": [
+    [
+      6.52,
+      6.92
+    ],
+    [
+      10.8,
+      11.46
+    ],
+    [
+      24.64,
+      24.98
+    ]
+  ],
+  "target": "Instagram (@solvikz) & YouTube",
+  "created_at": "2026-11-19T20:21:11.814946+00:00",
+  "timestamp": "2026-11-19T20:21:11.814974+00:00"
+}

@@ -258,6 +258,10 @@
     }
     if (ytValEl) {
       ytValEl.innerHTML = `${lastTodayCounts.youtube} / ${settings.ytPosts} <small class="text-dim-unit">${settings.ytPosts === 0 ? 'paused' : 'in 24h'}</small>`;
+      const ytPill = document.querySelector('#stat-yt .status-pill');
+      if (ytPill && !auth.isDemo) {
+        ytPill.innerHTML = `<span class="dot online"></span> ${lastTodayCounts.youtube > 0 ? 'Verified Live' : 'Live Sync'}`;
+      }
     }
   }
 
@@ -271,6 +275,54 @@
   let pendingRenderAfterModal = false;
   let lastSyncSignature = '';
   const metadataCacheBySha = new Map(); // jsonSha -> parsedMetadata cache
+  const ytVerificationCache = new Map(); // videoId -> { live: boolean, title: string, author: string, timestamp: number }
+
+  function extractYouTubeVideoId(url) {
+    if (!url || typeof url !== 'string') return null;
+    const m = url.match(/(?:shorts\/|v=|youtu\.be\/|\/v\/|\/embed\/)([A-Za-z0-9_-]{11})/);
+    return m ? m[1] : null;
+  }
+
+  async function checkYouTubeVideoStatus(url) {
+    const vid = extractYouTubeVideoId(url);
+    if (!vid) return { live: false, videoId: null };
+
+    const cached = ytVerificationCache.get(vid);
+    if (cached && (Date.now() - cached.timestamp < 3600000)) {
+      return cached;
+    }
+
+    try {
+      const res = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${vid}&format=json`, {
+        cache: 'no-store'
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const info = {
+          live: true,
+          videoId: vid,
+          title: data.title || '',
+          author: data.author_name || '',
+          timestamp: Date.now()
+        };
+        ytVerificationCache.set(vid, info);
+        return info;
+      } else {
+        const info = {
+          live: false,
+          videoId: vid,
+          title: '',
+          status: res.status,
+          timestamp: Date.now()
+        };
+        ytVerificationCache.set(vid, info);
+        return info;
+      }
+    } catch (e) {
+      console.warn('YouTube live oEmbed verification error:', e);
+      return { live: true, videoId: vid, title: '', timestamp: Date.now(), unverified: true };
+    }
+  }
 
   // --- Clean SVG Icon Helpers (No Emojis) ---
   const ICONS = {
@@ -1002,6 +1054,7 @@
               <div class="event-footer-right">
                 ${evt.isTrial ? '<span class="badge-trial">TRIAL</span>' : ''}
                 ${evt.isNext ? '<span class="badge-next">NEXT</span>' : ''}
+                ${evt.ytVerified ? '<span class="badge-yt-live" title="Verified live on YouTube">✓ Live</span>' : ''}
                 <span class="event-time">${timeStr}</span>
               </div>
             </div>
@@ -1093,6 +1146,7 @@
               <div style="display:flex;align-items:center;gap:6px;">
                 ${evt.isTrial ? '<span class="badge-trial">TRIAL REEL</span>' : ''}
                 ${evt.isNext ? '<span class="badge-next">NEXT UP</span>' : ''}
+                ${evt.ytVerified ? '<span class="badge-yt-live" title="Verified live on YouTube">✓ Live on YouTube</span>' : ''}
                 <span style="font-size:11px;font-family:var(--font-mono);color:var(--text-dim);">${timeStr}</span>
               </div>
             </div>
@@ -1645,6 +1699,56 @@
     }
   };
 
+  async function getAuthoritativeGitSha(filePath, branch) {
+    if (!auth.pat || auth.isDemo) return null;
+    const reqHeaders = {
+      'Authorization': `token ${auth.pat.trim()}`,
+      'Accept': 'application/vnd.github.v3+json'
+    };
+
+    // 1. Direct Git DB Commit Tree lookup - bypasses GitHub Contents API CDN cache completely!
+    try {
+      const commitRes = await fetch(`https://api.github.com/repos/${auth.repo}/commits/${branch}?_t=${Date.now()}`, {
+        headers: reqHeaders,
+        cache: 'no-store'
+      });
+      if (commitRes.ok) {
+        const commitData = await commitRes.json();
+        const treeSha = commitData.commit && commitData.commit.tree && commitData.commit.tree.sha;
+        if (treeSha) {
+          const treeRes = await fetch(`https://api.github.com/repos/${auth.repo}/git/trees/${treeSha}?_t=${Date.now()}`, {
+            headers: reqHeaders,
+            cache: 'no-store'
+          });
+          if (treeRes.ok) {
+            const treeData = await treeRes.json();
+            const item = (treeData.tree || []).find(f => f.path === filePath);
+            if (item && item.sha) {
+              return item.sha;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Git DB tree SHA lookup fallback:', e);
+    }
+
+    // 2. Contents API with cache: 'no-store'
+    try {
+      const res = await fetch(`https://api.github.com/repos/${auth.repo}/contents/${filePath}?ref=${branch}&_t=${Date.now()}`, {
+        headers: reqHeaders,
+        cache: 'no-store'
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return data.sha;
+      }
+    } catch (e) {
+      console.warn('Contents API SHA lookup fallback:', e);
+    }
+    return null;
+  }
+
   async function updateGitHubClipMetadata(clip, updates) {
     if (!auth.pat || auth.isDemo) return false;
     try {
@@ -1655,7 +1759,10 @@
       const cBranch = auth.contentBranch || 'content';
       const targetPath = clip.jsonPath || (clip.path ? clip.path.replace(/\.mp4$/i, '.json') : `output/stream_pipeline/${clip.filename.replace(/\.mp4$/i, '.json')}`);
 
-      const getRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/${targetPath}?ref=${cBranch}`, { headers });
+      const getRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/${targetPath}?ref=${cBranch}&_t=${Date.now()}`, {
+        headers,
+        cache: 'no-store'
+      });
       if (!getRes.ok) return false;
       const getData = await getRes.json();
       const currentContent = JSON.parse(decodeURIComponent(escape(atob(getData.content))));
@@ -1663,17 +1770,30 @@
       const merged = { ...currentContent, ...updates };
       const newBase64 = btoa(unescape(encodeURIComponent(JSON.stringify(merged, null, 2))));
 
-      const putRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/${targetPath}`, {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify({
-          message: `chore: update clip metadata (${updates.priority ? 'prio ' + updates.priority : (updates.discarded ? 'discarded' : 'updated')}) for ${clip.filename}`,
-          content: newBase64,
-          sha: getData.sha,
-          branch: cBranch
-        })
-      });
-      if (putRes.ok) {
+      let shaToUse = await getAuthoritativeGitSha(targetPath, cBranch) || getData.sha;
+
+      let putRes = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        putRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/${targetPath}`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({
+            message: `chore: update clip metadata (${updates.priority ? 'prio ' + updates.priority : (updates.discarded ? 'discarded' : 'updated')}) for ${clip.filename}`,
+            content: newBase64,
+            sha: shaToUse,
+            branch: cBranch
+          })
+        });
+        if (putRes.ok) break;
+        if (putRes.status === 409 || putRes.status === 422) {
+          await new Promise(r => setTimeout(r, 400 * (attempt + 1)));
+          shaToUse = await getAuthoritativeGitSha(targetPath, cBranch) || getData.sha;
+        } else {
+          break;
+        }
+      }
+
+      if (putRes && putRes.ok) {
         const putData = await putRes.json();
         clip.jsonSha = putData.content.sha;
         clip.jsonPath = targetPath;
@@ -1681,8 +1801,8 @@
         metadataCacheBySha.set(getData.sha, merged);
         return true;
       } else {
-        const errBody = await putRes.json().catch(() => ({}));
-        console.warn('GitHub clip metadata PUT failed:', putRes.status, errBody);
+        const errBody = putRes ? await putRes.json().catch(() => ({})) : {};
+        console.warn('GitHub clip metadata PUT failed:', putRes ? putRes.status : 'no response', errBody);
         return false;
       }
     } catch (e) {
@@ -1961,7 +2081,10 @@
       // Try posted_twitch_log.json on content branch, fallback to master
       for (const branchAttempt of [cBranch, pBranch]) {
         try {
-          const logRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/posted_twitch_log.json?ref=${branchAttempt}`, { headers });
+          const logRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/posted_twitch_log.json?ref=${branchAttempt}&_t=${Date.now()}`, {
+            headers,
+            cache: 'no-store'
+          });
           if (logRes.ok) {
             const logData = await logRes.json();
             const logStr = decodeURIComponent(escape(atob(logData.content)));
@@ -2015,6 +2138,27 @@
         } catch (e) {
           console.warn('posted_twitch_log read attempt error:', e);
         }
+      }
+
+      // Live verification for YouTube uploads: only confirmed/live Shorts appear on the dashboard
+      const ytItems = realPosted.filter(p => p.account === 'youtube' && p.url);
+      if (ytItems.length > 0) {
+        await Promise.all(ytItems.map(async (item) => {
+          const ytCheck = await checkYouTubeVideoStatus(item.url);
+          item.ytChecked = true;
+          item.ytLive = ytCheck.live;
+          if (ytCheck.live) {
+            item.ytVerified = true;
+            if (ytCheck.title) item.title = ytCheck.title;
+          }
+        }));
+        // Filter: only confirmed live YouTube videos show on the dashboard
+        realPosted = realPosted.filter(p => {
+          if (p.account === 'youtube') {
+            return p.ytLive === true;
+          }
+          return true;
+        });
       }
 
       // 4. Fetch Real Staged Pipeline Clips from Content Branch
@@ -2930,10 +3074,12 @@
               'Pragma': 'no-cache'
             };
             const pBranch = auth.branch || 'master';
+            const cBranch = auth.contentBranch || 'content';
 
-            // 1. Get current config.json with cache-busting to get true latest sha and structure
+            // 1. Fetch current config.json with cache-busting to preserve existing keys/structure
             const curRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json?ref=${pBranch}&_t=${Date.now()}`, {
-              headers: noCacheHeaders
+              headers,
+              cache: 'no-store'
             });
             if (!curRes.ok) {
               const errJson = await curRes.json().catch(() => ({}));
@@ -3003,53 +3149,61 @@
             const updatedJsonStr = JSON.stringify(cfg, null, 2);
             const b64 = btoa(unescape(encodeURIComponent(updatedJsonStr)));
 
-            // Commit updated config.json to GitHub
-            let putRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json`, {
-              method: 'PUT',
-              headers,
-              body: JSON.stringify({
-                message: `chore(config): update daily limits (YT=${ytN}, IG1=${settings.ig1Posts}, IG2=${settings.ig2Posts}) & priority rules via dashboard`,
-                content: b64,
-                sha: curData.sha,
-                branch: pBranch
-              })
-            });
+            // 2. Fetch authoritative Git SHA via Git Trees API (never cached by GitHub CDN)
+            let currentSha = await getAuthoritativeGitSha('config.json', pBranch) || curData.sha;
 
-            // If 409 conflict or 422 SHA mismatch occurs, fetch fresh sha directly and retry once
-            if (putRes.status === 409 || putRes.status === 422) {
-              const freshRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json?ref=${pBranch}&_t=${Date.now()}`, {
-                headers: noCacheHeaders
+            // 3. Commit updated config.json with auto-retry on 409/422 conflicts
+            let putRes = null;
+            for (let attempt = 0; attempt < 3; attempt++) {
+              putRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json`, {
+                method: 'PUT',
+                headers,
+                body: JSON.stringify({
+                  message: `chore(config): update daily limits (YT=${ytN}, IG1=${settings.ig1Posts}, IG2=${settings.ig2Posts}) & priority rules via dashboard`,
+                  content: b64,
+                  sha: currentSha,
+                  branch: pBranch
+                })
               });
-              if (freshRes.ok) {
-                const freshData = await freshRes.json();
-                const freshStr = decodeURIComponent(escape(atob(freshData.content)));
-                const freshCfg = JSON.parse(freshStr);
-                applyFormToConfig(freshCfg);
-                const freshJsonStr = JSON.stringify(freshCfg, null, 2);
-                const freshB64 = btoa(unescape(encodeURIComponent(freshJsonStr)));
-
-                putRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json`, {
-                  method: 'PUT',
-                  headers,
-                  body: JSON.stringify({
-                    message: `chore(config): update daily limits (YT=${ytN}, IG1=${settings.ig1Posts}, IG2=${settings.ig2Posts}) & priority rules via dashboard`,
-                    content: freshB64,
-                    sha: freshData.sha,
-                    branch: pBranch
-                  })
-                });
+              if (putRes.ok) break;
+              if (putRes.status === 409 || putRes.status === 422) {
+                await new Promise(r => setTimeout(r, 400 * (attempt + 1)));
+                currentSha = await getAuthoritativeGitSha('config.json', pBranch);
+              } else {
+                break;
               }
             }
 
-            if (putRes.ok) {
+            if (putRes && putRes.ok) {
+              // Also keep content branch config.json in sync if distinct
+              if (cBranch && cBranch !== pBranch) {
+                try {
+                  const contentSha = await getAuthoritativeGitSha('config.json', cBranch);
+                  if (contentSha) {
+                    await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json`, {
+                      method: 'PUT',
+                      headers,
+                      body: JSON.stringify({
+                        message: `chore(config): sync config to ${cBranch} via dashboard`,
+                        content: b64,
+                        sha: contentSha,
+                        branch: cBranch
+                      })
+                    });
+                  }
+                } catch (syncErr) {
+                  console.warn('Content branch config sync optional note:', syncErr);
+                }
+              }
+
               isSettingsDirty = false;
               calculateDynamicSpacing();
               renderCalendar();
               renderPipelineQueue();
               alert(`Settings saved to GitHub (${pBranch}/config.json)!\n\n• YouTube Shorts: ${ytN}/day\n• IG @solvikz: ${settings.ig1Posts}/day\n• IG @loopablez: ${settings.ig2Posts}/day\n• Prioritized Categories: ${(settings.prioritizedCategories || []).join(', ') || 'None'}\n• Deprioritized Categories: ${(settings.deprioritizedCategories || []).join(', ') || 'None'}`);
             } else {
-              const errJson = await putRes.json().catch(() => ({}));
-              throw new Error(errJson.message || `GitHub commit failed (HTTP ${putRes.status})`);
+              const errJson = putRes ? await putRes.json().catch(() => ({})) : {};
+              throw new Error(errJson.message || `GitHub commit failed (HTTP ${putRes ? putRes.status : 'network error'})`);
             }
           } catch (e) {
             console.error('Failed to commit config to GitHub:', e);

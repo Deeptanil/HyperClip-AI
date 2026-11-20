@@ -1,0 +1,71 @@
+{
+  "streamer": "Clix",
+  "username": "clix",
+  "vod_id": "2932204601",
+  "game": "Grand Theft Auto VI",
+  "peak_sec": 25507,
+  "hype_score": 67.25,
+  "z_score": 3.39,
+  "title": "ROASTING HIS GTA CHARACTER \ud83d\udc80\ud83d\udd25",
+  "caption": "Clix loses it over his chat making fun of his GTA character \ud83d\ude2d #GTA6 #Clix #GTAOnline",
+  "hook": "ROASTING HIS GTA CHARACTER \ud83d\udc80\ud83d\udd25",
+  "target_accounts": [],
+  "assigned_ig": "ig_2",
+  "post_to_yt": true,
+  "post_to_ig": true,
+  "posted_to_instagram": true,
+  "posted_to_youtube": true,
+  "priority": 4,
+  "nsfw_censored": false,
+  "nsfw_segments": [],
+  "target": "Instagram (@loopablez) & YouTube",
+  "created_at": "2026-11-18T18:07:23.431315+00:00",
+  "timestamp": "2026-11-18T18:07:23.431334+00:00",
+  "duration_sec": 25.57,
+  "smart_edited": true,
+  "fast_forward_segments": [
+    {
+      "start": 1.5,
+      "end": 9.14,
+      "speed": 3.0
+    },
+    {
+      "start": 12.12,
+      "end": 13.78,
+      "speed": 3.0
+    },
+    {
+      "start": 16.48,
+      "end": 18.56,
+      "speed": 3.0
+    },
+    {
+      "start": 19.92,
+      "end": 23.78,
+      "speed": 3.0
+    },
+    {
+      "start": 25.54,
+      "end": 27.62,
+      "speed": 3.0
+    }
+  ],
+  "profanity_bleeped": true,
+  "bleep_segments": [
+    [
+      19.18,
+      19.64
+    ],
+    [
+      20.7,
+      21.16
+    ],
+    [
+      22.6,
+      23.08
+    ]
+  ],
+  "discarded": false,
+  "youtube_url": "https://youtube.com/shorts/kmfY6xqPLLk",
+  "instagram_url": "https://www.instagram.com/reel/Df7ozLrD00q/"
+}

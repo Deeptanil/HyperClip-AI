@@ -1,0 +1,49 @@
+{
+  "streamer": "Jynxzi",
+  "username": "jynxzi",
+  "vod_id": "2933861646",
+  "game": "Grand Theft Auto VI",
+  "peak_sec": 7182,
+  "hype_score": 191.75,
+  "z_score": 5.78,
+  "title": "I'LL SEE YOU IN VALHALLA \ud83d\udc80\ud83d\udd25",
+  "caption": "Jynxzi took his very first trip to Florida in GTA 6 and immediately went out in the most unhinged way possible. Would you have hit the ignite button like he did? #jynxzi #gta6 #funny #gaming",
+  "hook": "BRO CHOSE VALHALLA IN GTA 6 \ud83d\udc80",
+  "target_accounts": [
+    "ig_1",
+    "youtube"
+  ],
+  "assigned_ig": "ig_1",
+  "post_to_yt": true,
+  "post_to_ig": true,
+  "posted_to_instagram": false,
+  "posted_to_youtube": false,
+  "priority": 4,
+  "discarded": false,
+  "smart_edited": true,
+  "fast_forward_segments": [
+    {
+      "start": 2.92,
+      "end": 5.11,
+      "speed": 3.0
+    },
+    {
+      "start": 7.68,
+      "end": 34.03,
+      "speed": 3.0
+    }
+  ],
+  "nsfw_censored": true,
+  "nsfw_segments": [
+    {
+      "start_sec": 13.4,
+      "end_sec": 16.02,
+      "reason": "The video displays a sexually suggestive painting of a nude woman on the wall in the background."
+    }
+  ],
+  "profanity_bleeped": false,
+  "bleep_segments": [],
+  "target": "Instagram (@solvikz) & YouTube",
+  "created_at": "2026-11-20T13:43:32.174325+00:00",
+  "timestamp": "2026-11-20T13:43:32.174340+00:00"
+}

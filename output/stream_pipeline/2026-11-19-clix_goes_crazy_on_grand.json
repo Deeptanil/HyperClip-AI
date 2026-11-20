@@ -1,0 +1,20 @@
+{
+  "streamer": "Clix",
+  "username": "clix",
+  "game": "Grand Theft Auto VI",
+  "title": "CLIX UNLEASHES PURE CHAOS IN GTA 6 🤯🔥",
+  "hook": "HE ACTUALLY LOST HIS MIND 💀",
+  "caption": "Clix completely broke the streets of GTA 6 with an unhinged rampage that left his entire lobby speechless. Would you have survived even five seconds against this madness? #GTA6 #Clix #GamingMoments #ViralGaming",
+  "target_accounts": [
+    "ig_2",
+    "youtube"
+  ],
+  "assigned_ig": "ig_2",
+  "post_to_yt": true,
+  "post_to_ig": true,
+  "posted_to_instagram": false,
+  "posted_to_youtube": false,
+  "priority": 4,
+  "discarded": false,
+  "ai_retitled": true
+}

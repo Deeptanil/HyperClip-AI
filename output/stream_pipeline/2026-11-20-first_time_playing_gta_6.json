@@ -1,0 +1,63 @@
+{
+  "streamer": "KaiCenat",
+  "username": "kaicenat",
+  "vod_id": "2932305259",
+  "game": "Grand Theft Auto VI",
+  "peak_sec": 116647,
+  "hype_score": 257.0,
+  "z_score": 5.4,
+  "title": "KAI CENAT HITS THE GTA 6 JACKPOT \ud83c\udfb0\ud83d\udd25",
+  "caption": "Kai Cenat completely loses his mind getting his hands on GTA 6 for the very first time and immediately secures the dub. How fast are you beating the entire storyline on day one? #GTA6 #KaiCenat #GamingMoments #ViralGaming",
+  "hook": "FIRST TIME PLAYING GTA 6 \ud83e\udd2f",
+  "target_accounts": [
+    "ig_2",
+    "youtube"
+  ],
+  "assigned_ig": "ig_2",
+  "post_to_yt": true,
+  "post_to_ig": true,
+  "posted_to_instagram": false,
+  "posted_to_youtube": false,
+  "priority": 4,
+  "discarded": false,
+  "smart_edited": true,
+  "fast_forward_segments": [
+    {
+      "start": 2.0,
+      "end": 4.3,
+      "speed": 3.0
+    },
+    {
+      "start": 5.14,
+      "end": 8.58,
+      "speed": 3.0
+    },
+    {
+      "start": 9.4,
+      "end": 16.14,
+      "speed": 3.0
+    },
+    {
+      "start": 19.26,
+      "end": 21.92,
+      "speed": 3.0
+    },
+    {
+      "start": 23.66,
+      "end": 28.52,
+      "speed": 3.0
+    },
+    {
+      "start": 32.0,
+      "end": 34.02,
+      "speed": 3.0
+    }
+  ],
+  "nsfw_censored": false,
+  "nsfw_segments": [],
+  "profanity_bleeped": false,
+  "bleep_segments": [],
+  "target": "Instagram (@loopablez) & YouTube",
+  "created_at": "2026-11-19T23:51:36.614208+00:00",
+  "timestamp": "2026-11-19T23:51:36.614227+00:00"
+}

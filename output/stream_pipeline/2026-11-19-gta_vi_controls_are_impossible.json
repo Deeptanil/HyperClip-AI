@@ -1,0 +1,59 @@
+{
+  "streamer": "DarkViperAU",
+  "username": "darkviperau",
+  "vod_id": "2932185714",
+  "game": "Grand Theft Auto VI",
+  "peak_sec": 11467,
+  "hype_score": 198.5,
+  "z_score": 3.46,
+  "title": "GTA VI CONTROLS ARE IMPOSSIBLE 🎮💀",
+  "caption": "Muscle memory is the real enemy in GTA VI. Who else is struggling with the new button layout? #GTA6 #DarkViperAU #GamingFails",
+  "hook": "GTA VI CONTROLS ARE IMPOSSIBLE 🎮💀",
+  "target_accounts": [
+    "ig_2",
+    "youtube"
+  ],
+  "assigned_ig": "ig_2",
+  "post_to_yt": true,
+  "post_to_ig": true,
+  "posted_to_instagram": false,
+  "posted_to_youtube": false,
+  "priority": 3,
+  "nsfw_censored": false,
+  "nsfw_segments": [],
+  "target": "Instagram (@loopablez) & YouTube",
+  "created_at": "2026-11-18T18:33:53.718958+00:00",
+  "timestamp": "2026-11-18T18:33:53.718975+00:00",
+  "duration_sec": 27.2,
+  "smart_edited": true,
+  "fast_forward_segments": [
+    {
+      "start": 1.5,
+      "end": 3.14,
+      "speed": 3
+    },
+    {
+      "start": 8.16,
+      "end": 11.42,
+      "speed": 3
+    },
+    {
+      "start": 17.23,
+      "end": 18.88,
+      "speed": 3
+    },
+    {
+      "start": 20.38,
+      "end": 25.43,
+      "speed": 3
+    },
+    {
+      "start": 32.82,
+      "end": 36.02,
+      "speed": 3
+    }
+  ],
+  "profanity_bleeped": false,
+  "bleep_segments": [],
+  "discarded": false
+}

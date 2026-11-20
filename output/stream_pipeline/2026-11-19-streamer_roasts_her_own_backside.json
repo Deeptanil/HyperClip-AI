@@ -1,0 +1,40 @@
+{
+  "streamer": "Cinna",
+  "username": "cinna",
+  "vod_id": "2933193462",
+  "game": "Grand Theft Auto VI",
+  "peak_sec": 15437,
+  "hype_score": 78,
+  "z_score": 3.18,
+  "title": "CINna ROASTS HER OWN BACKSIDE 💀🍑",
+  "caption": "Cinna completely lost her filter while playing GTA 6 and decided to ruthlessly roast her own backside live on stream. I still can't believe she actually went there, but chat was absolutely losing it. Would you ever roast yourself on stream or keep that quiet? #GTA6 #Cinna #GamingMoments #StreamerFails",
+  "hook": "SHE DID NOT JUST SAY THAT 😭",
+  "target_accounts": [
+    "ig_2",
+    "youtube"
+  ],
+  "assigned_ig": "ig_2",
+  "post_to_yt": true,
+  "post_to_ig": true,
+  "posted_to_instagram": false,
+  "posted_to_youtube": false,
+  "priority": 4,
+  "nsfw_censored": false,
+  "nsfw_segments": [],
+  "profanity_bleeped": false,
+  "bleep_segments": [],
+  "target": "Instagram (@loopablez) & YouTube",
+  "created_at": "2026-11-19T08:59:04.507215+00:00",
+  "timestamp": "2026-11-19T08:59:04.507231+00:00",
+  "duration_sec": 33.3,
+  "smart_edited": true,
+  "fast_forward_segments": [
+    {
+      "start": 25.78,
+      "end": 31.42,
+      "speed": 3
+    }
+  ],
+  "discarded": false,
+  "ai_retitled": true
+}
