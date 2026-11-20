@@ -44,6 +44,8 @@
       "speed": 3
     }
   ],
-  "discarded": false,
-  "ai_retitled": true
+  "discarded": true,
+  "ai_retitled": true,
+  "discarded_at": "2026-11-20T19:44:08.966Z",
+  "pre_discard_priority": 2
 }
