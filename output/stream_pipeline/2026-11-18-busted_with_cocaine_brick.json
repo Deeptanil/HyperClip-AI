@@ -44,8 +44,8 @@
   "nsfw_censored": false,
   "nsfw_segments": [],
   "priority": 4,
-  "discarded": false,
-  "discarded_at": "2026-11-19T13:49:25.886Z",
-  "pre_discard_priority": 3,
+  "discarded": true,
+  "discarded_at": "2026-11-20T19:34:23.889Z",
+  "pre_discard_priority": 4,
   "ai_retitled": true
 }
