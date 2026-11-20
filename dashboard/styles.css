@@ -1858,101 +1858,103 @@ input:checked + .slider:before {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 960px) {
   .app-container {
     padding: 0 4px;
   }
 
   .top-nav {
-    display: flex;
-    flex-wrap: wrap;
-    flex-direction: row;
-    height: auto;
-    min-height: unset;
-    max-height: none;
-    padding: 8px 12px;
-    gap: 8px 0;
-    position: sticky;
-    top: 0;
-    z-index: 50;
-    background-color: var(--bg-surface);
-    border-bottom: 1px solid var(--border);
-    white-space: nowrap;
-    box-sizing: border-box;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    flex-direction: row !important;
+    height: auto !important;
+    min-height: unset !important;
+    max-height: none !important;
+    padding: 8px 12px 6px 12px !important;
+    gap: 8px 0 !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 50 !important;
+    background-color: var(--bg-surface) !important;
+    border-bottom: 1px solid var(--border) !important;
+    white-space: nowrap !important;
+    box-sizing: border-box !important;
   }
 
   .brand {
-    order: 1;
-    flex: 1 1 auto;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
+    order: 1 !important;
+    flex: 1 1 auto !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    min-width: 0 !important;
   }
 
   .brand-logo {
-    font-size: 13px;
-    gap: 5px;
+    font-size: 13px !important;
+    gap: 5px !important;
   }
 
   .status-pill {
-    padding: 2px 7px;
-    font-size: 11px;
-    flex-shrink: 0;
+    padding: 2px 7px !important;
+    font-size: 11px !important;
+    flex-shrink: 0 !important;
   }
 
   .nav-actions {
-    order: 2;
-    flex: 0 0 auto;
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 6px;
-    margin-left: auto;
+    order: 2 !important;
+    flex: 0 0 auto !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 6px !important;
+    margin-left: auto !important;
   }
 
   .nav-actions .btn {
-    padding: 5px 10px;
-    font-size: 11px;
-    height: 30px;
-    min-height: 30px;
-    gap: 4px;
-    display: inline-flex;
-    align-items: center;
+    padding: 5px 10px !important;
+    font-size: 11px !important;
+    height: 30px !important;
+    min-height: 30px !important;
+    gap: 4px !important;
+    display: inline-flex !important;
+    align-items: center !important;
   }
 
   .nav-center {
-    order: 3;
-    flex: 1 0 100%;
-    width: 100%;
-    max-width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    padding-top: 6px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
-    box-sizing: border-box;
+    order: 3 !important;
+    flex: 1 0 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    padding: 6px 0 2px 0 !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-sizing: border-box !important;
   }
 
   .nav-center::-webkit-scrollbar {
-    display: none;
+    display: none !important;
   }
 
   .tab-btn {
-    flex-shrink: 0;
-    padding: 6px 12px;
-    font-size: 12px;
-    gap: 5px;
-    white-space: nowrap;
-    border-radius: 6px;
+    flex-shrink: 0 !important;
+    min-width: max-content !important;
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+    gap: 5px !important;
+    white-space: nowrap !important;
+    border-radius: 6px !important;
   }
 
   .tab-btn .icon {
-    width: 13px;
-    height: 13px;
+    width: 13px !important;
+    height: 13px !important;
   }
 
   .token-alert-banner {
@@ -2080,53 +2082,66 @@ input:checked + .slider:before {
 
 @media (max-width: 480px) {
   .top-nav {
-    padding: 6px 10px;
-    gap: 6px 0;
-    height: auto;
-    min-height: unset;
-    max-height: none;
+    padding: 6px 8px 4px 8px !important;
+    gap: 6px 0 !important;
+    height: auto !important;
+    min-height: unset !important;
+    max-height: none !important;
   }
 
   .brand-logo {
-    font-size: 12px;
-    gap: 4px;
+    font-size: 12px !important;
+    gap: 4px !important;
   }
 
   .status-pill {
-    padding: 2px 6px;
-    font-size: 10px;
+    padding: 2px 6px !important;
+    font-size: 10px !important;
   }
 
   .nav-actions {
-    gap: 4px;
+    gap: 4px !important;
   }
 
   .nav-actions .btn {
-    padding: 4px 7px;
-    font-size: 10px;
-    height: 28px;
-    min-height: 28px;
-    gap: 3px;
+    padding: 4px 7px !important;
+    font-size: 10px !important;
+    height: 28px !important;
+    min-height: 28px !important;
+    gap: 3px !important;
   }
 
   .nav-center {
-    gap: 4px;
-    padding-top: 4px;
+    gap: 4px !important;
+    padding-top: 4px !important;
   }
 
   .tab-btn {
-    padding: 5px 9px;
-    font-size: 11px;
-    gap: 4px;
+    padding: 5px 9px !important;
+    font-size: 11px !important;
+    gap: 4px !important;
   }
 
   .brand-badge {
-    display: none;
+    display: none !important;
   }
 
   .view-title {
     font-size: 16px;
   }
+}
+
+@media (max-width: 380px) {
+  .nav-actions .btn span {
+    display: none !important;
+  }
+  .nav-actions .btn {
+    padding: 4px !important;
+    width: 28px !important;
+    min-width: 28px !important;
+    justify-content: center !important;
+  }
+}
 
   .view-subtitle {
     font-size: 12px;
