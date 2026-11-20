@@ -1,0 +1,53 @@
+{
+  "streamer": "Burn",
+  "username": "burn",
+  "vod_id": "2934901495",
+  "game": "Grand Theft Auto VI",
+  "peak_sec": 28202,
+  "hype_score": 26.5,
+  "z_score": 3.97,
+  "title": "THOUGHT HE WON BUT CRASHED OUT \ud83d\udc80",
+  "caption": "Burn completely lost track of his position in the race and went absolute ballistic when he found out two more racers were still ahead of him. Would you have raged this hard after miscounting? #gta6 #gta6clips #rage #gamingmoments",
+  "hook": "HE THOUGHT HE WAS 3RD \ud83d\ude2d",
+  "target_accounts": [
+    "ig_2",
+    "youtube"
+  ],
+  "assigned_ig": "ig_2",
+  "post_to_yt": true,
+  "post_to_ig": true,
+  "posted_to_instagram": false,
+  "posted_to_youtube": false,
+  "priority": 4,
+  "discarded": false,
+  "smart_edited": true,
+  "fast_forward_segments": [
+    {
+      "start": 1.64,
+      "end": 4.84,
+      "speed": 3.0
+    },
+    {
+      "start": 8.12,
+      "end": 23.42,
+      "speed": 3.0
+    },
+    {
+      "start": 28.24,
+      "end": 30.0,
+      "speed": 3.0
+    },
+    {
+      "start": 31.7,
+      "end": 33.08,
+      "speed": 3.0
+    }
+  ],
+  "nsfw_censored": false,
+  "nsfw_segments": [],
+  "profanity_bleeped": false,
+  "bleep_segments": [],
+  "target": "Instagram (@loopablez) & YouTube",
+  "created_at": "2026-11-20T22:00:42.327271+00:00",
+  "timestamp": "2026-11-20T22:00:42.327286+00:00"
+}

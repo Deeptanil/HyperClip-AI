@@ -9,13 +9,11 @@
   "title": "FOUND THE FIRST PET IN GTA 6 \ud83d\udc36",
   "caption": "Lacy accidentally stumbled upon an unexpected new companion roaming the streets of GTA 6 and completely lost his mind over the dog's hilarious reactions. Would you risk a five-star wanted level just to keep this adorable new pet safe? #GTA6 #Lacy #GTA6Leaks #GamingMoments",
   "hook": "BEST BOY IN LEONIDA \ud83d\udc15",
-  "target_accounts": [
-    "ig_2"
-  ],
+  "target_accounts": [],
   "assigned_ig": "ig_2",
   "post_to_yt": true,
   "post_to_ig": true,
-  "posted_to_instagram": false,
+  "posted_to_instagram": true,
   "posted_to_youtube": true,
   "priority": 4,
   "nsfw_censored": false,
@@ -51,5 +49,6 @@
   "bleep_segments": [],
   "discarded": false,
   "ai_retitled": true,
-  "youtube_url": "https://youtube.com/shorts/y2hbUXblbvg"
+  "youtube_url": "https://youtube.com/shorts/y2hbUXblbvg",
+  "instagram_url": "https://www.instagram.com/reel/Df-oU4DkjqX/"
 }

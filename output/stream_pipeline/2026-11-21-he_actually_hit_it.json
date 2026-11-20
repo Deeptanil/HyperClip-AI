@@ -1,0 +1,43 @@
+{
+  "streamer": "KaiCenat",
+  "username": "kaicenat",
+  "vod_id": "2934866208",
+  "game": "Grand Theft Auto VI",
+  "peak_sec": 30477,
+  "hype_score": 164.0,
+  "z_score": 5.11,
+  "title": "HIT THE JACKPOT ON GTA 6 \ud83c\udfb0",
+  "caption": "Kai Cenat completely loses his mind after pulling off an insane, impossible driving stunt on the brand new GTA 6 map. Would you have crashed right away? #GTA6 #KaiCenat #GamingMoments #ViralGaming",
+  "hook": "HE ACTUALLY HIT IT! \ud83e\udd2f",
+  "target_accounts": [
+    "ig_2",
+    "youtube"
+  ],
+  "assigned_ig": "ig_2",
+  "post_to_yt": true,
+  "post_to_ig": true,
+  "posted_to_instagram": false,
+  "posted_to_youtube": false,
+  "priority": 4,
+  "discarded": false,
+  "smart_edited": true,
+  "fast_forward_segments": [
+    {
+      "start": 1.5,
+      "end": 18.26,
+      "speed": 3.0
+    },
+    {
+      "start": 20.14,
+      "end": 34.0,
+      "speed": 3.0
+    }
+  ],
+  "nsfw_censored": false,
+  "nsfw_segments": [],
+  "profanity_bleeped": false,
+  "bleep_segments": [],
+  "target": "Instagram (@loopablez) & YouTube",
+  "created_at": "2026-11-20T21:36:02.577816+00:00",
+  "timestamp": "2026-11-20T21:36:02.577833+00:00"
+}
