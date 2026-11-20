@@ -1,0 +1,47 @@
+{
+  "streamer": "KaiCenat",
+  "username": "kaicenat",
+  "vod_id": "2932305259",
+  "game": "Grand Theft Auto VI",
+  "peak_sec": 137042,
+  "hype_score": 288.5,
+  "z_score": 5.05,
+  "title": "THEY TRIED TO SET US UP! \ud83d\udc80\ud83d\ude97",
+  "caption": "Kai Cenat found himself in a sketchy drive-by setup during his very first playthrough and instantly started plotting revenge. Would you have trusted the homies or opened fire right away? #KaiCenat #GTA6 #GamingMoments #FunnyStreamer",
+  "hook": "BRO GOT AMBUSHED IN GTA 6! \ud83d\ude2d",
+  "target_accounts": [
+    "ig_2",
+    "youtube"
+  ],
+  "assigned_ig": "ig_2",
+  "post_to_yt": true,
+  "post_to_ig": true,
+  "posted_to_instagram": false,
+  "posted_to_youtube": false,
+  "priority": 4,
+  "discarded": false,
+  "smart_edited": true,
+  "fast_forward_segments": [
+    {
+      "start": 11.72,
+      "end": 19.7,
+      "speed": 3.0
+    }
+  ],
+  "nsfw_censored": false,
+  "nsfw_segments": [],
+  "profanity_bleeped": true,
+  "bleep_segments": [
+    [
+      3.83,
+      4.21
+    ],
+    [
+      18.48,
+      18.66
+    ]
+  ],
+  "target": "Instagram (@loopablez) & YouTube",
+  "created_at": "2026-11-20T04:38:30.399196+00:00",
+  "timestamp": "2026-11-20T04:38:30.399215+00:00"
+}
