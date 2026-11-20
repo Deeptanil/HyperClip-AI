@@ -29,6 +29,8 @@
   "nsfw_censored": false,
   "nsfw_segments": [],
   "priority": 3,
-  "discarded": false,
-  "ai_retitled": true
+  "discarded": true,
+  "ai_retitled": true,
+  "discarded_at": "2026-11-20T19:44:32.777Z",
+  "pre_discard_priority": 3
 }
