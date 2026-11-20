@@ -1,0 +1,53 @@
+{
+  "streamer": "KaiCenat",
+  "username": "kaicenat",
+  "vod_id": "2934866208",
+  "game": "Grand Theft Auto VI",
+  "peak_sec": 18637,
+  "hype_score": 172.75,
+  "z_score": 7.22,
+  "title": "KAI CENAT REACTS TO GTA 6 \ud83c\udf34\ud83e\udd2f",
+  "caption": "Kai Cenat's jaw hit the floor the exact second he loaded into the streets of Leonida for the very first time. You have to see his absolute disbelief at the next-gen graphics! Would you drop everything to play this right now? #GTA6 #KaiCenat #Gaming #GTA",
+  "hook": "FIRST TIME PLAYING GTA 6 \ud83d\ude33\ud83d\udd25",
+  "target_accounts": [
+    "ig_1",
+    "youtube"
+  ],
+  "assigned_ig": "ig_1",
+  "post_to_yt": true,
+  "post_to_ig": true,
+  "posted_to_instagram": false,
+  "posted_to_youtube": false,
+  "priority": 4,
+  "discarded": false,
+  "smart_edited": true,
+  "fast_forward_segments": [
+    {
+      "start": 1.5,
+      "end": 9.42,
+      "speed": 3.0
+    },
+    {
+      "start": 10.82,
+      "end": 13.22,
+      "speed": 3.0
+    },
+    {
+      "start": 17.0,
+      "end": 24.52,
+      "speed": 3.0
+    },
+    {
+      "start": 27.58,
+      "end": 33.74,
+      "speed": 3.0
+    }
+  ],
+  "nsfw_censored": false,
+  "nsfw_segments": [],
+  "profanity_bleeped": false,
+  "bleep_segments": [],
+  "target": "Instagram (@solvikz) & YouTube",
+  "created_at": "2026-11-20T18:28:18.824887+00:00",
+  "timestamp": "2026-11-20T18:28:18.824901+00:00"
+}
