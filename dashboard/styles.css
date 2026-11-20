@@ -1744,56 +1744,95 @@ input:checked + .slider:before {
   }
 
   .top-nav {
+    display: flex;
+    flex-wrap: wrap;
     flex-direction: row;
-    height: 52px;
-    padding: 0 10px;
-    gap: 8px;
-    overflow-x: auto;
+    height: auto;
+    min-height: unset;
+    max-height: none;
+    padding: 8px 12px;
+    gap: 8px 0;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background-color: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
     white-space: nowrap;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-  }
-  .top-nav::-webkit-scrollbar {
-    display: none;
+    box-sizing: border-box;
   }
 
   .brand {
-    gap: 6px;
-    flex-shrink: 0;
+    order: 1;
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
   }
 
   .brand-logo {
     font-size: 13px;
+    gap: 5px;
+  }
+
+  .status-pill {
+    padding: 2px 7px;
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+
+  .nav-actions {
+    order: 2;
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+  }
+
+  .nav-actions .btn {
+    padding: 5px 10px;
+    font-size: 11px;
+    height: 30px;
+    min-height: 30px;
+    gap: 4px;
+    display: inline-flex;
+    align-items: center;
   }
 
   .nav-center {
-    gap: 4px;
-    flex-shrink: 1;
+    order: 3;
+    flex: 1 0 100%;
+    width: 100%;
+    max-width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 6px;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-top: 6px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    box-sizing: border-box;
+  }
+
+  .nav-center::-webkit-scrollbar {
+    display: none;
   }
 
   .tab-btn {
-    padding: 5px 8px;
-    font-size: 11px;
-    gap: 4px;
+    flex-shrink: 0;
+    padding: 6px 12px;
+    font-size: 12px;
+    gap: 5px;
+    white-space: nowrap;
+    border-radius: 6px;
   }
 
   .tab-btn .icon {
     width: 13px;
     height: 13px;
-  }
-
-  .nav-actions {
-    display: flex;
-    flex-direction: row;
-    gap: 4px;
-    flex-shrink: 0;
-  }
-
-  .nav-actions .btn {
-    padding: 5px 8px;
-    font-size: 11px;
-    min-height: 32px;
   }
 
   .token-alert-banner {
@@ -1921,11 +1960,11 @@ input:checked + .slider:before {
 
 @media (max-width: 480px) {
   .top-nav {
-    height: 48px;
-    min-height: 48px;
-    max-height: 48px;
-    padding: 0 8px;
-    gap: 6px;
+    padding: 6px 10px;
+    gap: 6px 0;
+    height: auto;
+    min-height: unset;
+    max-height: none;
   }
 
   .brand-logo {
@@ -1938,16 +1977,27 @@ input:checked + .slider:before {
     font-size: 10px;
   }
 
-  .tab-btn {
-    padding: 4px 6px;
-    font-size: 11px;
-    gap: 3px;
+  .nav-actions {
+    gap: 4px;
   }
 
   .nav-actions .btn {
-    padding: 4px 6px;
+    padding: 4px 7px;
     font-size: 10px;
+    height: 28px;
     min-height: 28px;
+    gap: 3px;
+  }
+
+  .nav-center {
+    gap: 4px;
+    padding-top: 4px;
+  }
+
+  .tab-btn {
+    padding: 5px 9px;
+    font-size: 11px;
+    gap: 4px;
   }
 
   .brand-badge {

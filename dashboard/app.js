@@ -2064,7 +2064,8 @@
       // 2. Fetch config.json from production branch (master)
       const pBranch = auth.branch || 'master';
       const configRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json?ref=${pBranch}&_t=${Date.now()}`, {
-        headers: { ...headers, 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache' }
+        headers,
+        cache: 'no-store'
       });
       if (configRes.ok) {
         const configData = await configRes.json();
@@ -2368,9 +2369,22 @@
     } catch (err) {
       console.error('GitHub API Sync Error:', err);
       if (dot) dot.className = 'dot danger';
-      if (statusText) statusText.innerText = 'Auth Error';
+      let label = 'Sync Error';
+      const msg = String(err && err.message ? err.message : '').toLowerCase();
+      if (msg.includes('bad credentials') || msg.includes('401') || msg.includes('token')) {
+        label = 'Bad Token';
+      } else if (msg.includes('rate limit') || msg.includes('403')) {
+        label = 'Rate Limit';
+      } else if (msg.includes('not found') || msg.includes('404')) {
+        label = 'Repo 404';
+      } else if (msg.includes('fetch') || msg.includes('network') || !navigator.onLine) {
+        label = 'Offline';
+      } else {
+        label = 'Auth Error';
+      }
+      if (statusText) statusText.innerText = label;
       const pill = document.getElementById('conn-status-pill');
-      if (pill) pill.title = `${err.message || 'Check Token'}\nClick to configure PAT/repo`;
+      if (pill) pill.title = `${err.message || label}\nClick to configure PAT/repo`;
       if (isManual) {
         alert(`GitHub Sync Failed: ${err.message || 'Could not connect'}\n\nPlease verify that your token has 'repo' and 'workflow' scopes.`);
       }
@@ -3068,11 +3082,6 @@
               'Accept': 'application/vnd.github.v3+json',
               'Content-Type': 'application/json'
             };
-            const noCacheHeaders = {
-              ...headers,
-              'Cache-Control': 'no-cache, no-store, must-revalidate',
-              'Pragma': 'no-cache'
-            };
             const pBranch = auth.branch || 'master';
             const cBranch = auth.contentBranch || 'content';
 
@@ -3351,13 +3360,9 @@
               'Accept': 'application/vnd.github.v3+json',
               'Content-Type': 'application/json'
             };
-            const noCacheHeaders = {
-              ...headers,
-              'Cache-Control': 'no-cache, no-store, must-revalidate',
-              'Pragma': 'no-cache'
-            };
             let curRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json?ref=${pBranch}&_t=${Date.now()}`, {
-              headers: noCacheHeaders
+              headers,
+              cache: 'no-store'
             });
             if (curRes.ok) {
               let curData = await curRes.json();
@@ -3371,46 +3376,32 @@
                 });
               }
               let b64 = btoa(unescape(encodeURIComponent(JSON.stringify(cfg, null, 2))));
-              let putRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json`, {
-                method: 'PUT',
-                headers,
-                body: JSON.stringify({
-                  message: `chore(config): update Meta token expiration date to ${val}`,
-                  content: b64,
-                  sha: curData.sha,
-                  branch: pBranch
-                })
-              });
-              if (putRes.status === 409 || putRes.status === 422) {
-                const freshRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json?ref=${pBranch}&_t=${Date.now()}`, {
-                  headers: noCacheHeaders
+              let currentSha = await getAuthoritativeGitSha('config.json', pBranch) || curData.sha;
+              let putRes = null;
+              for (let attempt = 0; attempt < 3; attempt++) {
+                putRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json`, {
+                  method: 'PUT',
+                  headers,
+                  body: JSON.stringify({
+                    message: `chore(config): update Meta token expiration date to ${val}`,
+                    content: b64,
+                    sha: currentSha,
+                    branch: pBranch
+                  })
                 });
-                if (freshRes.ok) {
-                  curData = await freshRes.json();
-                  curStr = decodeURIComponent(escape(atob(curData.content)));
-                  cfg = JSON.parse(curStr);
-                  if (!cfg.publishing_schedule) cfg.publishing_schedule = {};
-                  cfg.publishing_schedule.token_expiry_date = val;
-                  if (Array.isArray(cfg.publishing_schedule.instagram_accounts)) {
-                    cfg.publishing_schedule.instagram_accounts.forEach(a => {
-                      a.token_expiry_date = val;
-                    });
-                  }
-                  b64 = btoa(unescape(encodeURIComponent(JSON.stringify(cfg, null, 2))));
-                  putRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json`, {
-                    method: 'PUT',
-                    headers,
-                    body: JSON.stringify({
-                      message: `chore(config): update Meta token expiration date to ${val}`,
-                      content: b64,
-                      sha: curData.sha,
-                      branch: pBranch
-                    })
-                  });
+                if (putRes.ok) break;
+                if (putRes.status === 409 || putRes.status === 422) {
+                  await new Promise(r => setTimeout(r, 400 * (attempt + 1)));
+                  currentSha = await getAuthoritativeGitSha('config.json', pBranch);
+                } else {
+                  break;
                 }
               }
-              if (putRes.ok) {
+              if (putRes && putRes.ok) {
                 alert(`Token expiration date (${val}) committed to config.json!`);
+              } else {
+                const errJson = putRes ? await putRes.json().catch(() => ({})) : {};
+                throw new Error(errJson.message || 'Commit failed');
               }
             }
           } catch (e) {
