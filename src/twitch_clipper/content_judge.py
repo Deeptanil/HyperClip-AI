@@ -143,7 +143,7 @@ def evaluate_clip_quality(
 
     prompt = f"""
 You are an expert short-form viral gaming content director (TikTok, Instagram Reels, YouTube Shorts).
-Your job is to strictly vet candidate gaming clips, reject anything boring, and craft high-CTR contextual titles and story captions.
+Your job is to strictly vet candidate gaming clips, reject anything mediocre or boring (top 20-30% lowest quality clips MUST be rejected), and craft high-CTR contextual titles and story captions.
 
 Clip Context:
 - Streamer: {streamer}
@@ -152,21 +152,25 @@ Clip Context:
 - Streamer Audio / What Was Said: {transcript or '[SILENCE / NO WORDS SPOKEN]'}
 - Live Chat Reactions: {json.dumps(sample_chat or [])}
 
-REJECTION CRITERIA (Mark is_viral_clip = false if ANY apply):
+STRICT REJECTION CRITERIA (Mark is_viral_clip = false if ANY apply):
 - Streamer is AFK, in the bathroom, left their chair, or taking a break.
-- Streamer is quietly reading chat or sitting in silence without reacting.
-- Video is just a game intro cutscene, title screen, loading screen, or menu.
+- Streamer is quietly reading chat or sitting in silence without a passionate reaction.
+- Streamer is talking in a normal monotone conversational voice with no excitement, joke, or surprise.
+- Video is just a game intro cutscene, title screen, loading screen, or inventory/settings menu.
+- Video is standard driving, walking, running, or looting where nothing shocking or funny happens.
 - Video is an outro, raid screen, or stream ending goodbye.
-- Nothing exciting, funny, dramatic, or climactic actually occurs.
+- Nothing exciting, funny, dramatic, or climactic actually occurs (no punchline, no fail, no clutch).
 
-APPROVAL CRITERIA (Mark is_viral_clip = true only if):
-- A genuine, funny, insane, shocking, or high-energy moment happened.
+APPROVAL CRITERIA (Mark is_viral_clip = true ONLY if ALL apply):
+- A genuine, funny, insane, shocking, or high-energy moment happened that would stop someone from scrolling in 2 seconds.
 - The streamer actively reacted (screaming, laughing, celebrating, raging, or talking intensely).
-- There is clear context that viewers will stop scrolling to watch.
+- There is clear comedic or dramatic context with an obvious punchline or climax.
+- Virality score is 7.5 or higher on a 1-to-10 scale.
 
 Output strictly valid JSON with this exact schema:
 {{
   "is_viral_clip": boolean,
+  "virality_score": float between 1.0 and 10.0,
   "rejection_reason": string or null,
   "confidence": float between 0.0 and 1.0,
   "title": "4 to 7 words ALL-CAPS punchy headline title with 1-2 emojis describing the specific event or quote (NO generic titles like 'X PLAYS Y' or 'CRAZY MOMENT')",
@@ -184,7 +188,7 @@ Output strictly valid JSON with this exact schema:
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
-                    temperature=0.4,
+                    temperature=0.3,
                     max_output_tokens=600,
                 ),
             )
@@ -192,24 +196,28 @@ Output strictly valid JSON with this exact schema:
             data = json.loads(raw_text)
 
             is_viral = bool(data.get("is_viral_clip", False))
+            virality_score = float(data.get("virality_score", 7.0 if is_viral else 4.0))
+            confidence = float(data.get("confidence", 0.8))
             rejection = data.get("rejection_reason")
             title = data.get("title", "").strip()
             hook = data.get("hook", "").strip()
             caption = data.get("caption", "").strip()
 
-            if not is_viral:
+            # Strict quality threshold: Must be approved, virality >= 7.5, confidence >= 0.70
+            if not is_viral or virality_score < 7.5 or confidence < 0.70:
+                reason_str = rejection or f"Quality score {virality_score:.1f}/10 below viral threshold (min 7.5 required)"
                 return {
                     "approved": False,
-                    "reason": f"AI Judge Rejected ({model_name}): {rejection or 'Low engagement potential'}",
+                    "reason": f"AI Judge Rejected ({model_name}): {reason_str}",
                     "title": None,
                     "hook": None,
                     "caption": None,
                 }
 
-            # Valid approved clip
+            # Valid high-quality approved clip
             return {
                 "approved": True,
-                "reason": f"Approved by AI Judge ({model_name}, confidence: {data.get('confidence', 1.0)})",
+                "reason": f"Approved by AI Judge ({model_name}, score: {virality_score:.1f}/10, conf: {confidence:.2f})",
                 "title": title if (title and len(title.split()) >= 3) else None,
                 "hook": hook if (hook and len(hook.split()) >= 3) else None,
                 "caption": caption if (caption and len(caption) >= 15) else None,
@@ -217,11 +225,20 @@ Output strictly valid JSON with this exact schema:
         except Exception as e:
             print(f"[!] Content judge model '{model_name}' failed ({e}); trying next model...")
 
-    # If all AI models fail, fall back to visual check result
+    # If all AI models fail, apply conservative quality gate
+    # Only allow if transcript has strong reaction keywords and motion is high
+    has_words = bool(transcript and len(transcript.strip()) > 8)
+    reaction_kw = re.search(r"\b(no way|omg|wtf|what|holy|bro|look|yo|shut up|dead|died|kill|killed|win|won|hah+|lol)\b", (transcript or "").lower())
+    if has_words and reaction_kw:
+        return {
+            "approved": True,
+            "reason": "Approved via conservative fallback (AI models unavailable, reaction detected)",
+            "hook": None,
+            "caption": None,
+        }
     return {
-        "approved": True,
-        "reason": "Approved (AI judge cascade exhausted, passed visual motion checks)",
-        "title": None,
+        "approved": False,
+        "reason": "Rejected by quality shield: AI models unavailable and clip lacks unmistakable reaction keywords",
         "hook": None,
         "caption": None,
     }

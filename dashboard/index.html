@@ -19,7 +19,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="HyperClip AI // Command Center">
   <meta name="twitter:description" content="Autonomous AI stream clipping, dual-stack portrait rendering, and intelligent anti-shadowban publisher.">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=20261121_02">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23FACC15'><polygon points='13 2 3 14 12 14 11 22 21 10 12 10 13 2'/></svg>">
 </head>
 <body>
@@ -531,6 +531,17 @@
 
           <div class="setting-row">
             <div class="setting-info">
+              <span class="setting-label">Max Pipeline Queue Capacity</span>
+              <span class="setting-desc">Halts automated stream harvesting when queue reaches capacity. Any in-progress stream harvest retains all discovered clips.</span>
+            </div>
+            <div class="setting-ctrl">
+              <input type="range" id="slider-pipeline-capacity" min="20" max="100" step="5" value="50">
+              <span class="range-val" id="val-pipeline-capacity">50 clips</span>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
               <span class="setting-label">Clips Per Stream Yield</span>
               <span class="setting-desc">Extract up to 10 highlights per stream based on AI virality score</span>
             </div>
@@ -548,6 +559,17 @@
             <div class="setting-ctrl">
               <input type="range" id="slider-clip-spacing" min="180" max="600" step="30" value="300">
               <span class="range-val" id="val-clip-spacing">300s</span>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">AI Hype Spike Sensitivity (Min Sigma)</span>
+              <span class="setting-desc">Higher values (2.6+ σ) filter out mediocre chatter so only top-tier viral stream moments are clipped</span>
+            </div>
+            <div class="setting-ctrl">
+              <input type="range" id="slider-spike-sigma" min="2.0" max="4.0" step="0.2" value="2.6">
+              <span class="range-val" id="val-spike-sigma">2.6 σ</span>
             </div>
           </div>
         </div>
@@ -606,6 +628,8 @@
         <p class="modal-desc">
           Enter your GitHub Personal Access Token (with <code>repo</code> and <code>workflow</code> scopes) to manage, approve, and review clips directly on GitHub.
         </p>
+
+        <div id="setup-error-box" style="display:none;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.35);color:#ef4444;padding:10px 12px;border-radius:6px;font-size:12px;margin-bottom:12px;line-height:1.4;"></div>
 
         <div class="input-group">
           <label class="input-label">GitHub Personal Access Token (PAT)</label>
@@ -734,6 +758,6 @@
 
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=20261121_02"></script>
 </body>
 </html>

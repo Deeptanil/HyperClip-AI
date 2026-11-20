@@ -99,6 +99,17 @@
     contentBranch: 'content',
     isDemo: true
   });
+  let lastAuthError = '';
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
 
   function safeInt(val, fallback) {
     const n = parseInt(val, 10);
@@ -112,7 +123,9 @@
     ytPosts: 3,
     hypeMode: false,
     streamYield: 10,
+    maxPipelineCapacity: 50,
     clipSpacing: 300,
+    minSpikeSigma: 2.6,
     prioritizedCategories: ['Grand Theft Auto VI', 'GTA 6', 'GTA VI'],
     deprioritizedCategories: [],
     autoCensorNsfw: true,
@@ -1492,6 +1505,16 @@
     if (branchEl) branchEl.value = auth.branch || 'master';
     if (contentBranchEl) contentBranchEl.value = auth.contentBranch || 'content';
 
+    const errBox = document.getElementById('setup-error-box');
+    if (errBox) {
+      if (lastAuthError) {
+        errBox.innerHTML = `<strong>Authentication Issue:</strong> ${escapeHtml(lastAuthError)}<div style="margin-top:6px;font-size:11px;opacity:0.9;">Ensure your Personal Access Token has <code>repo</code> and <code>workflow</code> permissions, or click <em>Explore with Demo Data</em> below.</div>`;
+        errBox.style.display = 'block';
+      } else {
+        errBox.style.display = 'none';
+      }
+    }
+
     modal.classList.add('open');
   };
 
@@ -2134,6 +2157,9 @@
     const dot = document.getElementById('conn-dot');
 
     if (!auth.pat || auth.isDemo) {
+      lastAuthError = '';
+      const errBox = document.getElementById('setup-error-box');
+      if (errBox) errBox.style.display = 'none';
       if (dot) dot.className = 'dot yellow';
       if (statusText) statusText.innerText = 'Demo';
       const pill = document.getElementById('conn-status-pill');
@@ -2460,6 +2486,10 @@
       lastSyncDate = new Date();
       const timeStr = lastSyncDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
+      lastAuthError = '';
+      const errBox = document.getElementById('setup-error-box');
+      if (errBox) errBox.style.display = 'none';
+
       if (dot) dot.className = 'dot online';
       if (statusText) statusText.innerText = 'Connected';
       const pill = document.getElementById('conn-status-pill');
@@ -2482,9 +2512,16 @@
       } else {
         label = 'Sync Error';
       }
+      lastAuthError = err && err.message ? err.message : label;
       if (statusText) statusText.innerText = label;
       const pill = document.getElementById('conn-status-pill');
-      if (pill) pill.title = `${err.message || label}\nClick to configure PAT/repo`;
+      if (pill) pill.title = `${lastAuthError}\nClick to configure PAT/repo`;
+
+      // Fallback: If no clips loaded yet, load demo data so dashboard isn't blank
+      if (pipelineClips.length === 0 && postedClips.length === 0) {
+        loadDemoData();
+      }
+
       if (isManual) {
         alert(`GitHub Sync Failed: ${err.message || 'Could not connect'}\n\nPlease verify that your token has 'repo' and 'workflow' scopes.`);
       }
@@ -2671,8 +2708,10 @@
     setSliderVal('slider-ig1-trial', 'val-ig1-trial', settings.ig1TrialPosts, '', false);
     setSliderVal('slider-ig2', 'val-ig2', settings.ig2Posts, '', true);
     setSliderVal('slider-yt', 'val-yt', settings.ytPosts, '', true);
+    setSliderVal('slider-pipeline-capacity', 'val-pipeline-capacity', settings.maxPipelineCapacity, ' clips', false);
     setSliderVal('slider-stream-yield', 'val-stream-yield', settings.streamYield, '', false);
     setSliderVal('slider-clip-spacing', 'val-clip-spacing', settings.clipSpacing, 's', false);
+    setSliderVal('slider-spike-sigma', 'val-spike-sigma', settings.minSpikeSigma, ' σ', false);
 
     const nsfwToggle = document.getElementById('toggle-nsfw-censor');
     if (nsfwToggle) nsfwToggle.checked = Boolean(settings.autoCensorNsfw);
@@ -2719,11 +2758,17 @@
     }
 
     const tc = cfg.twitch_clipper || {};
+    if (typeof tc.max_pipeline_capacity !== 'undefined') {
+      settings.maxPipelineCapacity = safeInt(tc.max_pipeline_capacity, 50);
+    }
     if (typeof tc.max_clips_per_vod !== 'undefined') {
       settings.streamYield = safeInt(tc.max_clips_per_vod, 10);
     }
     if (typeof tc.min_clip_spacing_sec !== 'undefined') {
       settings.clipSpacing = safeInt(tc.min_clip_spacing_sec, 300);
+    }
+    if (typeof tc.min_spike_sigma !== 'undefined') {
+      settings.minSpikeSigma = parseFloat(tc.min_spike_sigma) || 2.6;
     }
 
     const safety = cfg.content_safety || {};
@@ -2864,7 +2909,7 @@
     const btnSavePat = document.getElementById('btn-save-pat');
     if (btnSavePat) {
       btnSavePat.addEventListener('click', () => {
-        const pat = (document.getElementById('setup-pat')?.value || '').trim();
+        const pat = (document.getElementById('setup-pat')?.value || '').trim().replace(/^["']|["']$/g, '');
         const repo = (document.getElementById('setup-repo')?.value || '').trim();
         const branch = (document.getElementById('setup-branch')?.value || 'master').trim();
         const contentBranch = (document.getElementById('setup-content-branch')?.value || 'content').trim();
@@ -2877,7 +2922,7 @@
         auth = { pat, repo, branch, contentBranch, isDemo: false };
         safeSetStorage(STORAGE_KEY_AUTH, auth);
         window.closeSetupModal();
-        syncWithGitHub();
+        syncWithGitHub(true);
       });
     }
 
@@ -2886,6 +2931,9 @@
       btnUseDemo.addEventListener('click', () => {
         auth.isDemo = true;
         auth.pat = '';
+        lastAuthError = '';
+        const errBox = document.getElementById('setup-error-box');
+        if (errBox) errBox.style.display = 'none';
         safeSetStorage(STORAGE_KEY_AUTH, auth);
         window.closeSetupModal();
         loadDemoData();
@@ -3045,8 +3093,10 @@
 
     bindSlider('slider-ig2', 'val-ig2', 'ig2Posts', '', true);
     bindSlider('slider-yt', 'val-yt', 'ytPosts', '', true);
+    bindSlider('slider-pipeline-capacity', 'val-pipeline-capacity', 'maxPipelineCapacity', ' clips');
     bindSlider('slider-stream-yield', 'val-stream-yield', 'streamYield');
     bindSlider('slider-clip-spacing', 'val-clip-spacing', 'clipSpacing', 's');
+    bindSlider('slider-spike-sigma', 'val-spike-sigma', 'minSpikeSigma', ' σ');
 
     // Stepper Buttons (- / +) for Daily Post Counts (0..5)
     document.querySelectorAll('.btn-stepper').forEach(btn => {
@@ -3242,8 +3292,10 @@
               };
 
               if (!targetCfg.twitch_clipper) targetCfg.twitch_clipper = {};
+              targetCfg.twitch_clipper.max_pipeline_capacity = safeInt(settings.maxPipelineCapacity, 50);
               targetCfg.twitch_clipper.max_clips_per_vod = safeInt(settings.streamYield, 10);
               targetCfg.twitch_clipper.min_clip_spacing_sec = safeInt(settings.clipSpacing, 300);
+              targetCfg.twitch_clipper.min_spike_sigma = parseFloat(settings.minSpikeSigma) || 2.6;
 
               targetCfg.content_safety = {
                 ...(targetCfg.content_safety || {}),
