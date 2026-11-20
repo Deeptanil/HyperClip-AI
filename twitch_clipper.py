@@ -118,6 +118,9 @@ def enforce_storage_limits(config: dict):
     - SAFEGUARD: NEVER deletes unposted clips in stream_pipeline/.
     """
     ensure_dirs()
+    # 0. Clean fully posted clips from stream_pipeline first (delete .mp4 if all targets completed)
+    cleanup_fully_posted_clips(STREAM_PIPELINE_DIR, STREAM_POSTED_DIR, TWITCH_LOG_FILE)
+
     sg = config.get("storage_governor", {})
     if not sg.get("enabled", True):
         return
@@ -647,6 +650,124 @@ def cleanup_expired_discarded_clips(pipeline_dir: str = STREAM_PIPELINE_DIR, exp
     return deleted
 
 
+def cleanup_fully_posted_clips(pipeline_dir: str = STREAM_PIPELINE_DIR, posted_dir: str = STREAM_POSTED_DIR, log_path: str = TWITCH_LOG_FILE) -> list[str]:
+    """
+    Scans output/stream_pipeline/ for clips that have already been posted to their destinations.
+    - If a clip has completed ALL target destinations (e.g., YouTube posted + verified, and Instagram posted),
+      immediately deletes its bulky .mp4 file to save repository storage and moves its lightweight .json
+      metadata to stream_posted/ for audit/dashboard history.
+    - SAFEGUARD: If a clip is still scheduled for another destination (e.g., posted on YouTube, but still
+      waiting to post on Instagram @solvikz or @loopablez), the .mp4 is SAFELY PRESERVED in stream_pipeline/.
+    Returns a list of clip names that had their storage freed.
+    """
+    if not os.path.exists(pipeline_dir):
+        return []
+
+    ensure_dirs()
+    cleaned = []
+
+    # 1. Build a map of all successfully published clips across all accounts from posted_twitch_log.json
+    published_clip_platforms: dict[str, set[str]] = {}
+    if os.path.exists(log_path):
+        try:
+            with open(log_path, "r", encoding="utf-8") as f:
+                log_entries = json.load(f)
+            if isinstance(log_entries, list):
+                for entry in log_entries:
+                    uploads = entry.get("uploads", {})
+                    clip_map = entry.get("upload_clip_map", {})
+                    clips_used = entry.get("clips_used", [])
+                    for slot, url in uploads.items():
+                        if not isinstance(url, str) or url.lower().startswith("failed"):
+                            continue
+                        cname = clip_map.get(slot)
+                        if not cname and len(clips_used) == 1:
+                            cname = clips_used[0]
+                        if cname:
+                            base_cname = os.path.splitext(cname)[0]
+                            if base_cname not in published_clip_platforms:
+                                published_clip_platforms[base_cname] = set()
+                            if "youtube" in slot.lower():
+                                published_clip_platforms[base_cname].add("youtube")
+                            if "instagram_1" in slot.lower():
+                                published_clip_platforms[base_cname].add("ig_1")
+                            elif "instagram_2" in slot.lower():
+                                published_clip_platforms[base_cname].add("ig_2")
+                            elif "instagram" in slot.lower():
+                                published_clip_platforms[base_cname].add("ig_1")
+        except Exception as e:
+            print(f"[!] Warning reading {log_path} for posted cleanup: {e}")
+
+    # 2. Inspect each staged clip in stream_pipeline/
+    for fname in os.listdir(pipeline_dir):
+        if not fname.endswith(".json"):
+            continue
+        base_name = os.path.splitext(fname)[0]
+        json_path = os.path.join(pipeline_dir, fname)
+        mp4_path = os.path.join(pipeline_dir, base_name + ".mp4")
+
+        try:
+            with open(json_path, "r", encoding="utf-8") as f:
+                meta = json.load(f)
+
+            # Determine original or current targets
+            targets = meta.get("target_accounts")
+            if targets is None:
+                post_to_yt = meta.get("post_to_yt", False)
+                assigned_ig = meta.get("assigned_ig") or meta.get("account") or "ig_1"
+                if assigned_ig not in ["ig_1", "ig_2"]:
+                    assigned_ig = "ig_1"
+                targets = [assigned_ig]
+                if post_to_yt:
+                    targets.append("youtube")
+
+            # Update targets against known published records
+            published_on = published_clip_platforms.get(base_name, set())
+
+            # Mark YouTube status
+            if meta.get("posted_to_youtube") or ("youtube" in published_on):
+                meta["posted_to_youtube"] = True
+                if "youtube" in targets:
+                    targets.remove("youtube")
+
+            # Mark Instagram status
+            if meta.get("posted_to_instagram") or ("ig_1" in published_on) or ("ig_2" in published_on):
+                meta["posted_to_instagram"] = True
+                if "ig_1" in targets:
+                    targets.remove("ig_1")
+                if "ig_2" in targets:
+                    targets.remove("ig_2")
+
+            meta["target_accounts"] = targets
+            _save_json(json_path, meta)
+
+            # 3. If zero remaining targets -> ALL destinations posted and verified!
+            if len(targets) == 0:
+                print(f"[+] Storage freed: Deleted fully posted video '{base_name}.mp4' (All destinations complete).")
+                if os.path.exists(mp4_path):
+                    try:
+                        os.remove(mp4_path)
+                    except OSError as e:
+                        print(f"[-] Could not delete '{mp4_path}': {e}")
+
+                # Move JSON metadata to stream_posted/ for archive history
+                posted_json = os.path.join(posted_dir, fname)
+                if os.path.exists(json_path):
+                    try:
+                        shutil.move(json_path, posted_json)
+                    except OSError:
+                        pass
+                cleaned.append(base_name)
+            else:
+                remaining_desc = ", ".join(targets)
+                print(f"[*] SAFEGUARD: Retaining '{base_name}.mp4' in stream_pipeline/ for remaining destination(s): {remaining_desc}")
+
+        except Exception as e:
+            print(f"[!] Error checking posted status for {fname}: {e}")
+
+    return cleaned
+
+
 def _pick_next_ig_action(acc_cfg: dict, acc_stats: dict, last_any_ig: datetime | None, cross_gap_min: int = 25, force: bool = False) -> str | None:
     """
     Returns 'regular', 'trial', or None for an Instagram account slot.
@@ -1168,12 +1289,16 @@ if __name__ == "__main__":
     parser.add_argument("--check-only", action="store_true", help="Check live/VOD targets and exit")
     parser.add_argument("--force", action="store_true", help="Bypass daily cap and cooldown")
     parser.add_argument("--platforms", nargs="+", default=["youtube", "instagram"])
+    parser.add_argument("--cleanup-posted", action="store_true", help="Delete storage for clips that completed all targets")
     parser.add_argument("--ig-slot", type=int, default=None, help="Target a specific IG account slot (1 or 2)")
     parser.add_argument("--ig-kind", choices=["auto", "regular", "trial"], default="auto", help="Force IG post type")
     args = parser.parse_args()
 
     cfg = load_config()
-    if args.check_only:
+    if args.cleanup_posted:
+        c = cleanup_fully_posted_clips(STREAM_PIPELINE_DIR, STREAM_POSTED_DIR, TWITCH_LOG_FILE)
+        print(f"[*] Cleanup complete: {len(c)} fully posted clip(s) had their storage freed.")
+    elif args.check_only:
         t = find_clippable_targets(cfg)
         print(json.dumps(t, indent=2))
     elif args.harvest_only:

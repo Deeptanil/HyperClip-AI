@@ -1339,6 +1339,8 @@
             ${clip.smart_edited ? '<span class="clip-smart-edit-tag">⏩ SMART EDITED</span>' : ''}
             ${clip.nsfw_censored ? '<span class="clip-censored-tag">AUTO-CENSORED</span>' : ''}
             ${isTrial ? '<span class="clip-trial-tag">TRIAL REEL</span>' : ''}
+            ${clip.posted_to_youtube ? '<span class="clip-trial-tag" style="background:rgba(34,197,94,0.15);color:#22c55e;border-color:rgba(34,197,94,0.3)">✓ POSTED TO YT</span>' : ''}
+            ${clip.posted_to_instagram ? '<span class="clip-trial-tag" style="background:rgba(34,197,94,0.15);color:#22c55e;border-color:rgba(34,197,94,0.3)">✓ POSTED TO IG</span>' : ''}
           </div>
           <div class="clip-caption">${clip.caption}</div>
           <div class="clip-metrics">
@@ -1361,17 +1363,18 @@
       `;
 
       const prevBox = card.querySelector('.clip-preview-container');
+      const activeQueue = pipelineClips.filter(c => !c.discarded);
       if (prevBox) {
-        prevBox.onclick = () => window.openPreviewModal(clip);
+        prevBox.onclick = () => window.openPreviewModal(clip, activeQueue);
         prevBox.onkeydown = (e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            window.openPreviewModal(clip);
+            window.openPreviewModal(clip, activeQueue);
           }
         };
       }
 
-      card.querySelector('.btn-preview').onclick = () => window.openPreviewModal(clip);
+      card.querySelector('.btn-preview').onclick = () => window.openPreviewModal(clip, activeQueue);
       card.querySelector('.btn-discard').onclick = () => discardClip(clip, false);
 
       grid.appendChild(card);
@@ -1459,7 +1462,7 @@
       const previewWrap = card.querySelector('.clip-preview-wrap');
       if (previewWrap) {
         previewWrap.style.cursor = 'pointer';
-        previewWrap.onclick = () => window.openPreviewModal(clip);
+        previewWrap.onclick = () => window.openPreviewModal(clip, discardedClips);
       }
 
       card.querySelector('.btn-restore').onclick = (e) => {
@@ -1498,11 +1501,44 @@
   };
 
   let activePreviewSessionId = 0;
+  let currentPreviewQueue = [];
+  let currentPreviewIndex = -1;
 
-  window.openPreviewModal = async function (clip) {
+  window.openPreviewModal = async function (clip, queueList) {
     const currentSession = ++activePreviewSessionId;
     selectedClip = clip;
     isPreviewModalActive = true;
+
+    // Track active preview queue & current index for sibling navigation
+    if (Array.isArray(queueList) && queueList.length > 0) {
+      currentPreviewQueue = queueList;
+    } else if (!currentPreviewQueue || currentPreviewQueue.length === 0 || !currentPreviewQueue.some(c => c.id === clip.id || c.filename === clip.filename)) {
+      if (clip.discarded) {
+        currentPreviewQueue = pipelineClips.filter(c => c.discarded);
+      } else {
+        currentPreviewQueue = pipelineClips.filter(c => !c.discarded);
+      }
+    }
+
+    currentPreviewIndex = currentPreviewQueue.findIndex(c => c.id === clip.id || c.filename === clip.filename);
+    if (currentPreviewIndex < 0) currentPreviewIndex = 0;
+
+    // Update queue counter & nav buttons (both floating & header controls)
+    const counterEl = document.getElementById('preview-queue-counter');
+    if (counterEl) {
+      const total = Math.max(1, currentPreviewQueue.length);
+      counterEl.innerText = `Clip ${currentPreviewIndex + 1} / ${total}`;
+    }
+    const btnPrev = document.getElementById('btn-preview-prev');
+    const btnNext = document.getElementById('btn-preview-next');
+    const btnHeaderPrev = document.getElementById('btn-header-prev');
+    const btnHeaderNext = document.getElementById('btn-header-next');
+    const hasPrev = currentPreviewIndex > 0;
+    const hasNext = currentPreviewIndex < currentPreviewQueue.length - 1;
+    if (btnPrev) btnPrev.disabled = !hasPrev;
+    if (btnHeaderPrev) btnHeaderPrev.disabled = !hasPrev;
+    if (btnNext) btnNext.disabled = !hasNext;
+    if (btnHeaderNext) btnHeaderNext.disabled = !hasNext;
 
     // Abort any previous pending blob download to save bandwidth and memory
     if (activePreviewAbortController) {
@@ -1661,6 +1697,32 @@
     loadNextSource();
   };
 
+  window.navigatePreview = function (delta) {
+    if (!currentPreviewQueue || currentPreviewQueue.length === 0) return;
+    const targetIdx = currentPreviewIndex + delta;
+    if (targetIdx >= 0 && targetIdx < currentPreviewQueue.length) {
+      window.openPreviewModal(currentPreviewQueue[targetIdx], currentPreviewQueue);
+    }
+  };
+
+  // Keyboard navigation for preview modal (ArrowLeft / ArrowRight / Escape)
+  window.addEventListener('keydown', (e) => {
+    const modal = document.getElementById('modal-preview');
+    if (!modal || !modal.classList.contains('open')) return;
+    const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+    if (activeTag === 'input' || activeTag === 'textarea') return;
+
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      window.navigatePreview(-1);
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      window.navigatePreview(1);
+    } else if (e.key === 'Escape') {
+      window.closePreviewModal && window.closePreviewModal();
+    }
+  });
+
   window.closePreviewModal = function () {
     activePreviewSessionId++; // Invalidate any running session
     isPreviewModalActive = false;
@@ -1701,14 +1763,52 @@
 
   async function getAuthoritativeGitSha(filePath, branch) {
     if (!auth.pat || auth.isDemo) return null;
+    const cleanBranch = (branch || auth.branch || 'master').replace(/^refs\/heads\//, '').trim();
     const reqHeaders = {
       'Authorization': `token ${auth.pat.trim()}`,
       'Accept': 'application/vnd.github.v3+json'
     };
 
-    // 1. Direct Git DB Commit Tree lookup - bypasses GitHub Contents API CDN cache completely!
+    // 1. Direct Git Database Ref -> Commit -> Tree lookup (bypasses all CDN & Web caches)
     try {
-      const commitRes = await fetch(`https://api.github.com/repos/${auth.repo}/commits/${branch}?_t=${Date.now()}`, {
+      const refRes = await fetch(`https://api.github.com/repos/${auth.repo}/git/ref/heads/${cleanBranch}?_t=${Date.now()}`, {
+        headers: reqHeaders,
+        cache: 'no-store'
+      });
+      if (refRes.ok) {
+        const refData = await refRes.json();
+        const commitSha = refData.object && refData.object.sha;
+        if (commitSha) {
+          const cRes = await fetch(`https://api.github.com/repos/${auth.repo}/git/commits/${commitSha}?_t=${Date.now()}`, {
+            headers: reqHeaders,
+            cache: 'no-store'
+          });
+          if (cRes.ok) {
+            const cData = await cRes.json();
+            const treeSha = cData.tree && cData.tree.sha;
+            if (treeSha) {
+              const treeRes = await fetch(`https://api.github.com/repos/${auth.repo}/git/trees/${treeSha}?recursive=1&_t=${Date.now()}`, {
+                headers: reqHeaders,
+                cache: 'no-store'
+              });
+              if (treeRes.ok) {
+                const treeData = await treeRes.json();
+                const item = (treeData.tree || []).find(f => f.path === filePath);
+                if (item && item.sha) {
+                  return item.sha;
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Git DB ref lookup fallback:', e);
+    }
+
+    // 2. Direct Commits API fallback
+    try {
+      const commitRes = await fetch(`https://api.github.com/repos/${auth.repo}/commits/${cleanBranch}?_t=${Date.now()}`, {
         headers: reqHeaders,
         cache: 'no-store'
       });
@@ -1730,12 +1830,12 @@
         }
       }
     } catch (e) {
-      console.warn('Git DB tree SHA lookup fallback:', e);
+      console.warn('Git DB commits lookup fallback:', e);
     }
 
-    // 2. Contents API with cache: 'no-store'
+    // 3. Contents API with cache-busting query parameter
     try {
-      const res = await fetch(`https://api.github.com/repos/${auth.repo}/contents/${filePath}?ref=${branch}&_t=${Date.now()}`, {
+      const res = await fetch(`https://api.github.com/repos/${auth.repo}/contents/${filePath}?ref=${cleanBranch}&_nocache=${Date.now()}_${Math.random()}`, {
         headers: reqHeaders,
         cache: 'no-store'
       });
@@ -2371,7 +2471,7 @@
       if (dot) dot.className = 'dot danger';
       let label = 'Sync Error';
       const msg = String(err && err.message ? err.message : '').toLowerCase();
-      if (msg.includes('bad credentials') || msg.includes('401') || msg.includes('token')) {
+      if (msg.includes('bad credentials') || msg.includes('401') || (msg.includes('token') && !msg.includes('expiry') && !msg.includes('expiration'))) {
         label = 'Bad Token';
       } else if (msg.includes('rate limit') || msg.includes('403')) {
         label = 'Rate Limit';
@@ -2380,7 +2480,7 @@
       } else if (msg.includes('fetch') || msg.includes('network') || !navigator.onLine) {
         label = 'Offline';
       } else {
-        label = 'Auth Error';
+        label = 'Sync Error';
       }
       if (statusText) statusText.innerText = label;
       const pill = document.getElementById('conn-status-pill');
@@ -3178,6 +3278,20 @@
               if (putRes.status === 409 || putRes.status === 422) {
                 await new Promise(r => setTimeout(r, 400 * (attempt + 1)));
                 currentSha = await getAuthoritativeGitSha('config.json', pBranch);
+                if (!currentSha) {
+                  try {
+                    const freshRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json?ref=${pBranch}&_r=${Date.now()}_${Math.random()}`, {
+                      headers,
+                      cache: 'no-store'
+                    });
+                    if (freshRes.ok) {
+                      const freshData = await freshRes.json();
+                      currentSha = freshData.sha;
+                    }
+                  } catch (freshErr) {
+                    console.warn('Fallback fresh contents sha fetch error:', freshErr);
+                  }
+                }
               } else {
                 break;
               }
