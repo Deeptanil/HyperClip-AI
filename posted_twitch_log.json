@@ -414,5 +414,20 @@
       "2026-11-20-gta_6_is_too_real.mp4",
       "2026-11-20-gta_6_is_too_hard.mp4"
     ]
+  },
+  {
+    "timestamp": "2026-11-20T09:49:55.711440+00:00",
+    "uploads": {
+      "youtube": "https://youtube.com/shorts/Z0Pei-qOJ9Y"
+    },
+    "upload_clip_map": {
+      "youtube": "2026-11-18-he_is_inside_15_seconds.mp4"
+    },
+    "upload_captions": {
+      "youtube": "Jynxzi completely lost his mind when the enemy breached and planted the defuser in under fifteen seconds. How is your team supposed to defend against that kind of speed? #Jynxzi #RainbowSixSiege #GamingMoments #R6"
+    },
+    "clips_used": [
+      "2026-11-18-he_is_inside_15_seconds.mp4"
+    ]
   }
 ]
