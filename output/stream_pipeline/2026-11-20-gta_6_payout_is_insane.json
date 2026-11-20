@@ -1,0 +1,42 @@
+{
+  "streamer": "KaiCenat",
+  "username": "kaicenat",
+  "vod_id": "2932305259",
+  "game": "Grand Theft Auto VI",
+  "peak_sec": 157177,
+  "hype_score": 207.75,
+  "z_score": 5.82,
+  "title": "KAI CENAT HITS 17 MILLION ON GTA 6 \ud83e\udd2f\ud83d\udcb8",
+  "caption": "Kai Cenat completely loses his mind seeing his massive payout hit seventeen million live on stream. Can you even imagine making that much cash in your first playthrough? Drop a W in the chat if you're hyped for the game! #KaiCenat #GTA6 #GamingMoments #ViralStream",
+  "hook": "GTA 6 PAYOUT IS INSANE \ud83d\udcb0",
+  "target_accounts": [
+    "ig_1"
+  ],
+  "assigned_ig": "ig_1",
+  "post_to_yt": false,
+  "post_to_ig": true,
+  "posted_to_instagram": false,
+  "posted_to_youtube": false,
+  "priority": 4,
+  "discarded": false,
+  "smart_edited": true,
+  "fast_forward_segments": [
+    {
+      "start": 12.8,
+      "end": 21.4,
+      "speed": 3.0
+    },
+    {
+      "start": 30.58,
+      "end": 32.76,
+      "speed": 3.0
+    }
+  ],
+  "nsfw_censored": false,
+  "nsfw_segments": [],
+  "profanity_bleeped": false,
+  "bleep_segments": [],
+  "target": "Instagram (@solvikz) Only",
+  "created_at": "2026-11-20T09:53:54.144349+00:00",
+  "timestamp": "2026-11-20T09:53:54.144366+00:00"
+}

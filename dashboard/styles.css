@@ -911,6 +911,19 @@ body {
   text-transform: uppercase;
 }
 
+.badge-yt-live {
+  font-size: 8px;
+  font-weight: 800;
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.5);
+  padding: 1px 4px;
+  border-radius: 2px;
+  letter-spacing: 0.5px;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
 .clip-trial-tag {
   display: inline-flex;
   align-items: center;

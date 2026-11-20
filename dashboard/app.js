@@ -258,6 +258,10 @@
     }
     if (ytValEl) {
       ytValEl.innerHTML = `${lastTodayCounts.youtube} / ${settings.ytPosts} <small class="text-dim-unit">${settings.ytPosts === 0 ? 'paused' : 'in 24h'}</small>`;
+      const ytPill = document.querySelector('#stat-yt .status-pill');
+      if (ytPill && !auth.isDemo) {
+        ytPill.innerHTML = `<span class="dot online"></span> ${lastTodayCounts.youtube > 0 ? 'Verified Live' : 'Live Sync'}`;
+      }
     }
   }
 
@@ -271,6 +275,54 @@
   let pendingRenderAfterModal = false;
   let lastSyncSignature = '';
   const metadataCacheBySha = new Map(); // jsonSha -> parsedMetadata cache
+  const ytVerificationCache = new Map(); // videoId -> { live: boolean, title: string, author: string, timestamp: number }
+
+  function extractYouTubeVideoId(url) {
+    if (!url || typeof url !== 'string') return null;
+    const m = url.match(/(?:shorts\/|v=|youtu\.be\/|\/v\/|\/embed\/)([A-Za-z0-9_-]{11})/);
+    return m ? m[1] : null;
+  }
+
+  async function checkYouTubeVideoStatus(url) {
+    const vid = extractYouTubeVideoId(url);
+    if (!vid) return { live: false, videoId: null };
+
+    const cached = ytVerificationCache.get(vid);
+    if (cached && (Date.now() - cached.timestamp < 3600000)) {
+      return cached;
+    }
+
+    try {
+      const res = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${vid}&format=json`, {
+        cache: 'no-store'
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const info = {
+          live: true,
+          videoId: vid,
+          title: data.title || '',
+          author: data.author_name || '',
+          timestamp: Date.now()
+        };
+        ytVerificationCache.set(vid, info);
+        return info;
+      } else {
+        const info = {
+          live: false,
+          videoId: vid,
+          title: '',
+          status: res.status,
+          timestamp: Date.now()
+        };
+        ytVerificationCache.set(vid, info);
+        return info;
+      }
+    } catch (e) {
+      console.warn('YouTube live oEmbed verification error:', e);
+      return { live: true, videoId: vid, title: '', timestamp: Date.now(), unverified: true };
+    }
+  }
 
   // --- Clean SVG Icon Helpers (No Emojis) ---
   const ICONS = {
@@ -1002,6 +1054,7 @@
               <div class="event-footer-right">
                 ${evt.isTrial ? '<span class="badge-trial">TRIAL</span>' : ''}
                 ${evt.isNext ? '<span class="badge-next">NEXT</span>' : ''}
+                ${evt.ytVerified ? '<span class="badge-yt-live" title="Verified live on YouTube">✓ Live</span>' : ''}
                 <span class="event-time">${timeStr}</span>
               </div>
             </div>
@@ -1093,6 +1146,7 @@
               <div style="display:flex;align-items:center;gap:6px;">
                 ${evt.isTrial ? '<span class="badge-trial">TRIAL REEL</span>' : ''}
                 ${evt.isNext ? '<span class="badge-next">NEXT UP</span>' : ''}
+                ${evt.ytVerified ? '<span class="badge-yt-live" title="Verified live on YouTube">✓ Live on YouTube</span>' : ''}
                 <span style="font-size:11px;font-family:var(--font-mono);color:var(--text-dim);">${timeStr}</span>
               </div>
             </div>
@@ -1645,6 +1699,56 @@
     }
   };
 
+  async function getAuthoritativeGitSha(filePath, branch) {
+    if (!auth.pat || auth.isDemo) return null;
+    const reqHeaders = {
+      'Authorization': `token ${auth.pat.trim()}`,
+      'Accept': 'application/vnd.github.v3+json'
+    };
+
+    // 1. Direct Git DB Commit Tree lookup - bypasses GitHub Contents API CDN cache completely!
+    try {
+      const commitRes = await fetch(`https://api.github.com/repos/${auth.repo}/commits/${branch}?_t=${Date.now()}`, {
+        headers: reqHeaders,
+        cache: 'no-store'
+      });
+      if (commitRes.ok) {
+        const commitData = await commitRes.json();
+        const treeSha = commitData.commit && commitData.commit.tree && commitData.commit.tree.sha;
+        if (treeSha) {
+          const treeRes = await fetch(`https://api.github.com/repos/${auth.repo}/git/trees/${treeSha}?_t=${Date.now()}`, {
+            headers: reqHeaders,
+            cache: 'no-store'
+          });
+          if (treeRes.ok) {
+            const treeData = await treeRes.json();
+            const item = (treeData.tree || []).find(f => f.path === filePath);
+            if (item && item.sha) {
+              return item.sha;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Git DB tree SHA lookup fallback:', e);
+    }
+
+    // 2. Contents API with cache: 'no-store'
+    try {
+      const res = await fetch(`https://api.github.com/repos/${auth.repo}/contents/${filePath}?ref=${branch}&_t=${Date.now()}`, {
+        headers: reqHeaders,
+        cache: 'no-store'
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return data.sha;
+      }
+    } catch (e) {
+      console.warn('Contents API SHA lookup fallback:', e);
+    }
+    return null;
+  }
+
   async function updateGitHubClipMetadata(clip, updates) {
     if (!auth.pat || auth.isDemo) return false;
     try {
@@ -1655,7 +1759,10 @@
       const cBranch = auth.contentBranch || 'content';
       const targetPath = clip.jsonPath || (clip.path ? clip.path.replace(/\.mp4$/i, '.json') : `output/stream_pipeline/${clip.filename.replace(/\.mp4$/i, '.json')}`);
 
-      const getRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/${targetPath}?ref=${cBranch}`, { headers });
+      const getRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/${targetPath}?ref=${cBranch}&_t=${Date.now()}`, {
+        headers,
+        cache: 'no-store'
+      });
       if (!getRes.ok) return false;
       const getData = await getRes.json();
       const currentContent = JSON.parse(decodeURIComponent(escape(atob(getData.content))));
@@ -1663,17 +1770,30 @@
       const merged = { ...currentContent, ...updates };
       const newBase64 = btoa(unescape(encodeURIComponent(JSON.stringify(merged, null, 2))));
 
-      const putRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/${targetPath}`, {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify({
-          message: `chore: update clip metadata (${updates.priority ? 'prio ' + updates.priority : (updates.discarded ? 'discarded' : 'updated')}) for ${clip.filename}`,
-          content: newBase64,
-          sha: getData.sha,
-          branch: cBranch
-        })
-      });
-      if (putRes.ok) {
+      let shaToUse = await getAuthoritativeGitSha(targetPath, cBranch) || getData.sha;
+
+      let putRes = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        putRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/${targetPath}`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({
+            message: `chore: update clip metadata (${updates.priority ? 'prio ' + updates.priority : (updates.discarded ? 'discarded' : 'updated')}) for ${clip.filename}`,
+            content: newBase64,
+            sha: shaToUse,
+            branch: cBranch
+          })
+        });
+        if (putRes.ok) break;
+        if (putRes.status === 409 || putRes.status === 422) {
+          await new Promise(r => setTimeout(r, 400 * (attempt + 1)));
+          shaToUse = await getAuthoritativeGitSha(targetPath, cBranch) || getData.sha;
+        } else {
+          break;
+        }
+      }
+
+      if (putRes && putRes.ok) {
         const putData = await putRes.json();
         clip.jsonSha = putData.content.sha;
         clip.jsonPath = targetPath;
@@ -1681,8 +1801,8 @@
         metadataCacheBySha.set(getData.sha, merged);
         return true;
       } else {
-        const errBody = await putRes.json().catch(() => ({}));
-        console.warn('GitHub clip metadata PUT failed:', putRes.status, errBody);
+        const errBody = putRes ? await putRes.json().catch(() => ({})) : {};
+        console.warn('GitHub clip metadata PUT failed:', putRes ? putRes.status : 'no response', errBody);
         return false;
       }
     } catch (e) {
@@ -1943,7 +2063,9 @@
 
       // 2. Fetch config.json from production branch (master)
       const pBranch = auth.branch || 'master';
-      const configRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json?ref=${pBranch}`, { headers });
+      const configRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json?ref=${pBranch}&_t=${Date.now()}`, {
+        headers: { ...headers, 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache' }
+      });
       if (configRes.ok) {
         const configData = await configRes.json();
         const contentStr = decodeURIComponent(escape(atob(configData.content)));
@@ -1959,7 +2081,10 @@
       // Try posted_twitch_log.json on content branch, fallback to master
       for (const branchAttempt of [cBranch, pBranch]) {
         try {
-          const logRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/posted_twitch_log.json?ref=${branchAttempt}`, { headers });
+          const logRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/posted_twitch_log.json?ref=${branchAttempt}&_t=${Date.now()}`, {
+            headers,
+            cache: 'no-store'
+          });
           if (logRes.ok) {
             const logData = await logRes.json();
             const logStr = decodeURIComponent(escape(atob(logData.content)));
@@ -2013,6 +2138,27 @@
         } catch (e) {
           console.warn('posted_twitch_log read attempt error:', e);
         }
+      }
+
+      // Live verification for YouTube uploads: only confirmed/live Shorts appear on the dashboard
+      const ytItems = realPosted.filter(p => p.account === 'youtube' && p.url);
+      if (ytItems.length > 0) {
+        await Promise.all(ytItems.map(async (item) => {
+          const ytCheck = await checkYouTubeVideoStatus(item.url);
+          item.ytChecked = true;
+          item.ytLive = ytCheck.live;
+          if (ytCheck.live) {
+            item.ytVerified = true;
+            if (ytCheck.title) item.title = ytCheck.title;
+          }
+        }));
+        // Filter: only confirmed live YouTube videos show on the dashboard
+        realPosted = realPosted.filter(p => {
+          if (p.account === 'youtube') {
+            return p.ytLive === true;
+          }
+          return true;
+        });
       }
 
       // 4. Fetch Real Staged Pipeline Clips from Content Branch
@@ -2424,7 +2570,7 @@
   }
 
   function applyRemoteConfig(cfg) {
-    if (activeTab === 'settings' || isSettingsDirty) {
+    if (activeTab === 'settings' || isSettingsDirty || document.querySelector('#view-settings.active') || document.activeElement?.closest('#view-settings')) {
       // Do not overwrite user controls while user is actively editing or reviewing settings
       return;
     }
@@ -2922,10 +3068,19 @@
               'Accept': 'application/vnd.github.v3+json',
               'Content-Type': 'application/json'
             };
+            const noCacheHeaders = {
+              ...headers,
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache'
+            };
             const pBranch = auth.branch || 'master';
+            const cBranch = auth.contentBranch || 'content';
 
-            // 1. Get current config.json to get sha and existing structure
-            const curRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json?ref=${pBranch}`, { headers });
+            // 1. Fetch current config.json with cache-busting to preserve existing keys/structure
+            const curRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json?ref=${pBranch}&_t=${Date.now()}`, {
+              headers,
+              cache: 'no-store'
+            });
             if (!curRes.ok) {
               const errJson = await curRes.json().catch(() => ({}));
               throw new Error(errJson.message || `Could not read config.json (HTTP ${curRes.status})`);
@@ -2934,106 +3089,121 @@
             const curStr = decodeURIComponent(escape(atob(curData.content)));
             const cfg = JSON.parse(curStr);
 
-            // 2. Update Daily Limits (explicitly supporting 0 = paused)
-            if (!cfg.publishing_schedule) cfg.publishing_schedule = {};
-            if (!cfg.publishing_schedule.youtube) cfg.publishing_schedule.youtube = {};
+            const applyFormToConfig = (targetCfg) => {
+              if (!targetCfg.publishing_schedule) targetCfg.publishing_schedule = {};
+              if (!targetCfg.publishing_schedule.youtube) targetCfg.publishing_schedule.youtube = {};
+              const ytN = Math.max(0, safeInt(settings.ytPosts, 0));
+              targetCfg.publishing_schedule.youtube.enabled = ytN > 0;
+              targetCfg.publishing_schedule.youtube.shorts_per_day = ytN;
+              targetCfg.publishing_schedule.youtube.hard_daily_ceiling = ytN;
+
+              if (Array.isArray(targetCfg.publishing_schedule.instagram_accounts)) {
+                const ig1N = Math.max(0, safeInt(settings.ig1Posts, 0));
+                const ig1Trial = Math.min(ig1N, Math.max(0, safeInt(settings.ig1TrialPosts, 0)));
+                const acc1 = targetCfg.publishing_schedule.instagram_accounts.find(a => a.slot === 1);
+                if (acc1) {
+                  acc1.enabled = ig1N > 0;
+                  acc1.trial_per_day = ig1Trial;
+                  acc1.regular_per_day = Math.max(0, ig1N - ig1Trial);
+                  acc1.hard_daily_ceiling = ig1N;
+                  if (ig1N > 0) delete acc1.disabled_reason;
+                }
+
+                const ig2N = Math.max(0, safeInt(settings.ig2Posts, 0));
+                const acc2 = targetCfg.publishing_schedule.instagram_accounts.find(a => a.slot === 2);
+                if (acc2) {
+                  acc2.enabled = ig2N > 0;
+                  acc2.regular_per_day = ig2N;
+                  acc2.trial_per_day = 0;
+                  acc2.hard_daily_ceiling = ig2N;
+                  if (ig2N > 0) delete acc2.disabled_reason;
+                }
+              }
+
+              targetCfg.publishing_schedule.token_expiry_date = settings.tokenExpiryDate || '2027-01-17';
+              if (Array.isArray(targetCfg.publishing_schedule.instagram_accounts)) {
+                targetCfg.publishing_schedule.instagram_accounts.forEach(a => {
+                  a.token_expiry_date = settings.tokenExpiryDate || '2027-01-17';
+                });
+              }
+
+              targetCfg.publishing_schedule.priority_rules = {
+                prioritized_categories: [...(settings.prioritizedCategories || [])],
+                deprioritized_categories: [...(settings.deprioritizedCategories || [])]
+              };
+
+              if (!targetCfg.twitch_clipper) targetCfg.twitch_clipper = {};
+              targetCfg.twitch_clipper.max_clips_per_vod = safeInt(settings.streamYield, 10);
+              targetCfg.twitch_clipper.min_clip_spacing_sec = safeInt(settings.clipSpacing, 300);
+
+              targetCfg.content_safety = {
+                ...(targetCfg.content_safety || {}),
+                auto_censor_nsfw: Boolean(settings.autoCensorNsfw),
+                censor_mode: settings.censorMode || 'blur',
+                max_nsfw_ratio_before_reject: (targetCfg.content_safety && targetCfg.content_safety.max_nsfw_ratio_before_reject) || 0.65
+              };
+            };
+
+            applyFormToConfig(cfg);
             const ytN = Math.max(0, safeInt(settings.ytPosts, 0));
-            cfg.publishing_schedule.youtube.enabled = ytN > 0;
-            cfg.publishing_schedule.youtube.shorts_per_day = ytN;
-            cfg.publishing_schedule.youtube.hard_daily_ceiling = ytN;
-
-            if (Array.isArray(cfg.publishing_schedule.instagram_accounts)) {
-              const ig1N = Math.max(0, safeInt(settings.ig1Posts, 0));
-              const ig1Trial = Math.min(ig1N, Math.max(0, safeInt(settings.ig1TrialPosts, 0)));
-              const acc1 = cfg.publishing_schedule.instagram_accounts.find(a => a.slot === 1);
-              if (acc1) {
-                acc1.enabled = ig1N > 0;
-                acc1.trial_per_day = ig1Trial;
-                acc1.regular_per_day = Math.max(0, ig1N - ig1Trial);
-                acc1.hard_daily_ceiling = ig1N;
-                if (ig1N > 0) delete acc1.disabled_reason;
-              }
-
-              const ig2N = Math.max(0, safeInt(settings.ig2Posts, 0));
-              const acc2 = cfg.publishing_schedule.instagram_accounts.find(a => a.slot === 2);
-              if (acc2) {
-                acc2.enabled = ig2N > 0;
-                acc2.regular_per_day = ig2N;
-                acc2.trial_per_day = 0;
-                acc2.hard_daily_ceiling = ig2N;
-                if (ig2N > 0) delete acc2.disabled_reason;
-              }
-            }
-
-            // 2b. Update Token Expiry Date
-            cfg.publishing_schedule.token_expiry_date = settings.tokenExpiryDate || '2027-01-17';
-            if (Array.isArray(cfg.publishing_schedule.instagram_accounts)) {
-              cfg.publishing_schedule.instagram_accounts.forEach(a => {
-                a.token_expiry_date = settings.tokenExpiryDate || '2027-01-17';
-              });
-            }
-
-            // 3. Update Category / Game Priority Rules
-            cfg.publishing_schedule.priority_rules = {
-              prioritized_categories: [...(settings.prioritizedCategories || [])],
-              deprioritized_categories: [...(settings.deprioritizedCategories || [])]
-            };
-
-            // 4. Update Clipper Yield & Spacing
-            if (!cfg.twitch_clipper) cfg.twitch_clipper = {};
-            cfg.twitch_clipper.max_clips_per_vod = safeInt(settings.streamYield, 10);
-            cfg.twitch_clipper.min_clip_spacing_sec = safeInt(settings.clipSpacing, 300);
-
-            // 5. Update NSFW Auto-Censor Safety Settings
-            cfg.content_safety = {
-              ...(cfg.content_safety || {}),
-              auto_censor_nsfw: Boolean(settings.autoCensorNsfw),
-              censor_mode: settings.censorMode || 'blur',
-              max_nsfw_ratio_before_reject: (cfg.content_safety && cfg.content_safety.max_nsfw_ratio_before_reject) || 0.65
-            };
-
             const updatedJsonStr = JSON.stringify(cfg, null, 2);
             const b64 = btoa(unescape(encodeURIComponent(updatedJsonStr)));
 
-            // Commit updated config.json to GitHub
-            let putRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json`, {
-              method: 'PUT',
-              headers,
-              body: JSON.stringify({
-                message: `chore(config): update daily limits (YT=${ytN}, IG1=${settings.ig1Posts}, IG2=${settings.ig2Posts}) & priority rules via dashboard`,
-                content: b64,
-                sha: curData.sha,
-                branch: pBranch
-              })
-            });
+            // 2. Fetch authoritative Git SHA via Git Trees API (never cached by GitHub CDN)
+            let currentSha = await getAuthoritativeGitSha('config.json', pBranch) || curData.sha;
 
-            // If 409 conflict occurs (concurrent commit / stale sha), fetch fresh sha and retry once
-            if (putRes.status === 409) {
-              const freshRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json?ref=${pBranch}&_t=${Date.now()}`, { headers });
-              if (freshRes.ok) {
-                const freshData = await freshRes.json();
-                putRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json`, {
-                  method: 'PUT',
-                  headers,
-                  body: JSON.stringify({
-                    message: `chore(config): update daily limits (YT=${ytN}, IG1=${settings.ig1Posts}, IG2=${settings.ig2Posts}) & priority rules via dashboard`,
-                    content: b64,
-                    sha: freshData.sha,
-                    branch: pBranch
-                  })
-                });
+            // 3. Commit updated config.json with auto-retry on 409/422 conflicts
+            let putRes = null;
+            for (let attempt = 0; attempt < 3; attempt++) {
+              putRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json`, {
+                method: 'PUT',
+                headers,
+                body: JSON.stringify({
+                  message: `chore(config): update daily limits (YT=${ytN}, IG1=${settings.ig1Posts}, IG2=${settings.ig2Posts}) & priority rules via dashboard`,
+                  content: b64,
+                  sha: currentSha,
+                  branch: pBranch
+                })
+              });
+              if (putRes.ok) break;
+              if (putRes.status === 409 || putRes.status === 422) {
+                await new Promise(r => setTimeout(r, 400 * (attempt + 1)));
+                currentSha = await getAuthoritativeGitSha('config.json', pBranch);
+              } else {
+                break;
               }
             }
 
-            if (putRes.ok) {
+            if (putRes && putRes.ok) {
+              // Also keep content branch config.json in sync if distinct
+              if (cBranch && cBranch !== pBranch) {
+                try {
+                  const contentSha = await getAuthoritativeGitSha('config.json', cBranch);
+                  if (contentSha) {
+                    await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json`, {
+                      method: 'PUT',
+                      headers,
+                      body: JSON.stringify({
+                        message: `chore(config): sync config to ${cBranch} via dashboard`,
+                        content: b64,
+                        sha: contentSha,
+                        branch: cBranch
+                      })
+                    });
+                  }
+                } catch (syncErr) {
+                  console.warn('Content branch config sync optional note:', syncErr);
+                }
+              }
+
               isSettingsDirty = false;
               calculateDynamicSpacing();
               renderCalendar();
               renderPipelineQueue();
               alert(`Settings saved to GitHub (${pBranch}/config.json)!\n\n• YouTube Shorts: ${ytN}/day\n• IG @solvikz: ${settings.ig1Posts}/day\n• IG @loopablez: ${settings.ig2Posts}/day\n• Prioritized Categories: ${(settings.prioritizedCategories || []).join(', ') || 'None'}\n• Deprioritized Categories: ${(settings.deprioritizedCategories || []).join(', ') || 'None'}`);
             } else {
-              const errJson = await putRes.json().catch(() => ({}));
-              throw new Error(errJson.message || `GitHub commit failed (HTTP ${putRes.status})`);
+              const errJson = putRes ? await putRes.json().catch(() => ({})) : {};
+              throw new Error(errJson.message || `GitHub commit failed (HTTP ${putRes ? putRes.status : 'network error'})`);
             }
           } catch (e) {
             console.error('Failed to commit config to GitHub:', e);
@@ -3181,11 +3351,18 @@
               'Accept': 'application/vnd.github.v3+json',
               'Content-Type': 'application/json'
             };
-            const curRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json?ref=${pBranch}`, { headers });
+            const noCacheHeaders = {
+              ...headers,
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache'
+            };
+            let curRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json?ref=${pBranch}&_t=${Date.now()}`, {
+              headers: noCacheHeaders
+            });
             if (curRes.ok) {
-              const curData = await curRes.json();
-              const curStr = decodeURIComponent(escape(atob(curData.content)));
-              const cfg = JSON.parse(curStr);
+              let curData = await curRes.json();
+              let curStr = decodeURIComponent(escape(atob(curData.content)));
+              let cfg = JSON.parse(curStr);
               if (!cfg.publishing_schedule) cfg.publishing_schedule = {};
               cfg.publishing_schedule.token_expiry_date = val;
               if (Array.isArray(cfg.publishing_schedule.instagram_accounts)) {
@@ -3193,8 +3370,8 @@
                   a.token_expiry_date = val;
                 });
               }
-              const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(cfg, null, 2))));
-              const putRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json`, {
+              let b64 = btoa(unescape(encodeURIComponent(JSON.stringify(cfg, null, 2))));
+              let putRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json`, {
                 method: 'PUT',
                 headers,
                 body: JSON.stringify({
@@ -3204,6 +3381,34 @@
                   branch: pBranch
                 })
               });
+              if (putRes.status === 409 || putRes.status === 422) {
+                const freshRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json?ref=${pBranch}&_t=${Date.now()}`, {
+                  headers: noCacheHeaders
+                });
+                if (freshRes.ok) {
+                  curData = await freshRes.json();
+                  curStr = decodeURIComponent(escape(atob(curData.content)));
+                  cfg = JSON.parse(curStr);
+                  if (!cfg.publishing_schedule) cfg.publishing_schedule = {};
+                  cfg.publishing_schedule.token_expiry_date = val;
+                  if (Array.isArray(cfg.publishing_schedule.instagram_accounts)) {
+                    cfg.publishing_schedule.instagram_accounts.forEach(a => {
+                      a.token_expiry_date = val;
+                    });
+                  }
+                  b64 = btoa(unescape(encodeURIComponent(JSON.stringify(cfg, null, 2))));
+                  putRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json`, {
+                    method: 'PUT',
+                    headers,
+                    body: JSON.stringify({
+                      message: `chore(config): update Meta token expiration date to ${val}`,
+                      content: b64,
+                      sha: curData.sha,
+                      branch: pBranch
+                    })
+                  });
+                }
+              }
               if (putRes.ok) {
                 alert(`Token expiration date (${val}) committed to config.json!`);
               }

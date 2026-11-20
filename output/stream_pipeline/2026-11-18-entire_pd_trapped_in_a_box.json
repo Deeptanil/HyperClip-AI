@@ -1,0 +1,66 @@
+{
+  "streamer": "Deansocool",
+  "username": "deansocool",
+  "vod_id": "2931381500",
+  "game": "Just Chatting",
+  "peak_sec": 27657,
+  "hype_score": 21,
+  "z_score": 6.4,
+  "title": "ENTIRE POLICE DEPARTMENT TRAPPED INSIDE A BOX 📦😂",
+  "caption": "Deansocool somehow managed to trap an entire police department inside a tiny box during chat chaos, leaving everyone completely speechless. Would you have survived being boxed in with the whole cop squad? #Deansocool #GamingMoments #FunnyStreamer #JustChatting",
+  "hook": "TRAPPED THE ENTIRE PD 📦💀",
+  "target_accounts": [
+    "ig_1"
+  ],
+  "assigned_ig": "ig_1",
+  "post_to_yt": false,
+  "post_to_ig": true,
+  "posted_to_instagram": false,
+  "posted_to_youtube": false,
+  "target": "Instagram (@solvikz) Only",
+  "created_at": "2026-11-18T11:05:20.232738+00:00",
+  "timestamp": "2026-11-18T11:05:20.232759+00:00",
+  "duration_sec": 30.4,
+  "smart_edited": true,
+  "fast_forward_segments": [
+    {
+      "start": 2.16,
+      "end": 3.86,
+      "speed": 3
+    },
+    {
+      "start": 4.58,
+      "end": 7.27,
+      "speed": 3
+    },
+    {
+      "start": 9.77,
+      "end": 11.7,
+      "speed": 3
+    },
+    {
+      "start": 13.9,
+      "end": 16.06,
+      "speed": 3
+    },
+    {
+      "start": 18.7,
+      "end": 20.28,
+      "speed": 3
+    }
+  ],
+  "profanity_bleeped": true,
+  "bleep_segments": [
+    [
+      19.74,
+      20.1
+    ]
+  ],
+  "nsfw_censored": false,
+  "nsfw_segments": [],
+  "priority": 4,
+  "discarded": false,
+  "discarded_at": "2026-11-19T14:33:30.926Z",
+  "pre_discard_priority": 3,
+  "ai_retitled": true
+}

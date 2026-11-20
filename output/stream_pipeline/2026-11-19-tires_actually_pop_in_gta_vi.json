@@ -1,0 +1,20 @@
+{
+  "streamer": "Streamer",
+  "username": "streamer",
+  "game": "Grand Theft Auto VI",
+  "title": "GTA 6 TIRES ACTUALLY POP 🤯🚗",
+  "hook": "TIRES ACTUALLY POP NOW 💀",
+  "caption": "Watching the tires physically pop and deflate in real-time in GTA 6 is the next-gen physics detail we never knew we needed. Have you spotted any other insane hidden mechanics in the game yet? #GTA6 #GamingPhysics #Streamer #GTACommunity",
+  "target_accounts": [
+    "ig_1",
+    "youtube"
+  ],
+  "assigned_ig": "ig_1",
+  "post_to_yt": true,
+  "post_to_ig": true,
+  "posted_to_instagram": false,
+  "posted_to_youtube": false,
+  "priority": 4,
+  "discarded": false,
+  "ai_retitled": true
+}
