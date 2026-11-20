@@ -206,14 +206,44 @@ def prune_stream_archive(days: int = 0):
                 pass
 
 
-def harvest_clips(config: dict, max_total_new: int = 10) -> list:
+def get_current_pipeline_count(pipeline_dir: str = STREAM_PIPELINE_DIR) -> int:
+    """
+    Counts active (non-discarded) staged clips currently in stream pipeline storage.
+    """
+    if not os.path.isdir(pipeline_dir):
+        return 0
+    count = 0
+    for fname in os.listdir(pipeline_dir):
+        if fname.endswith(".json"):
+            try:
+                with open(os.path.join(pipeline_dir, fname), "r", encoding="utf-8") as f:
+                    meta = json.load(f)
+                if not meta.get("discarded", False):
+                    count += 1
+            except Exception:
+                count += 1
+    return count
+
+
+def harvest_clips(config: dict, max_total_new: int = None) -> list:
     """
     Scans eligible streamers, downloads unscanned chat windows, detects hype spikes,
     and stages framed + captioned portrait clips into output/stream_pipeline/.
+    Enforces stream-level pipeline capacity gating:
+    - If pipeline is at/above max capacity (default 50), skips downloading new streams.
+    - If below capacity before starting a stream, extracts and stages ALL viral moments
+      from that stream to optimize clips per download without mid-stream truncation.
     """
     ensure_dirs()
     enforce_storage_limits(config)
     tc = config.get("twitch_clipper", {})
+    max_capacity = int(tc.get("max_pipeline_capacity", 50))
+    current_count = get_current_pipeline_count()
+
+    if current_count >= max_capacity:
+        print(f"[*] Pipeline storage limit reached ({current_count}/{max_capacity} clips). Skipping fresh stream downloads.")
+        return []
+
     state = _load_json(STATE_FILE, {"vods": {}})
 
     targets = find_clippable_targets(config)
@@ -221,11 +251,16 @@ def harvest_clips(config: dict, max_total_new: int = 10) -> list:
         print("[*] No streamers currently meet live/VOD eligibility criteria.")
         return []
 
-    print(f"[*] Found {len(targets)} eligible stream/VOD targets.")
+    print(f"[*] Found {len(targets)} eligible stream/VOD targets. Current pipeline: {current_count}/{max_capacity} clips.")
     staged_clips = []
 
     for target in targets:
-        if len(staged_clips) >= max_total_new:
+        # Check capacity at stream boundary before initiating new stream download
+        current_count = get_current_pipeline_count()
+        if current_count >= max_capacity:
+            print(f"[*] Pipeline reached capacity ({current_count}/{max_capacity}) before analyzing {target['display_name']}. Halting stream harvest.")
+            break
+        if max_total_new is not None and len(staged_clips) >= max_total_new:
             break
 
         vod_id = str(target["vod_id"])
@@ -276,7 +311,7 @@ def harvest_clips(config: dict, max_total_new: int = 10) -> list:
         min_spacing = tc.get("min_clip_spacing_sec", 300)
 
         for m in moments:
-            if len(staged_clips) >= max_total_new:
+            if max_total_new is not None and len(staged_clips) >= max_total_new:
                 break
             peak = m["peak_sec"]
             if any(abs(peak - old) < min_spacing for old in already_clipped):
@@ -913,6 +948,13 @@ def trigger_background_clip_generation(config: dict):
     Starts a new GitHub Actions runner via workflow_dispatch to generate fresh clips immediately.
     Falls back to running harvest_clips locally if GITHUB_TOKEN is not configured.
     """
+    tc = config.get("twitch_clipper", {})
+    max_capacity = int(tc.get("max_pipeline_capacity", 50))
+    current_count = get_current_pipeline_count()
+    if current_count >= max_capacity:
+        print(f"[*] Pipeline storage at or above capacity ({current_count}/{max_capacity} clips). Skipping background harvest.")
+        return
+
     token = os.getenv("GITHUB_TOKEN") or os.getenv("GH_TOKEN")
     repo = os.getenv("GITHUB_REPOSITORY")
     if token and repo:
@@ -940,7 +982,7 @@ def trigger_background_clip_generation(config: dict):
 
     # Fallback: harvest locally
     print("[*] Harvesting fresh clips for pipeline queue...")
-    harvest_clips(config, max_total_new=2)
+    harvest_clips(config)
 
 
 def publish_next_clip(
@@ -1021,7 +1063,7 @@ def publish_next_clip(
 
     if len(queued) == 0:
         print("[*] Pipeline empty of publishable clips. Harvesting fresh hype clips from live streams...")
-        harvest_clips(config, max_total_new=3)
+        harvest_clips(config)
         all_mp4s = [f for f in os.listdir(STREAM_PIPELINE_DIR) if f.endswith(".mp4")]
         publishable = [
             f for f in all_mp4s
@@ -1121,7 +1163,7 @@ def publish_next_clip(
             clip_info, meta = _next_clip(for_platform="youtube")
             if not clip_info[0]:
                 print("[*] No clips currently scheduled for YouTube Shorts in pipeline. Harvesting fresh clips...")
-                harvest_clips(config, max_total_new=2)
+                harvest_clips(config)
                 queued = sorted([f for f in os.listdir(STREAM_PIPELINE_DIR) if f.endswith(".mp4")], key=_clip_sort_key)
                 clip_info, meta = _next_clip(for_platform="youtube")
 
@@ -1189,7 +1231,7 @@ def publish_next_clip(
             clip_info, meta = _next_clip(for_platform="instagram", ig_slot=slot)
             if not clip_info[0]:
                 print(f"[*] No queued clips available for Instagram Slot {slot}. Harvesting fresh clips...")
-                harvest_clips(config, max_total_new=2)
+                harvest_clips(config)
                 queued = sorted([f for f in os.listdir(STREAM_PIPELINE_DIR) if f.endswith(".mp4")], key=_clip_sort_key)
                 clip_info, meta = _next_clip(for_platform="instagram", ig_slot=slot)
 
