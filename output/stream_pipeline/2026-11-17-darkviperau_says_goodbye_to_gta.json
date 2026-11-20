@@ -6,9 +6,9 @@
   "peak_sec": 11567,
   "hype_score": 178.5,
   "z_score": 4.87,
-  "title": "END OF AN ERA FOR GTA 😭💔",
+  "title": "END OF AN ERA FOR GTA \ud83d\ude2d\ud83d\udc94",
   "caption": "After thousands of hours and countless memories, Matt finally calls it quits on his legendary GTA journey. Are you sad to see him walk away from the game for good? #darkviperau #gta5 #gtav #gamingcommunity",
-  "hook": "DARKVIPERAU SAYS GOODBYE TO GTA 😭",
+  "hook": "DARKVIPERAU SAYS GOODBYE TO GTA \ud83d\ude2d",
   "target_accounts": [
     "ig_1"
   ],
@@ -27,17 +27,17 @@
     {
       "start": 14.52,
       "end": 16.04,
-      "speed": 3.0
+      "speed": 3
     },
     {
       "start": 18.34,
       "end": 19.72,
-      "speed": 3.0
+      "speed": 3
     },
     {
       "start": 32.06,
       "end": 36.05,
-      "speed": 3.0
+      "speed": 3
     }
   ],
   "profanity_bleeped": false,
@@ -45,6 +45,8 @@
   "nsfw_censored": false,
   "nsfw_segments": [],
   "priority": 3,
-  "discarded": false,
-  "ai_retitled": true
+  "discarded": true,
+  "ai_retitled": true,
+  "discarded_at": "2026-11-20T19:44:34.717Z",
+  "pre_discard_priority": 3
 }

@@ -6,9 +6,9 @@
   "peak_sec": 124492,
   "hype_score": 225.25,
   "z_score": 4.58,
-  "title": "KAI CENAT EXPOSES HIS MOMS SEARCH HISTORY \ud83d\udc80",
+  "title": "KAI CENAT EXPOSES HIS MOMS SEARCH HISTORY 💀",
   "caption": "Kai Cenat completely loses his mind on stream after accidentally revealing what his mom left open on the screen. Would you ever let your mom see your search history? #KaiCenat #GTA6 #Funny #Streamer",
-  "hook": "KAI FOUND HIS MOM'S HISTORY \ud83d\ude2d",
+  "hook": "KAI FOUND HIS MOM'S HISTORY 😭",
   "target_accounts": [
     "ig_1"
   ],
@@ -18,18 +18,18 @@
   "posted_to_instagram": false,
   "posted_to_youtube": false,
   "priority": 4,
-  "discarded": false,
+  "discarded": true,
   "smart_edited": true,
   "fast_forward_segments": [
     {
       "start": 6.19,
       "end": 13.61,
-      "speed": 3.0
+      "speed": 3
     },
     {
       "start": 28.8,
       "end": 33.24,
-      "speed": 3.0
+      "speed": 3
     }
   ],
   "nsfw_censored": true,
@@ -49,5 +49,7 @@
   ],
   "target": "Instagram (@solvikz) Only",
   "created_at": "2026-11-19T23:56:25.665017+00:00",
-  "timestamp": "2026-11-19T23:56:25.665034+00:00"
+  "timestamp": "2026-11-19T23:56:25.665034+00:00",
+  "discarded_at": "2026-11-20T19:46:28.781Z",
+  "pre_discard_priority": 4
 }

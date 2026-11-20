@@ -6,9 +6,9 @@
   "peak_sec": 130077,
   "hype_score": 269.5,
   "z_score": 4.65,
-  "title": "KAI CENAT HYPES UP GTA 6 CHEF \ud83e\udd9e\ud83d\udd25",
+  "title": "KAI CENAT HYPES UP GTA 6 CHEF 🦞🔥",
   "caption": "Kai Cenat loses his mind over the crazy high-end restaurant graphics and presentation in GTA 6 for the very first time. Would you drop your in-game cash on this lobster pasta? #GTA6 #KaiCenat #GamingMoments #GTA6Gameplay",
-  "hook": "GTA 6 FOOD LOOKS INSANE \ud83e\udd2f",
+  "hook": "GTA 6 FOOD LOOKS INSANE 🤯",
   "target_accounts": [
     "ig_1"
   ],
@@ -18,23 +18,23 @@
   "posted_to_instagram": false,
   "posted_to_youtube": false,
   "priority": 4,
-  "discarded": false,
+  "discarded": true,
   "smart_edited": true,
   "fast_forward_segments": [
     {
       "start": 17.48,
       "end": 18.84,
-      "speed": 3.0
+      "speed": 3
     },
     {
       "start": 23.04,
       "end": 24.58,
-      "speed": 3.0
+      "speed": 3
     },
     {
       "start": 32.46,
       "end": 34.01,
-      "speed": 3.0
+      "speed": 3
     }
   ],
   "nsfw_censored": false,
@@ -43,5 +43,7 @@
   "bleep_segments": [],
   "target": "Instagram (@solvikz) Only",
   "created_at": "2026-11-20T04:40:02.062976+00:00",
-  "timestamp": "2026-11-20T04:40:02.062997+00:00"
+  "timestamp": "2026-11-20T04:40:02.062997+00:00",
+  "discarded_at": "2026-11-20T19:43:21.840Z",
+  "pre_discard_priority": 4
 }

@@ -2,8 +2,8 @@
   "streamer": "DarkViperAU",
   "username": "darkviperau",
   "game": "Grand Theft Auto VI",
-  "title": "GTA 6 ALREADY BROKE THIS MAN 🤯",
-  "hook": "ABSOLUTE MELTDOWN OVER A BUG 💀",
+  "title": "GTA 6 ALREADY BROKE THIS MAN \ud83e\udd2f",
+  "hook": "ABSOLUTE MELTDOWN OVER A BUG \ud83d\udc80",
   "caption": "DarkViperAU completely lost his mind after a physics glitch ruined hours of progress in the brand new GTA 6. Have you encountered any game-breaking bugs yet? #GTA6 #DarkViperAU #GamingMoments #StreamerFails",
   "target_accounts": [
     "ig_2",
@@ -15,6 +15,8 @@
   "posted_to_instagram": false,
   "posted_to_youtube": false,
   "priority": 4,
-  "discarded": false,
-  "ai_retitled": true
+  "discarded": true,
+  "ai_retitled": true,
+  "discarded_at": "2026-11-20T19:44:10.249Z",
+  "pre_discard_priority": 2
 }

@@ -6,9 +6,9 @@
   "peak_sec": 28192,
   "hype_score": 205.25,
   "z_score": 4.73,
-  "title": "LACY ACTUALLY JOINED A BIKER GANG 🏍️💨",
+  "title": "LACY ACTUALLY JOINED A BIKER GANG \ud83c\udfcd\ufe0f\ud83d\udca8",
   "caption": "Things got way too real when Lacy decided to roll up on a massive group of heavily armed bikers in the server. Would you have tried to fight them or run away immediately? #lacy #gta #twitch #gaming",
-  "hook": "LACY JOINED A BIKER GANG 🏍️",
+  "hook": "LACY JOINED A BIKER GANG \ud83c\udfcd\ufe0f",
   "target_accounts": [
     "youtube"
   ],
@@ -29,6 +29,8 @@
   "nsfw_censored": false,
   "nsfw_segments": [],
   "priority": 3,
-  "discarded": false,
-  "ai_retitled": true
+  "discarded": true,
+  "ai_retitled": true,
+  "discarded_at": "2026-11-20T19:44:32.777Z",
+  "pre_discard_priority": 3
 }

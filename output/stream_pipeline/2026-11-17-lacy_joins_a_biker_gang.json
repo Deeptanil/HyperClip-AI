@@ -6,9 +6,9 @@
   "peak_sec": 25712,
   "hype_score": 202.25,
   "z_score": 4.64,
-  "title": "LACY JOINS A WILD BIKER GANG 🏍️💨",
+  "title": "LACY JOINS A WILD BIKER GANG \ud83c\udfcd\ufe0f\ud83d\udca8",
   "caption": "Lacy accidentally signed up for a hardcore motorcycle gang and immediately regretted every life choice he made. Would you survive a minute with these crazy bikers? #lacy #gta #twitch #gaming",
-  "hook": "LACY JOINS A BIKER GANG 🏍️",
+  "hook": "LACY JOINS A BIKER GANG \ud83c\udfcd\ufe0f",
   "target_accounts": [
     "ig_1"
   ],
@@ -44,6 +44,8 @@
   "nsfw_censored": false,
   "nsfw_segments": [],
   "priority": 2,
-  "discarded": false,
-  "ai_retitled": true
+  "discarded": true,
+  "ai_retitled": true,
+  "discarded_at": "2026-11-20T19:44:13.745Z",
+  "pre_discard_priority": 2
 }
