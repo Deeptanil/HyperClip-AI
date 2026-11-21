@@ -5,16 +5,15 @@
   "title": "PRETENDING TO BE A COP IN GTA 6 \ud83d\udc6e\u200d\u2642\ufe0f",
   "hook": "BRO THOUGHT HE WAS 12",
   "caption": "Randomly decided to roleplay as a strict police officer on GTA 6 and immediately arrested the wrong NPC. Would you trust this terrible cop with a badge? #GTA6 #Gaming #Streamer #FunnyMoments",
-  "target_accounts": [
-    "ig_1"
-  ],
+  "target_accounts": [],
   "assigned_ig": "ig_1",
   "post_to_yt": true,
   "post_to_ig": true,
-  "posted_to_instagram": false,
+  "posted_to_instagram": true,
   "posted_to_youtube": true,
   "priority": 5,
   "discarded": false,
   "ai_retitled": true,
-  "youtube_url": "https://youtube.com/shorts/OQ0KtsmwgUw"
+  "youtube_url": "https://youtube.com/shorts/OQ0KtsmwgUw",
+  "instagram_url": "https://www.instagram.com/reel/Df_MsRhD4qc/"
 }
