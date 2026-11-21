@@ -10,6 +10,9 @@
   const STORAGE_KEY_AUTH = 'hyperclip_auth_config';
   const STORAGE_KEY_SETTINGS = 'hyperclip_local_settings';
   const STORAGE_KEY_OVERRIDES = 'hyperclip_clip_overrides_v2';
+  const STORAGE_KEY_DATA_CACHE = 'hyperclip_data_cache_v2';
+  const STORAGE_KEY_META_CACHE = 'hyperclip_meta_cache_v1';
+  const STORAGE_KEY_YT_CACHE = 'hyperclip_yt_cache_v1';
 
   function safeGetStorage(key, defaultVal) {
     try {
@@ -287,8 +290,57 @@
   let isPreviewModalActive = false;
   let pendingRenderAfterModal = false;
   let lastSyncSignature = '';
-  const metadataCacheBySha = new Map(); // jsonSha -> parsedMetadata cache
-  const ytVerificationCache = new Map(); // videoId -> { live: boolean, title: string, author: string, timestamp: number }
+  const savedMetaCache = safeGetStorage(STORAGE_KEY_META_CACHE, {});
+  const metadataCacheBySha = new Map(Object.entries(savedMetaCache));
+
+  function persistMetadataCache() {
+    try {
+      const obj = {};
+      metadataCacheBySha.forEach((v, k) => { obj[k] = v; });
+      safeSetStorage(STORAGE_KEY_META_CACHE, obj);
+    } catch (e) {
+      console.warn('Metadata cache persist error:', e);
+    }
+  }
+
+  const savedYtCache = safeGetStorage(STORAGE_KEY_YT_CACHE, {});
+  const ytVerificationCache = new Map(Object.entries(savedYtCache));
+
+  function persistYtCache() {
+    try {
+      const obj = {};
+      ytVerificationCache.forEach((v, k) => { obj[k] = v; });
+      safeSetStorage(STORAGE_KEY_YT_CACHE, obj);
+    } catch (e) {}
+  }
+
+  function loadLocalCachedData() {
+    const cached = safeGetStorage(STORAGE_KEY_DATA_CACHE, null);
+    if (cached && Array.isArray(cached.pipelineClips) && cached.pipelineClips.length > 0) {
+      pipelineClips = cached.pipelineClips;
+      postedClips = Array.isArray(cached.postedClips) ? cached.postedClips : [];
+      if (cached.lastTodayCounts) {
+        lastTodayCounts = cached.lastTodayCounts;
+      }
+      sortPipelineClips();
+      calculateDynamicSpacing();
+      renderCalendar();
+      renderPipelineQueue();
+      renderDiscardedQueue();
+      updateTopStatCards();
+      updateCooldownDisplays();
+      if (cached.totalMediaBytes) {
+        const totalMb = (cached.totalMediaBytes / (1024 * 1024)).toFixed(1);
+        const storagePct = ((cached.totalMediaBytes / (1500 * 1024 * 1024)) * 100).toFixed(1);
+        const storageValEl = document.getElementById('storage-stat-val');
+        const storageDescEl = document.getElementById('storage-stat-desc');
+        if (storageValEl) storageValEl.innerHTML = `${totalMb} MB <small class="text-dim-unit">/ 1500 MB</small>`;
+        if (storageDescEl) storageDescEl.innerText = `${storagePct}% used • Instant cached view`;
+      }
+      return true;
+    }
+    return false;
+  }
 
   function extractYouTubeVideoId(url) {
     if (!url || typeof url !== 'string') return null;
@@ -301,7 +353,7 @@
     if (!vid) return { live: false, videoId: null };
 
     const cached = ytVerificationCache.get(vid);
-    if (cached && (Date.now() - cached.timestamp < 3600000)) {
+    if (cached && (Date.now() - (cached.timestamp || 0) < 14400000)) { // 4 hours
       return cached;
     }
 
@@ -319,6 +371,7 @@
           timestamp: Date.now()
         };
         ytVerificationCache.set(vid, info);
+        persistYtCache();
         return info;
       } else {
         const info = {
@@ -329,6 +382,7 @@
           timestamp: Date.now()
         };
         ytVerificationCache.set(vid, info);
+        persistYtCache();
         return info;
       }
     } catch (e) {
@@ -2180,94 +2234,107 @@
         'Accept': 'application/vnd.github.v3+json'
       };
 
-      // 1. Verify Repository Access
-      const repoRes = await fetch(`https://api.github.com/repos/${auth.repo}`, { headers });
-      if (!repoRes.ok) {
-        const errJson = await repoRes.json().catch(() => ({}));
-        throw new Error(errJson.message || `Repository access failed (${repoRes.status})`);
-      }
-
-      // 2. Fetch config.json from production branch (master)
       const pBranch = auth.branch || 'master';
-      const configRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json?ref=${pBranch}&_t=${Date.now()}`, {
-        headers,
-        cache: 'no-store'
-      });
-      if (configRes.ok) {
-        const configData = await configRes.json();
-        const contentStr = decodeURIComponent(escape(atob(configData.content)));
-        const configJson = JSON.parse(contentStr);
-        applyRemoteConfig(configJson);
+      const cBranch = auth.contentBranch || 'content';
+
+      // 1. Parallel Roundtrip: Config, Posted Logs, Pipeline folder, and Archive folder all in ONE network roundtrip!
+      const [configRes, logResContent, folderResStream, postedFolderRes] = await Promise.all([
+        fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json?ref=${pBranch}&_t=${Date.now()}`, { headers, cache: 'no-store' }).catch(e => ({ ok: false, status: 0 })),
+        fetch(`https://api.github.com/repos/${auth.repo}/contents/posted_twitch_log.json?ref=${cBranch}&_t=${Date.now()}`, { headers, cache: 'no-store' }).catch(e => ({ ok: false, status: 0 })),
+        fetch(`https://api.github.com/repos/${auth.repo}/contents/output/stream_pipeline?ref=${cBranch}&_t=${Date.now()}`, { headers, cache: 'no-store' }).catch(e => ({ ok: false, status: 0 })),
+        fetch(`https://api.github.com/repos/${auth.repo}/contents/output/stream_posted?ref=${cBranch}&_t=${Date.now()}`, { headers, cache: 'no-store' }).catch(() => null)
+      ]);
+
+      if (configRes && configRes.status === 401) {
+        throw new Error('Bad credentials (401)');
       }
 
-      // 3. Fetch Real Posted Audit Logs from Content Branch
-      const cBranch = auth.contentBranch || 'content';
-      let realPosted = [];
-      let totalMediaBytes = 0;
-
-      // Try posted_twitch_log.json on content branch, fallback to master
-      for (const branchAttempt of [cBranch, pBranch]) {
+      if (configRes && configRes.ok) {
         try {
-          const logRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/posted_twitch_log.json?ref=${branchAttempt}&_t=${Date.now()}`, {
-            headers,
-            cache: 'no-store'
-          });
-          if (logRes.ok) {
-            const logData = await logRes.json();
-            const logStr = decodeURIComponent(escape(atob(logData.content)));
-            const logEntries = JSON.parse(logStr);
-            if (Array.isArray(logEntries)) {
-              logEntries.forEach((entry, idx) => {
-                const uploads = entry.uploads || {};
-                const clips = entry.clips_used || [];
-                const clipMap = entry.upload_clip_map || {};
-                const captionsMap = entry.upload_captions || {};
-
-                for (const [k, v] of Object.entries(uploads)) {
-                  if (typeof v === 'string' && !v.toLowerCase().startsWith('failed')) {
-                    const isIg1 = k.includes('instagram_1');
-                    const isIg2 = k.includes('instagram_2') || (!isIg1 && k.includes('instagram'));
-                    const isYt = k.includes('youtube');
-
-                    let cname = 'Published Clip';
-                    if (clipMap[k]) {
-                      cname = clipMap[k];
-                    } else if (clips.length === 1) {
-                      cname = clips[0];
-                    } else if (clips.length > 1) {
-                      if (isYt) {
-                        cname = clips[0];
-                      } else if (isIg1 || isIg2) {
-                        cname = clips[1] || clips[0];
-                      }
-                    }
-
-                    const cleanTitle = cname.replace('.mp4', '').replace(/^\d{4}-\d{2}-\d{2}-/, '').replace(/_/g, ' ');
-
-                    realPosted.push({
-                      id: `posted_${idx}_${k}`,
-                      title: cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1),
-                      caption: captionsMap[k] || '',
-                      account: isIg1 ? 'ig1' : isIg2 ? 'ig2' : 'youtube',
-                      platform: isIg1 ? 'Instagram (@solvikz)' : isIg2 ? 'Instagram (@loopablez)' : 'YouTube Shorts',
-                      date: entry.timestamp,
-                      timestamp: entry.timestamp,
-                      url: v,
-                      status: 'posted',
-                      cname: cname
-                    });
-                  }
-                }
-              });
-            }
-            if (realPosted.length > 0) break;
-          }
+          const configData = await configRes.json();
+          const contentStr = decodeURIComponent(escape(atob(configData.content)));
+          const configJson = JSON.parse(contentStr);
+          applyRemoteConfig(configJson);
         } catch (e) {
-          console.warn('posted_twitch_log read attempt error:', e);
+          console.warn('Config parse warning:', e);
         }
       }
 
-      // Live verification for YouTube uploads: only confirmed/live Shorts appear on the dashboard
+      let totalMediaBytes = 0;
+      if (postedFolderRes && postedFolderRes.ok) {
+        try {
+          const pFiles = await postedFolderRes.json();
+          if (Array.isArray(pFiles)) {
+            pFiles.forEach(f => { totalMediaBytes += (f.size || 0); });
+          }
+        } catch (e) {}
+      }
+
+      // 2. Parse Posted Audit Logs
+      let realPosted = [];
+      let logResToUse = (logResContent && logResContent.ok) ? logResContent : null;
+      if (!logResToUse) {
+        try {
+          const fallbackLogRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/posted_twitch_log.json?ref=${pBranch}&_t=${Date.now()}`, { headers, cache: 'no-store' });
+          if (fallbackLogRes.ok) logResToUse = fallbackLogRes;
+        } catch (e) {}
+      }
+
+      if (logResToUse) {
+        try {
+          const logData = await logResToUse.json();
+          const logStr = decodeURIComponent(escape(atob(logData.content)));
+          const logEntries = JSON.parse(logStr);
+          if (Array.isArray(logEntries)) {
+            logEntries.forEach((entry, idx) => {
+              const uploads = entry.uploads || {};
+              const clips = entry.clips_used || [];
+              const clipMap = entry.upload_clip_map || {};
+              const captionsMap = entry.upload_captions || {};
+
+              for (const [k, v] of Object.entries(uploads)) {
+                if (typeof v === 'string' && !v.toLowerCase().startsWith('failed')) {
+                  const isIg1 = k.includes('instagram_1');
+                  const isIg2 = k.includes('instagram_2') || (!isIg1 && k.includes('instagram'));
+                  const isYt = k.includes('youtube');
+
+                  let cname = 'Published Clip';
+                  if (clipMap[k]) {
+                    cname = clipMap[k];
+                  } else if (clips.length === 1) {
+                    cname = clips[0];
+                  } else if (clips.length > 1) {
+                    if (isYt) {
+                      cname = clips[0];
+                    } else if (isIg1 || isIg2) {
+                      cname = clips[1] || clips[0];
+                    }
+                  }
+
+                  const cleanTitle = cname.replace('.mp4', '').replace(/^\d{4}-\d{2}-\d{2}-/, '').replace(/_/g, ' ');
+
+                  realPosted.push({
+                    id: `posted_${idx}_${k}`,
+                    title: cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1),
+                    caption: captionsMap[k] || '',
+                    account: isIg1 ? 'ig1' : isIg2 ? 'ig2' : 'youtube',
+                    platform: isIg1 ? 'Instagram (@solvikz)' : isIg2 ? 'Instagram (@loopablez)' : 'YouTube Shorts',
+                    date: entry.timestamp,
+                    timestamp: entry.timestamp,
+                    url: v,
+                    status: 'posted',
+                    cname: cname
+                  });
+                }
+              }
+            });
+          }
+        } catch (e) {
+          console.warn('posted_twitch_log read error:', e);
+        }
+      }
+
+      // Fast non-blocking / cached YouTube check
       const ytItems = realPosted.filter(p => p.account === 'youtube' && p.url);
       if (ytItems.length > 0) {
         await Promise.all(ytItems.map(async (item) => {
@@ -2279,148 +2346,135 @@
             if (ytCheck.title) item.title = ytCheck.title;
           }
         }));
-        // Filter: only confirmed live YouTube videos show on the dashboard
-        realPosted = realPosted.filter(p => {
-          if (p.account === 'youtube') {
-            return p.ytLive === true;
-          }
-          return true;
-        });
+        realPosted = realPosted.filter(p => p.account !== 'youtube' || p.ytLive === true);
       }
 
-      // 4. Fetch Real Staged Pipeline Clips from Content Branch
+      // 3. Parse Pipeline Files
       let realPipeline = [];
-      const pipelineCandidates = [
-        'output/stream_pipeline',
-        'output/twitch_pipeline'
-      ];
-
-      for (const folder of pipelineCandidates) {
+      let pipelineFolderRes = (folderResStream && folderResStream.ok) ? folderResStream : null;
+      if (!pipelineFolderRes) {
         try {
-          const folderRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/${folder}?ref=${cBranch}`, { headers });
-          if (folderRes.ok) {
-            const files = await folderRes.json();
-            if (Array.isArray(files)) {
-              const mp4s = files.filter(f => f.name.endsWith('.mp4'));
-              const jsons = files.filter(f => f.name.endsWith('.json'));
-
-              for (const mp4 of mp4s) {
-                totalMediaBytes += (mp4.size || 0);
-                const baseName = mp4.name.replace('.mp4', '');
-                const jsonFile = jsons.find(j => j.name === `${baseName}.json`);
-
-                let meta = {
-                  title: baseName.replace(/^\d{4}-\d{2}-\d{2}-/, '').replace(/_/g, ' '),
-                  caption: `#gaming #shorts #reels`,
-                  streamer: 'Streamer',
-                  z_score: 3.2,
-                  hype_score: 150
-                };
-
-                let jsonSha = null;
-                if (jsonFile) {
-                  totalMediaBytes += (jsonFile.size || 0);
-                  jsonSha = jsonFile.sha;
-                  if (metadataCacheBySha.has(jsonSha)) {
-                    meta = { ...meta, ...metadataCacheBySha.get(jsonSha) };
-                  } else {
-                    try {
-                      const mRes = await fetch(jsonFile.url, { headers });
-                      if (mRes.ok) {
-                        const mData = await mRes.json();
-                        const mStr = decodeURIComponent(escape(atob(mData.content)));
-                        const parsedMeta = JSON.parse(mStr);
-                        meta = { ...meta, ...parsedMeta };
-                        metadataCacheBySha.set(jsonSha, parsedMeta);
-                      }
-                    } catch (e) {
-                      console.warn('Metadata fetch error for', jsonFile.name, e);
-                    }
-                  }
-                }
-
-                // Raw GitHub URL for video playback
-                const rawVideoUrl = mp4.download_url || `https://raw.githubusercontent.com/${auth.repo}/${cBranch}/${mp4.path}`;
-
-                const isTrial = Boolean(
-                  meta.trial ||
-                  meta.is_trial ||
-                  meta.post_kind === 'trial' ||
-                  (meta.target && meta.target.toLowerCase().includes('trial'))
-                );
-
-                const durSec = meta.duration_sec || 35;
-                const durMinStr = `${Math.floor(durSec / 60)}:${String(durSec % 60).padStart(2, '0')}`;
-
-                let assignedAcc = 'ig1';
-                if (meta.account) {
-                  assignedAcc = meta.account === 'yt' ? 'youtube' : meta.account;
-                } else if (meta.target) {
-                  const tLower = meta.target.toLowerCase();
-                  if (tLower.includes('loopablez') || tLower.includes('slot 2')) assignedAcc = 'ig2';
-                  else if (tLower.includes('solvikz') || tLower.includes('slot 1')) assignedAcc = 'ig1';
-                  else if (tLower.includes('youtube') || tLower.includes('shorts')) assignedAcc = 'youtube';
-                }
-
-                realPipeline.push({
-                  id: `real_${baseName}`,
-                  filename: mp4.name,
-                  streamer: meta.streamer || meta.username || 'Stream Highlight',
-                  game: meta.game || meta.category || '',
-                  category: meta.category || meta.game || '',
-                  title: meta.title || baseName.replace(/_/g, ' '),
-                  caption: meta.caption || `${meta.title} #gaming #reels`,
-                  duration: durMinStr,
-                  durationSec: durSec,
-                  sigma: meta.z_score ? `${Number(meta.z_score).toFixed(1)} σ` : '3.2 σ',
-                  motion: 'Active Motion Detected',
-                  layout: meta.layout || 'Dual Stack 9:16',
-                  target: meta.target || (meta.post_to_yt ? 'Instagram & YouTube' : 'Instagram Only'),
-                  post_to_yt: Boolean(meta.post_to_yt || (meta.target && meta.target.toLowerCase().includes('youtube'))),
-                  posted_to_instagram: Boolean(meta.posted_to_instagram),
-                  posted_to_youtube: Boolean(meta.posted_to_youtube),
-                  account: assignedAcc,
-                  isTrial: isTrial,
-                  status: 'staged',
-                  priority: meta.priority ?? 3,
-                  discarded: Boolean(meta.discarded),
-                  discarded_at: meta.discarded_at || null,
-                  pre_discard_priority: meta.pre_discard_priority || null,
-                  smart_edited: Boolean(meta.smart_edited || (Array.isArray(meta.fast_forward_segments) && meta.fast_forward_segments.length > 0)),
-                  fast_forward_segments: Array.isArray(meta.fast_forward_segments) ? meta.fast_forward_segments : [],
-                  nsfw_censored: Boolean(meta.nsfw_censored),
-                  nsfw_segments: Array.isArray(meta.nsfw_segments) ? meta.nsfw_segments : [],
-                  timestamp: meta.timestamp || meta.staged_at || meta.created_at || null,
-                  videoUrl: rawVideoUrl,
-                  path: mp4.path,
-                  sha: mp4.sha,
-                  jsonPath: jsonFile ? jsonFile.path : null,
-                  jsonSha: jsonSha
-                });
-              }
-            }
-          }
-          if (realPipeline.length > 0) break;
-        } catch (e) {
-          console.warn('Pipeline folder fetch error for', folder, e);
-        }
-      }
-
-      // 5. Query Posted Archive Folders for Real Storage Size
-      const postedCandidates = ['output/stream_posted', 'output/twitch_posted'];
-      for (const pFolder of postedCandidates) {
-        try {
-          const pRes = await fetch(`https://api.github.com/repos/${auth.repo}/contents/${pFolder}?ref=${cBranch}`, { headers });
-          if (pRes.ok) {
-            const pFiles = await pRes.json();
-            if (Array.isArray(pFiles)) {
-              pFiles.forEach(f => { totalMediaBytes += (f.size || 0); });
-            }
-          }
+          const fallbackFolder = await fetch(`https://api.github.com/repos/${auth.repo}/contents/output/twitch_pipeline?ref=${cBranch}`, { headers });
+          if (fallbackFolder.ok) pipelineFolderRes = fallbackFolder;
         } catch (e) {}
       }
 
-      // 6. Apply persistent local overrides (so discarded status & custom priorities never revert)
+      if (pipelineFolderRes) {
+        try {
+          const files = await pipelineFolderRes.json();
+          if (Array.isArray(files)) {
+            const mp4s = files.filter(f => f.name.endsWith('.mp4'));
+            const jsons = files.filter(f => f.name.endsWith('.json'));
+
+            // Batch fetch any uncached JSON metadata in parallel
+            const uncachedJsons = jsons.filter(j => j.url && !metadataCacheBySha.has(j.sha));
+            if (uncachedJsons.length > 0) {
+              const batchSize = 8;
+              for (let i = 0; i < uncachedJsons.length; i += batchSize) {
+                const batch = uncachedJsons.slice(i, i + batchSize);
+                await Promise.all(batch.map(async (jsonFile) => {
+                  try {
+                    const mRes = await fetch(jsonFile.url, { headers });
+                    if (mRes.ok) {
+                      const mData = await mRes.json();
+                      const mStr = decodeURIComponent(escape(atob(mData.content)));
+                      const parsedMeta = JSON.parse(mStr);
+                      metadataCacheBySha.set(jsonFile.sha, parsedMeta);
+                    }
+                  } catch (e) {
+                    console.warn('Metadata fetch error for', jsonFile.name, e);
+                  }
+                }));
+              }
+              persistMetadataCache();
+            }
+
+            for (const mp4 of mp4s) {
+              totalMediaBytes += (mp4.size || 0);
+              const baseName = mp4.name.replace('.mp4', '');
+              const jsonFile = jsons.find(j => j.name === `${baseName}.json`);
+
+              let meta = {
+                title: baseName.replace(/^\d{4}-\d{2}-\d{2}-/, '').replace(/_/g, ' '),
+                caption: `#gaming #shorts #reels`,
+                streamer: 'Streamer',
+                z_score: 3.2,
+                hype_score: 150
+              };
+
+              let jsonSha = null;
+              if (jsonFile) {
+                totalMediaBytes += (jsonFile.size || 0);
+                jsonSha = jsonFile.sha;
+                if (metadataCacheBySha.has(jsonSha)) {
+                  meta = { ...meta, ...metadataCacheBySha.get(jsonSha) };
+                }
+              }
+
+              const rawVideoUrl = mp4.download_url || `https://raw.githubusercontent.com/${auth.repo}/${cBranch}/${mp4.path}`;
+              const isTrial = Boolean(
+                meta.trial ||
+                meta.is_trial ||
+                meta.post_kind === 'trial' ||
+                (meta.target && meta.target.toLowerCase().includes('trial'))
+              );
+
+              const durSec = meta.duration_sec || 35;
+              const durMinStr = `${Math.floor(durSec / 60)}:${String(durSec % 60).padStart(2, '0')}`;
+
+              let assignedAcc = 'ig1';
+              if (meta.account) {
+                assignedAcc = meta.account === 'yt' ? 'youtube' : meta.account;
+              } else if (meta.target) {
+                const tLower = meta.target.toLowerCase();
+                if (tLower.includes('loopablez') || tLower.includes('slot 2')) assignedAcc = 'ig2';
+                else if (tLower.includes('solvikz') || tLower.includes('slot 1')) assignedAcc = 'ig1';
+                else if (tLower.includes('youtube') || tLower.includes('shorts')) assignedAcc = 'youtube';
+              }
+
+              realPipeline.push({
+                id: `real_${baseName}`,
+                filename: mp4.name,
+                streamer: meta.streamer || meta.username || 'Stream Highlight',
+                game: meta.game || meta.category || '',
+                category: meta.category || meta.game || '',
+                title: meta.title || baseName.replace(/_/g, ' '),
+                caption: meta.caption || `${meta.title} #gaming #reels`,
+                duration: durMinStr,
+                durationSec: durSec,
+                sigma: meta.z_score ? `${Number(meta.z_score).toFixed(1)} σ` : '3.2 σ',
+                motion: 'Active Motion Detected',
+                layout: meta.layout || 'Dual Stack 9:16',
+                target: meta.target || (meta.post_to_yt ? 'Instagram & YouTube' : 'Instagram Only'),
+                post_to_yt: Boolean(meta.post_to_yt || (meta.target && meta.target.toLowerCase().includes('youtube'))),
+                posted_to_instagram: Boolean(meta.posted_to_instagram),
+                posted_to_youtube: Boolean(meta.posted_to_youtube),
+                account: assignedAcc,
+                isTrial: isTrial,
+                status: 'staged',
+                priority: meta.priority ?? 3,
+                discarded: Boolean(meta.discarded),
+                discarded_at: meta.discarded_at || null,
+                pre_discard_priority: meta.pre_discard_priority || null,
+                smart_edited: Boolean(meta.smart_edited || (Array.isArray(meta.fast_forward_segments) && meta.fast_forward_segments.length > 0)),
+                fast_forward_segments: Array.isArray(meta.fast_forward_segments) ? meta.fast_forward_segments : [],
+                nsfw_censored: Boolean(meta.nsfw_censored),
+                nsfw_segments: Array.isArray(meta.nsfw_segments) ? meta.nsfw_segments : [],
+                timestamp: meta.timestamp || meta.staged_at || meta.created_at || null,
+                videoUrl: rawVideoUrl,
+                path: mp4.path,
+                sha: mp4.sha,
+                jsonPath: jsonFile ? jsonFile.path : null,
+                jsonSha: jsonSha
+              });
+            }
+          }
+        } catch (e) {
+          console.warn('Pipeline folder parse error:', e);
+        }
+      }
+
+      // 4. Apply persistent local overrides (so discarded status & custom priorities never revert)
       realPipeline.forEach(c => applyOverridesToClip(c));
       realPipeline = realPipeline.filter(c => !c._deleted);
 
@@ -2429,7 +2483,7 @@
       postedClips = realPosted;
       sortPipelineClips();
 
-      // Update real top stats from actual posted data (matching local/UTC day or rolling 24h window)
+      // Update real top stats from actual posted data
       const now = new Date();
       const isRecentPost = (p) => {
         const raw = p.timestamp || p.date;
@@ -2482,6 +2536,15 @@
         renderPipelineQueue();
         renderDiscardedQueue();
       }
+
+      // Persist full snapshot in localStorage for instant 0-second reloads
+      safeSetStorage(STORAGE_KEY_DATA_CACHE, {
+        pipelineClips: realPipeline,
+        postedClips: realPosted,
+        lastTodayCounts,
+        totalMediaBytes,
+        timestamp: Date.now()
+      });
 
       lastSyncDate = new Date();
       const timeStr = lastSyncDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -3586,24 +3649,32 @@
     renderTokenExpiryAlerts();
   }
 
-  // --- Initial Startup Execution (Race-Condition Free) ---
+  // --- Initial Startup Execution (Instant Load Architecture) ---
   function startApp() {
     initUI();
+
+    // 1. Instant zero-second render from local storage cache
+    const hasCachedData = loadLocalCachedData();
+
+    // 2. Background revalidation or demo data
     if (!auth.pat || auth.isDemo) {
-      loadDemoData();
+      if (!hasCachedData) {
+        loadDemoData();
+      }
     } else {
+      // Revalidate in background without blocking user
       syncWithGitHub(false);
     }
 
     // Live real-time cooldown countdown ticker (every 10s)
     setInterval(updateCooldownDisplays, 10000);
 
-    // Continuous auto-sync with GitHub every 15 seconds
+    // Continuous auto-sync with GitHub every 30 seconds
     setInterval(() => {
       if (auth.pat && !auth.isDemo && !isSyncing) {
         syncWithGitHub(false);
       }
-    }, 15000);
+    }, 30000);
 
     // Instant auto-sync whenever the user switches back to the tab or focuses window
     window.addEventListener('focus', () => {
