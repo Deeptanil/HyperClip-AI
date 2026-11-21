@@ -1,0 +1,43 @@
+{
+  "streamer": "Deansocool",
+  "username": "deansocool",
+  "vod_id": "2934540052",
+  "game": "Grand Theft Auto VI",
+  "peak_sec": 62887,
+  "hype_score": 25.25,
+  "z_score": 8.88,
+  "title": "INVISIBLE CONVERTIBLE BUS JUMPSCARE \ud83d\ude8c\ud83d\udc80",
+  "caption": "Deansocool was just cruising through Vice City when he violently crashed into what appears to be an entirely invisible vehicle out of nowhere. Have you run into any wild GTA VI launch bugs yet? #gtavi #deansocool #gamingmoments #fail",
+  "hook": "WHAT DID I EVEN HIT?! \ud83d\ude2d",
+  "target_accounts": [
+    "ig_2",
+    "youtube"
+  ],
+  "assigned_ig": "ig_2",
+  "post_to_yt": true,
+  "post_to_ig": true,
+  "posted_to_instagram": false,
+  "posted_to_youtube": false,
+  "priority": 4,
+  "discarded": false,
+  "smart_edited": true,
+  "fast_forward_segments": [
+    {
+      "start": 1.5,
+      "end": 21.52,
+      "speed": 3.0
+    },
+    {
+      "start": 27.18,
+      "end": 31.48,
+      "speed": 3.0
+    }
+  ],
+  "nsfw_censored": false,
+  "nsfw_segments": [],
+  "profanity_bleeped": false,
+  "bleep_segments": [],
+  "target": "Instagram (@loopablez) & YouTube",
+  "created_at": "2026-11-20T21:51:47.043296+00:00",
+  "timestamp": "2026-11-20T21:51:47.043312+00:00"
+}

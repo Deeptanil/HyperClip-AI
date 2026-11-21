@@ -1,0 +1,48 @@
+{
+  "streamer": "jasontheween",
+  "username": "jasontheween",
+  "vod_id": "2934910069",
+  "game": "Grand Theft Auto VI",
+  "peak_sec": 28342,
+  "hype_score": 98.25,
+  "z_score": 4.14,
+  "title": "JASON LOSES HIS MIND IN GTA 6 \ud83e\udd2f\ud83d\udd25",
+  "caption": "Jason couldn't believe his eyes when he finally witnessed the chaos of GTA 6 live on stream. His pure shock says it all about how insane this game actually looks. Have you ever seen a reaction this hyped? #GTA6 #JasonTheWeen #GamingMoments #ViralGaming",
+  "hook": "JASON'S REACTION IS PRICELESS \ud83d\udc80",
+  "target_accounts": [
+    "ig_2",
+    "youtube"
+  ],
+  "assigned_ig": "ig_2",
+  "post_to_yt": true,
+  "post_to_ig": true,
+  "posted_to_instagram": false,
+  "posted_to_youtube": false,
+  "priority": 4,
+  "discarded": false,
+  "smart_edited": true,
+  "fast_forward_segments": [
+    {
+      "start": 1.2,
+      "end": 4.56,
+      "speed": 3.0
+    },
+    {
+      "start": 5.66,
+      "end": 9.59,
+      "speed": 3.0
+    },
+    {
+      "start": 10.26,
+      "end": 34.05,
+      "speed": 3.0
+    }
+  ],
+  "nsfw_censored": false,
+  "nsfw_segments": [],
+  "profanity_bleeped": false,
+  "bleep_segments": [],
+  "target": "Instagram (@loopablez) & YouTube",
+  "created_at": "2026-11-20T21:45:08.231550+00:00",
+  "timestamp": "2026-11-20T21:45:08.231565+00:00"
+}
