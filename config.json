@@ -107,8 +107,8 @@
         "slot": 1,
         "name": "Main IG (Solvikz)",
         "enabled": true,
-        "regular_per_day": 3,
-        "trial_per_day": 1,
+        "regular_per_day": 4,
+        "trial_per_day": 0,
         "hard_daily_ceiling": 4,
         "token_expiry_date": "2027-01-17"
       },
