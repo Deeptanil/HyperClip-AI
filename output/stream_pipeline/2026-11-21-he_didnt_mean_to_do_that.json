@@ -1,0 +1,49 @@
+{
+  "streamer": "KaiCenat",
+  "username": "kaicenat",
+  "vod_id": "2934866208",
+  "game": "Grand Theft Auto VI",
+  "peak_sec": 36762,
+  "hype_score": 209.25,
+  "z_score": 4.83,
+  "title": "KAI CENAT ACCIDENTALLY COMMITS A CRIME \ud83d\udc80\ud83d\ude98",
+  "caption": "Kai Cenat's very first GTA 6 session instantly goes off the rails when he accidentally wrecks his car and panics on stream. Have you ever messed up this badly on a brand new game? #GTA6 #KaiCenat #GamingMoments #Funny",
+  "hook": "HE DIDN'T MEAN TO DO THAT \ud83d\ude2d",
+  "target_accounts": [
+    "ig_2",
+    "youtube"
+  ],
+  "assigned_ig": "ig_2",
+  "post_to_yt": true,
+  "post_to_ig": true,
+  "posted_to_instagram": false,
+  "posted_to_youtube": false,
+  "priority": 4,
+  "discarded": false,
+  "smart_edited": true,
+  "fast_forward_segments": [
+    {
+      "start": 8.6,
+      "end": 12.5,
+      "speed": 3.0
+    },
+    {
+      "start": 18.82,
+      "end": 33.56,
+      "speed": 3.0
+    }
+  ],
+  "nsfw_censored": true,
+  "nsfw_segments": [
+    {
+      "start_sec": 6.4,
+      "end_sec": 9.6,
+      "reason": "character nudity / shirtless model in apartment"
+    }
+  ],
+  "profanity_bleeped": false,
+  "bleep_segments": [],
+  "target": "Instagram (@loopablez) & YouTube",
+  "created_at": "2026-11-21T00:12:55.861933+00:00",
+  "timestamp": "2026-11-21T00:12:55.861955+00:00"
+}

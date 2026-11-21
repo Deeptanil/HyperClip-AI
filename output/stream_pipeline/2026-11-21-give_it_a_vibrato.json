@@ -1,0 +1,53 @@
+{
+  "streamer": "Clix",
+  "username": "clix",
+  "vod_id": "2934996320",
+  "game": "Grand Theft Auto VI",
+  "peak_sec": 27067,
+  "hype_score": 41.5,
+  "z_score": 3.72,
+  "title": "CLIX HITS THE CRAZY VIBRATO \ud83c\udfa4\ud83d\udd25",
+  "caption": "During the intense GTA 6 marathon, Clix completely lost his mind and demanded the lobby hit a dramatic vibrato on command. What would you do if you ran into him in the new map? #GTA6 #Clix #GrandTheftAuto #GamingMoments",
+  "hook": "GIVE IT A VIBRATO! \ud83d\udc80",
+  "target_accounts": [
+    "ig_2",
+    "youtube"
+  ],
+  "assigned_ig": "ig_2",
+  "post_to_yt": true,
+  "post_to_ig": true,
+  "posted_to_instagram": false,
+  "posted_to_youtube": false,
+  "priority": 4,
+  "discarded": false,
+  "smart_edited": true,
+  "fast_forward_segments": [
+    {
+      "start": 2.0,
+      "end": 10.21,
+      "speed": 3.0
+    },
+    {
+      "start": 11.25,
+      "end": 16.21,
+      "speed": 3.0
+    },
+    {
+      "start": 17.28,
+      "end": 21.93,
+      "speed": 3.0
+    },
+    {
+      "start": 23.55,
+      "end": 32.66,
+      "speed": 3.0
+    }
+  ],
+  "nsfw_censored": false,
+  "nsfw_segments": [],
+  "profanity_bleeped": false,
+  "bleep_segments": [],
+  "target": "Instagram (@loopablez) & YouTube",
+  "created_at": "2026-11-21T00:25:52.677134+00:00",
+  "timestamp": "2026-11-21T00:25:52.677154+00:00"
+}

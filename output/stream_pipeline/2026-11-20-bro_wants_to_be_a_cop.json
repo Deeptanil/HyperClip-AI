@@ -6,15 +6,15 @@
   "hook": "BRO THOUGHT HE WAS 12",
   "caption": "Randomly decided to roleplay as a strict police officer on GTA 6 and immediately arrested the wrong NPC. Would you trust this terrible cop with a badge? #GTA6 #Gaming #Streamer #FunnyMoments",
   "target_accounts": [
-    "ig_1",
-    "youtube"
+    "ig_1"
   ],
   "assigned_ig": "ig_1",
   "post_to_yt": true,
   "post_to_ig": true,
   "posted_to_instagram": false,
-  "posted_to_youtube": false,
+  "posted_to_youtube": true,
   "priority": 5,
   "discarded": false,
-  "ai_retitled": true
+  "ai_retitled": true,
+  "youtube_url": "https://youtube.com/shorts/OQ0KtsmwgUw"
 }
