@@ -1,0 +1,71 @@
+{
+  "streamer": "jasontheween",
+  "username": "jasontheween",
+  "vod_id": "2934910069",
+  "game": "Grand Theft Auto VI",
+  "peak_sec": 37727,
+  "hype_score": 158.75,
+  "z_score": 7.25,
+  "title": "HOW DID I SURVIVE THIS CRASH \ud83e\udd2f\ud83d\ude97",
+  "caption": "Jason completely loses his mind after somehow cheating death during a chaotic vehicle pileup in GTA 6. Would you have survived that insane crash or panicked like him? #gtavi #jasontheween #gamingmoments #clutch",
+  "hook": "SURVIVED THE IMPOSSIBLE CRASH \ud83d\ude31",
+  "target_accounts": [
+    "ig_2",
+    "youtube"
+  ],
+  "assigned_ig": "ig_2",
+  "post_to_yt": true,
+  "post_to_ig": true,
+  "posted_to_instagram": false,
+  "posted_to_youtube": false,
+  "priority": 4,
+  "discarded": false,
+  "smart_edited": true,
+  "fast_forward_segments": [
+    {
+      "start": 6.4,
+      "end": 8.48,
+      "speed": 3.0
+    },
+    {
+      "start": 10.34,
+      "end": 11.72,
+      "speed": 3.0
+    },
+    {
+      "start": 15.52,
+      "end": 18.86,
+      "speed": 3.0
+    },
+    {
+      "start": 21.32,
+      "end": 26.08,
+      "speed": 3.0
+    },
+    {
+      "start": 27.96,
+      "end": 30.68,
+      "speed": 3.0
+    }
+  ],
+  "nsfw_censored": false,
+  "nsfw_segments": [],
+  "profanity_bleeped": true,
+  "bleep_segments": [
+    [
+      13.96,
+      14.84
+    ],
+    [
+      15.78,
+      16.26
+    ],
+    [
+      18.9,
+      19.44
+    ]
+  ],
+  "target": "Instagram (@loopablez) & YouTube",
+  "created_at": "2026-11-21T00:30:06.110197+00:00",
+  "timestamp": "2026-11-21T00:30:06.110216+00:00"
+}

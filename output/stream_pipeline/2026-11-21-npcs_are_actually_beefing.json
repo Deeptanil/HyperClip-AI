@@ -1,0 +1,47 @@
+{
+  "streamer": "Burn",
+  "username": "burn",
+  "vod_id": "2934901495",
+  "game": "Grand Theft Auto VI",
+  "peak_sec": 27717,
+  "hype_score": 36.25,
+  "z_score": 5.85,
+  "title": "GTA 6 NPC ROAD RAGE IS WILD \ud83d\udc80",
+  "caption": "Burn couldn't believe his eyes when two random GTA 6 bikers completely wrecked each other right in front of him out of pure road rage. Have you ever seen AI crash this hard? #gta6 #gtaviral #gamingmoments #funny",
+  "hook": "NPCs ARE ACTUALLY BEEFING \ud83c\udfcd\ufe0f",
+  "target_accounts": [
+    "ig_1"
+  ],
+  "assigned_ig": "ig_1",
+  "post_to_yt": false,
+  "post_to_ig": true,
+  "posted_to_instagram": false,
+  "posted_to_youtube": false,
+  "priority": 4,
+  "discarded": false,
+  "smart_edited": true,
+  "fast_forward_segments": [
+    {
+      "start": 8.84,
+      "end": 10.36,
+      "speed": 3.0
+    },
+    {
+      "start": 14.0,
+      "end": 16.76,
+      "speed": 3.0
+    },
+    {
+      "start": 23.12,
+      "end": 24.72,
+      "speed": 3.0
+    }
+  ],
+  "nsfw_censored": false,
+  "nsfw_segments": [],
+  "profanity_bleeped": false,
+  "bleep_segments": [],
+  "target": "Instagram (@solvikz) Only",
+  "created_at": "2026-11-20T21:58:59.714172+00:00",
+  "timestamp": "2026-11-20T21:58:59.714188+00:00"
+}

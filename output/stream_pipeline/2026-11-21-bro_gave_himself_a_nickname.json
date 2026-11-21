@@ -1,0 +1,42 @@
+{
+  "streamer": "KaiCenat",
+  "username": "kaicenat",
+  "vod_id": "2934866208",
+  "game": "Grand Theft Auto VI",
+  "peak_sec": 35502,
+  "hype_score": 153.0,
+  "z_score": 3.21,
+  "title": "MASTER K.C. GIVES HIMSELF A NICKNAME \ud83d\udc80\ud83d\udd25",
+  "caption": "Kai Cenat completely loses his mind trying to figure out his ultimate criminal alias during his first playthrough. Would you actually fear a guy calling himself Master K.C. 3,000? Drop your worst nickname in the comments! #KaiCenat #GTA6 #GamingMoments #FunnyStreamers",
+  "hook": "BRO GAVE HIMSELF A NICKNAME \ud83d\ude2d\ud83d\udd25",
+  "target_accounts": [
+    "ig_1"
+  ],
+  "assigned_ig": "ig_1",
+  "post_to_yt": false,
+  "post_to_ig": true,
+  "posted_to_instagram": false,
+  "posted_to_youtube": false,
+  "priority": 4,
+  "discarded": false,
+  "smart_edited": true,
+  "fast_forward_segments": [
+    {
+      "start": 1.2,
+      "end": 8.42,
+      "speed": 3.0
+    },
+    {
+      "start": 16.32,
+      "end": 21.88,
+      "speed": 3.0
+    }
+  ],
+  "nsfw_censored": false,
+  "nsfw_segments": [],
+  "profanity_bleeped": false,
+  "bleep_segments": [],
+  "target": "Instagram (@solvikz) Only",
+  "created_at": "2026-11-21T00:20:27.519615+00:00",
+  "timestamp": "2026-11-21T00:20:27.519636+00:00"
+}
