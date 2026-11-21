@@ -1,0 +1,47 @@
+{
+  "streamer": "KaiCenat",
+  "username": "kaicenat",
+  "vod_id": "2935613960",
+  "game": "Grand Theft Auto VI",
+  "peak_sec": 24737,
+  "hype_score": 235.0,
+  "z_score": 3.6,
+  "title": "BEATING THE GTA 6 FINALE LIVE \ud83e\udd2f\ud83c\udfae",
+  "caption": "Kai Cenat completely loses his mind after pulling off an insane cinematic finish to the GTA 6 campaign live on stream. Were you actually here to witness gaming history? #gtavi #kaicenat #gaming #twitch",
+  "hook": "GTA 6 FINALE IS ACTUALLY CRAZY \ud83d\udd25",
+  "target_accounts": [
+    "ig_1"
+  ],
+  "assigned_ig": "ig_1",
+  "post_to_yt": false,
+  "post_to_ig": true,
+  "posted_to_instagram": false,
+  "posted_to_youtube": false,
+  "priority": 4,
+  "discarded": false,
+  "smart_edited": true,
+  "fast_forward_segments": [
+    {
+      "start": 8.8,
+      "end": 17.36,
+      "speed": 3.0
+    },
+    {
+      "start": 27.1,
+      "end": 29.26,
+      "speed": 3.0
+    },
+    {
+      "start": 32.42,
+      "end": 34.02,
+      "speed": 3.0
+    }
+  ],
+  "nsfw_censored": false,
+  "nsfw_segments": [],
+  "profanity_bleeped": false,
+  "bleep_segments": [],
+  "target": "Instagram (@solvikz) Only",
+  "created_at": "2026-11-21T17:53:44.664712+00:00",
+  "timestamp": "2026-11-21T17:53:44.664730+00:00"
+}
