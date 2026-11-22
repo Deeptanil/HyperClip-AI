@@ -1,0 +1,42 @@
+{
+  "streamer": "KaiCenat",
+  "username": "kaicenat",
+  "vod_id": "2935613960",
+  "game": "Grand Theft Auto VI",
+  "peak_sec": 12322,
+  "hype_score": 222.0,
+  "z_score": 3.34,
+  "title": "KAI CENAT ACTUALLY BEATS GTA 6 \ud83d\udc80\ud83c\udfae",
+  "caption": "Kai Cenat completely loses his mind on stream after pulling off the ultimate GTA 6 finale clutch. Chat was absolutely losing it when he screamed the final command. Would you have survived this ending? #KaiCenat #GTA6 #GamingMoments #Streamer",
+  "hook": "BRO SAID PUT IT DOWN \ud83d\ude2d",
+  "target_accounts": [
+    "ig_1"
+  ],
+  "assigned_ig": "ig_1",
+  "post_to_yt": false,
+  "post_to_ig": true,
+  "posted_to_instagram": false,
+  "posted_to_youtube": false,
+  "priority": 4,
+  "discarded": false,
+  "smart_edited": true,
+  "fast_forward_segments": [
+    {
+      "start": 1.5,
+      "end": 7.58,
+      "speed": 3.0
+    },
+    {
+      "start": 18.44,
+      "end": 24.71,
+      "speed": 3.0
+    }
+  ],
+  "nsfw_censored": false,
+  "nsfw_segments": [],
+  "profanity_bleeped": false,
+  "bleep_segments": [],
+  "target": "Instagram (@solvikz) Only",
+  "created_at": "2026-11-21T17:58:00.443460+00:00",
+  "timestamp": "2026-11-21T17:58:00.443478+00:00"
+}

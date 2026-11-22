@@ -9,15 +9,12 @@
   "title": "KAI CENAT HIJACKS A JET \u2708\ufe0f\ud83d\udd25",
   "caption": "Kai Cenat completely loses his mind after pulling off the wildest airport heist in GTA 6 history. Would you have survived this insane takeoff? #GTA6 #KaiCenat #GamingMoments #ViralGaming",
   "hook": "BRO REALLY STOLE THE PLANE \ud83d\udc80",
-  "target_accounts": [
-    "ig_2",
-    "youtube"
-  ],
+  "target_accounts": [],
   "assigned_ig": "ig_2",
   "post_to_yt": true,
   "post_to_ig": true,
-  "posted_to_instagram": false,
-  "posted_to_youtube": false,
+  "posted_to_instagram": true,
+  "posted_to_youtube": true,
   "priority": 4,
   "nsfw_censored": false,
   "nsfw_segments": [],
@@ -52,5 +49,7 @@
   "discarded": false,
   "discarded_at": "2026-11-19T14:40:58.950Z",
   "pre_discard_priority": 4,
-  "ai_retitled": true
+  "ai_retitled": true,
+  "youtube_url": "Failed: ('invalid_grant: Token has been expired or revoked.', {'error': 'invalid_grant', 'error_description': 'Token has been expired or revoked.'})",
+  "instagram_url": "https://www.instagram.com/reel/DgBS3tnE399/"
 }
