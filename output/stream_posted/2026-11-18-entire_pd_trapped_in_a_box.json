@@ -9,14 +9,12 @@
   "title": "ENTIRE POLICE DEPARTMENT TRAPPED INSIDE A BOX \ud83d\udce6\ud83d\ude02",
   "caption": "Deansocool somehow managed to trap an entire police department inside a tiny box during chat chaos, leaving everyone completely speechless. Would you have survived being boxed in with the whole cop squad? #Deansocool #GamingMoments #FunnyStreamer #JustChatting",
   "hook": "TRAPPED THE ENTIRE PD \ud83d\udce6\ud83d\udc80",
-  "target_accounts": [
-    "ig_1"
-  ],
+  "target_accounts": [],
   "assigned_ig": "ig_1",
   "post_to_yt": false,
   "post_to_ig": true,
-  "posted_to_instagram": false,
-  "posted_to_youtube": false,
+  "posted_to_instagram": true,
+  "posted_to_youtube": true,
   "target": "Instagram (@solvikz) Only",
   "created_at": "2026-11-18T11:05:20.232738+00:00",
   "timestamp": "2026-11-18T11:05:20.232759+00:00",
@@ -62,5 +60,7 @@
   "discarded": false,
   "discarded_at": "2026-11-19T14:33:30.926Z",
   "pre_discard_priority": 3,
-  "ai_retitled": true
+  "ai_retitled": true,
+  "youtube_url": "Failed: ('invalid_grant: Token has been expired or revoked.', {'error': 'invalid_grant', 'error_description': 'Token has been expired or revoked.'})",
+  "instagram_url": "https://www.instagram.com/reel/DgDWuTXjK_I/"
 }

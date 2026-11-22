@@ -566,5 +566,21 @@
     "clips_used": [
       "2026-11-19-kai_cenat_steals_a_plane.mp4"
     ]
+  },
+  {
+    "timestamp": "2026-11-22T17:35:32.776627+00:00",
+    "uploads": {
+      "youtube": "Failed: ('invalid_grant: Token has been expired or revoked.', {'error': 'invalid_grant', 'error_description': 'Token has been expired or revoked.'})",
+      "instagram_1_regular": "https://www.instagram.com/reel/DgDWuTXjK_I/"
+    },
+    "upload_clip_map": {
+      "instagram_1_regular": "2026-11-18-entire_pd_trapped_in_a_box.mp4"
+    },
+    "upload_captions": {
+      "instagram_1_regular": "Deansocool somehow managed to trap an entire police department inside a tiny box during chat chaos, leaving everyone completely speechless. Would you have survived being boxed in with the whole cop squad? #Deansocool #GamingMoments #FunnyStreamer #JustChatting"
+    },
+    "clips_used": [
+      "2026-11-18-entire_pd_trapped_in_a_box.mp4"
+    ]
   }
 ]
