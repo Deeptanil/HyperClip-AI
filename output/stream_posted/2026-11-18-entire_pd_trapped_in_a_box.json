@@ -14,7 +14,7 @@
   "post_to_yt": false,
   "post_to_ig": true,
   "posted_to_instagram": true,
-  "posted_to_youtube": true,
+  "posted_to_youtube": false,
   "target": "Instagram (@solvikz) Only",
   "created_at": "2026-11-18T11:05:20.232738+00:00",
   "timestamp": "2026-11-18T11:05:20.232759+00:00",
@@ -60,7 +60,5 @@
   "discarded": false,
   "discarded_at": "2026-11-19T14:33:30.926Z",
   "pre_discard_priority": 3,
-  "ai_retitled": true,
-  "youtube_url": "Failed: ('invalid_grant: Token has been expired or revoked.', {'error': 'invalid_grant', 'error_description': 'Token has been expired or revoked.'})",
-  "instagram_url": "https://www.instagram.com/reel/DgDWuTXjK_I/"
+  "ai_retitled": true
 }
