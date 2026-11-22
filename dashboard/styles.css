@@ -144,9 +144,7 @@ body {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  height: 52px;
   min-height: 52px;
-  max-height: 52px;
   padding: 0 16px;
   background-color: var(--bg-surface);
   border-bottom: 1px solid var(--border);
@@ -189,6 +187,7 @@ body {
   align-items: center;
   gap: 4px;
   flex-shrink: 1;
+  min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
@@ -211,6 +210,7 @@ body {
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
+  min-width: max-content;
   white-space: nowrap;
 }
 
@@ -1858,7 +1858,7 @@ input:checked + .slider:before {
   }
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1180px) {
   .app-container {
     padding: 0 4px;
   }
@@ -1899,6 +1899,10 @@ input:checked + .slider:before {
     padding: 2px 7px !important;
     font-size: 11px !important;
     flex-shrink: 0 !important;
+    max-width: 140px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
   }
 
   .nav-actions {
@@ -2080,6 +2084,20 @@ input:checked + .slider:before {
   }
 }
 
+@media (max-width: 560px) {
+  .nav-actions .btn span {
+    display: none !important;
+  }
+  .nav-actions .btn {
+    padding: 5px 8px !important;
+    font-size: 11px !important;
+    height: 30px !important;
+    min-height: 30px !important;
+    gap: 0 !important;
+    justify-content: center !important;
+  }
+}
+
 @media (max-width: 480px) {
   .top-nav {
     padding: 6px 8px 4px 8px !important;
@@ -2097,6 +2115,7 @@ input:checked + .slider:before {
   .status-pill {
     padding: 2px 6px !important;
     font-size: 10px !important;
+    max-width: 110px !important;
   }
 
   .nav-actions {
@@ -2104,11 +2123,9 @@ input:checked + .slider:before {
   }
 
   .nav-actions .btn {
-    padding: 4px 7px !important;
-    font-size: 10px !important;
+    padding: 4px 6px !important;
     height: 28px !important;
     min-height: 28px !important;
-    gap: 3px !important;
   }
 
   .nav-center {
@@ -2128,18 +2145,6 @@ input:checked + .slider:before {
 
   .view-title {
     font-size: 16px;
-  }
-}
-
-@media (max-width: 380px) {
-  .nav-actions .btn span {
-    display: none !important;
-  }
-  .nav-actions .btn {
-    padding: 4px !important;
-    width: 28px !important;
-    min-width: 28px !important;
-    justify-content: center !important;
   }
 }
 

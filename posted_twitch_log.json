@@ -534,5 +534,37 @@
     "clips_used": [
       "2026-11-19-clix_goes_crazy_on_grand.mp4"
     ]
+  },
+  {
+    "timestamp": "2026-11-21T17:41:45.938885+00:00",
+    "uploads": {
+      "youtube": "Failed: ('invalid_grant: Token has been expired or revoked.', {'error': 'invalid_grant', 'error_description': 'Token has been expired or revoked.'})",
+      "instagram_1_regular": "https://www.instagram.com/reel/DgAypD9Eeer/"
+    },
+    "upload_clip_map": {
+      "instagram_1_regular": "2026-11-18-he_is_inside_15_seconds.mp4"
+    },
+    "upload_captions": {
+      "instagram_1_regular": "Jynxzi completely lost his mind when the enemy breached and planted the defuser in under fifteen seconds. How is your team supposed to defend against that kind of speed? #Jynxzi #RainbowSixSiege #GamingMoments #R6"
+    },
+    "clips_used": [
+      "2026-11-18-he_is_inside_15_seconds.mp4"
+    ]
+  },
+  {
+    "timestamp": "2026-11-21T22:23:23.098724+00:00",
+    "uploads": {
+      "youtube": "Failed: ('invalid_grant: Token has been expired or revoked.', {'error': 'invalid_grant', 'error_description': 'Token has been expired or revoked.'})",
+      "instagram_2_regular": "https://www.instagram.com/reel/DgBS3tnE399/"
+    },
+    "upload_clip_map": {
+      "instagram_2_regular": "2026-11-19-kai_cenat_steals_a_plane.mp4"
+    },
+    "upload_captions": {
+      "instagram_2_regular": "Kai Cenat completely loses his mind after pulling off the wildest airport heist in GTA 6 history. Would you have survived this insane takeoff? #GTA6 #KaiCenat #GamingMoments #ViralGaming"
+    },
+    "clips_used": [
+      "2026-11-19-kai_cenat_steals_a_plane.mp4"
+    ]
   }
 ]

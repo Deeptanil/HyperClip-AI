@@ -1,0 +1,48 @@
+{
+  "streamer": "KaiCenat",
+  "username": "kaicenat",
+  "vod_id": "2935613960",
+  "game": "Grand Theft Auto VI",
+  "peak_sec": 20422,
+  "hype_score": 236.25,
+  "z_score": 3.63,
+  "title": "KAI CENAT FINALLY BEATS GTA 6! \ud83c\udfae\ud83d\udd25",
+  "caption": "Kai Cenat just reached the emotional climax of GTA 6 and the hype in the room is absolutely unreal. After hours of grinding, he finally secured the safe house and reunited with his son in the game. Would you have reacted the same way to this ending? #KaiCenat #GTA6 #GamingMoments #StreamerHighlights",
+  "hook": "THE GTA 6 FINALE IS HERE! \ud83d\udea8",
+  "target_accounts": [
+    "ig_2",
+    "youtube"
+  ],
+  "assigned_ig": "ig_2",
+  "post_to_yt": true,
+  "post_to_ig": true,
+  "posted_to_instagram": false,
+  "posted_to_youtube": false,
+  "priority": 4,
+  "discarded": false,
+  "smart_edited": true,
+  "fast_forward_segments": [
+    {
+      "start": 10.82,
+      "end": 13.26,
+      "speed": 3.0
+    },
+    {
+      "start": 18.58,
+      "end": 22.48,
+      "speed": 3.0
+    },
+    {
+      "start": 26.88,
+      "end": 30.84,
+      "speed": 3.0
+    }
+  ],
+  "nsfw_censored": false,
+  "nsfw_segments": [],
+  "profanity_bleeped": false,
+  "bleep_segments": [],
+  "target": "Instagram (@loopablez) & YouTube",
+  "created_at": "2026-11-21T17:51:46.515482+00:00",
+  "timestamp": "2026-11-21T17:51:46.515499+00:00"
+}

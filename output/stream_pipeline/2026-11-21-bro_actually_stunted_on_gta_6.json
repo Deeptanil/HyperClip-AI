@@ -1,0 +1,48 @@
+{
+  "streamer": "KaiCenat",
+  "username": "kaicenat",
+  "vod_id": "2935613960",
+  "game": "Grand Theft Auto VI",
+  "peak_sec": 14172,
+  "hype_score": 225.75,
+  "z_score": 3.41,
+  "title": "KAI CENAT HITS INSANE ROOF DROP \ud83e\ude9c\ud83d\udd25",
+  "caption": "Kai Cenat completely loses his mind after pulling off a wild rooftop ladder drop live during the GTA 6 finale stream. Would you have survived that insane drop or instantly failed? #KaiCenat #GTA6 #Gaming #Clutch",
+  "hook": "BRO ACTUALLY STUNTED ON GTA 6 \ud83d\udc80",
+  "target_accounts": [
+    "ig_2",
+    "youtube"
+  ],
+  "assigned_ig": "ig_2",
+  "post_to_yt": true,
+  "post_to_ig": true,
+  "posted_to_instagram": false,
+  "posted_to_youtube": false,
+  "priority": 4,
+  "discarded": false,
+  "smart_edited": true,
+  "fast_forward_segments": [
+    {
+      "start": 2.98,
+      "end": 5.42,
+      "speed": 3.0
+    },
+    {
+      "start": 18.76,
+      "end": 21.8,
+      "speed": 3.0
+    },
+    {
+      "start": 26.3,
+      "end": 34.03,
+      "speed": 3.0
+    }
+  ],
+  "nsfw_censored": false,
+  "nsfw_segments": [],
+  "profanity_bleeped": false,
+  "bleep_segments": [],
+  "target": "Instagram (@loopablez) & YouTube",
+  "created_at": "2026-11-21T17:56:24.623635+00:00",
+  "timestamp": "2026-11-21T17:56:24.623652+00:00"
+}
