@@ -2209,44 +2209,42 @@
 
     const statusText = document.getElementById('conn-status-text');
     const dot = document.getElementById('conn-dot');
-
-    if (!auth.pat || auth.isDemo) {
-      lastAuthError = '';
-      const errBox = document.getElementById('setup-error-box');
-      if (errBox) errBox.style.display = 'none';
-      if (dot) dot.className = 'dot yellow';
-      if (statusText) statusText.innerText = 'Demo';
-      const pill = document.getElementById('conn-status-pill');
-      if (pill) pill.title = 'Demo Mode (Read-Only) • Connect GitHub PAT in Setup';
-      loadDemoData();
-      isSyncing = false;
-      if (syncIcon) syncIcon.classList.remove('spin-icon');
-      return;
-    }
+    const isPublicOnly = !auth.pat || auth.isDemo;
 
     try {
       if (statusText && isManual) statusText.innerText = 'Syncing...';
       if (dot && isManual) dot.className = 'dot yellow';
 
-      const cleanPat = auth.pat.trim();
-      const headers = {
-        'Authorization': `token ${cleanPat}`,
+      const cleanPat = auth.pat ? auth.pat.trim() : '';
+      let headers = {
         'Accept': 'application/vnd.github.v3+json'
       };
+      if (cleanPat && !auth.isDemo) {
+        headers['Authorization'] = `token ${cleanPat}`;
+      }
 
       const pBranch = auth.branch || 'master';
       const cBranch = auth.contentBranch || 'content';
 
       // 1. Parallel Roundtrip: Config, Posted Logs, Pipeline folder, and Archive folder all in ONE network roundtrip!
-      const [configRes, logResContent, folderResStream, postedFolderRes] = await Promise.all([
+      let [configRes, logResContent, folderResStream, postedFolderRes] = await Promise.all([
         fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json?ref=${pBranch}&_t=${Date.now()}`, { headers, cache: 'no-store' }).catch(e => ({ ok: false, status: 0 })),
         fetch(`https://api.github.com/repos/${auth.repo}/contents/posted_twitch_log.json?ref=${cBranch}&_t=${Date.now()}`, { headers, cache: 'no-store' }).catch(e => ({ ok: false, status: 0 })),
         fetch(`https://api.github.com/repos/${auth.repo}/contents/output/stream_pipeline?ref=${cBranch}&_t=${Date.now()}`, { headers, cache: 'no-store' }).catch(e => ({ ok: false, status: 0 })),
         fetch(`https://api.github.com/repos/${auth.repo}/contents/output/stream_posted?ref=${cBranch}&_t=${Date.now()}`, { headers, cache: 'no-store' }).catch(() => null)
       ]);
 
+      let isTokenExpired = false;
       if (configRes && configRes.status === 401) {
-        throw new Error('Bad credentials (401)');
+        // Provided PAT was rejected (401 Bad credentials); fall back to unauthenticated public repo fetch
+        isTokenExpired = true;
+        headers = { 'Accept': 'application/vnd.github.v3+json' };
+        [configRes, logResContent, folderResStream, postedFolderRes] = await Promise.all([
+          fetch(`https://api.github.com/repos/${auth.repo}/contents/config.json?ref=${pBranch}&_t=${Date.now()}`, { headers, cache: 'no-store' }).catch(e => ({ ok: false, status: 0 })),
+          fetch(`https://api.github.com/repos/${auth.repo}/contents/posted_twitch_log.json?ref=${cBranch}&_t=${Date.now()}`, { headers, cache: 'no-store' }).catch(e => ({ ok: false, status: 0 })),
+          fetch(`https://api.github.com/repos/${auth.repo}/contents/output/stream_pipeline?ref=${cBranch}&_t=${Date.now()}`, { headers, cache: 'no-store' }).catch(e => ({ ok: false, status: 0 })),
+          fetch(`https://api.github.com/repos/${auth.repo}/contents/output/stream_posted?ref=${cBranch}&_t=${Date.now()}`, { headers, cache: 'no-store' }).catch(() => null)
+        ]);
       }
 
       if (configRes && configRes.ok) {
@@ -2553,11 +2551,25 @@
       const errBox = document.getElementById('setup-error-box');
       if (errBox) errBox.style.display = 'none';
 
-      if (dot) dot.className = 'dot online';
-      if (statusText) statusText.innerText = 'Connected';
       const pill = document.getElementById('conn-status-pill');
-      if (pill) {
-        pill.title = `${auth.repo} (Synced ${timeStr})\nQueue: ${pipelineClips.length} • Posted: ${postedClips.length}\nClick to configure PAT/repo`;
+      if (isTokenExpired) {
+        if (dot) dot.className = 'dot yellow';
+        if (statusText) statusText.innerText = 'Token Expired';
+        if (pill) {
+          pill.title = `Token Expired (Read-Only Mode)\nQueue: ${pipelineClips.length} • Posted: ${postedClips.length}\nClick to update GitHub PAT`;
+        }
+      } else if (isPublicOnly) {
+        if (dot) dot.className = 'dot online';
+        if (statusText) statusText.innerText = 'Live (Demo)';
+        if (pill) {
+          pill.title = `${auth.repo} (Live Read-Only)\nQueue: ${pipelineClips.length} • Posted: ${postedClips.length}\nClick Setup to add token`;
+        }
+      } else {
+        if (dot) dot.className = 'dot online';
+        if (statusText) statusText.innerText = 'Connected';
+        if (pill) {
+          pill.title = `${auth.repo} (Synced ${timeStr})\nQueue: ${pipelineClips.length} • Posted: ${postedClips.length}\nClick to configure PAT/repo`;
+        }
       }
     } catch (err) {
       console.error('GitHub API Sync Error:', err);
