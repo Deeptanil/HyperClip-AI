@@ -2364,19 +2364,18 @@
             const mp4s = files.filter(f => f.name.endsWith('.mp4'));
             const jsons = files.filter(f => f.name.endsWith('.json'));
 
-            // Batch fetch any uncached JSON metadata in parallel
-            const uncachedJsons = jsons.filter(j => j.url && !metadataCacheBySha.has(j.sha));
+            // Batch fetch any uncached JSON metadata in parallel via raw download URL (zero API rate limit consumption)
+            const uncachedJsons = jsons.filter(j => (j.download_url || j.url) && !metadataCacheBySha.has(j.sha));
             if (uncachedJsons.length > 0) {
-              const batchSize = 8;
+              const batchSize = 12;
               for (let i = 0; i < uncachedJsons.length; i += batchSize) {
                 const batch = uncachedJsons.slice(i, i + batchSize);
                 await Promise.all(batch.map(async (jsonFile) => {
                   try {
-                    const mRes = await fetch(jsonFile.url, { headers });
+                    const rawUrl = jsonFile.download_url || `https://raw.githubusercontent.com/${auth.repo}/${cBranch}/${jsonFile.path}`;
+                    const mRes = await fetch(rawUrl, { cache: 'force-cache' });
                     if (mRes.ok) {
-                      const mData = await mRes.json();
-                      const mStr = decodeURIComponent(escape(atob(mData.content)));
-                      const parsedMeta = JSON.parse(mStr);
+                      const parsedMeta = await mRes.json();
                       metadataCacheBySha.set(jsonFile.sha, parsedMeta);
                     }
                   } catch (e) {
@@ -3666,37 +3665,30 @@
     initUI();
 
     // 1. Instant zero-second render from local storage cache
-    const hasCachedData = loadLocalCachedData();
+    loadLocalCachedData();
 
-    // 2. Background revalidation or demo data
-    if (!auth.pat || auth.isDemo) {
-      if (!hasCachedData) {
-        loadDemoData();
-      }
-    } else {
-      // Revalidate in background without blocking user
-      syncWithGitHub(false);
-    }
+    // 2. Always sync real pipeline data with GitHub in background (works publicly or authenticated)
+    syncWithGitHub(false);
 
     // Live real-time cooldown countdown ticker (every 10s)
     setInterval(updateCooldownDisplays, 10000);
 
     // Continuous auto-sync with GitHub every 30 seconds
     setInterval(() => {
-      if (auth.pat && !auth.isDemo && !isSyncing) {
+      if (!isSyncing) {
         syncWithGitHub(false);
       }
     }, 30000);
 
     // Instant auto-sync whenever the user switches back to the tab or focuses window
     window.addEventListener('focus', () => {
-      if (auth.pat && !auth.isDemo && !isSyncing) {
+      if (!isSyncing) {
         syncWithGitHub(false);
       }
     });
 
     document.addEventListener('visibilitychange', () => {
-      if (!document.hidden && auth.pat && !auth.isDemo && !isSyncing) {
+      if (!document.hidden && !isSyncing) {
         syncWithGitHub(false);
       }
     });
