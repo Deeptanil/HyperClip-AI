@@ -29,7 +29,7 @@ from src.twitch_clipper.content_judge import evaluate_clip_quality
 from src.twitch_clipper.nsfw_censor import scan_and_censor_nsfw
 from src.twitch_clipper.smart_editor import fast_forward_dead_air
 from src.twitch_clipper.text_censor import sanitize_text_for_reach
-from src.uploaders.youtube_uploader import upload_short
+from src.uploaders.youtube_uploader import upload_short, get_optimal_publish_time, format_shorts_title
 from src.uploaders.instagram_uploader import upload_reel, upload_reel_direct
 
 CONFIG_FILE = "config.json"
@@ -429,6 +429,7 @@ def harvest_clips(config: dict, max_total_new: int = None) -> list:
                 game_tag = slugify(target.get("game", "gaming")).replace("_", "")
                 hashtags = tc.get("default_hashtags", "#twitch #gaming #shorts #reels")
                 clip_title = sanitize_text_for_reach(eval_res.get("title") or hook_headline)
+                clip_title = format_shorts_title(clip_title, streamer=target["display_name"])
                 clip_caption = eval_res.get("caption")
                 if not clip_caption:
                     # Contextual storytelling fallback if AI Judge returned no caption
@@ -537,12 +538,12 @@ def harvest_clips(config: dict, max_total_new: int = None) -> list:
 
 
 def _get_today_stats(logs: list) -> dict:
-    """Computes today's (IST) upload counts and last timestamps per destination."""
+    """Computes today's upload counts and timestamps per destination."""
     now_ist = datetime.now(IST)
     today_str = now_ist.strftime("%Y-%m-%d")
 
     stats = {
-        "youtube": {"count": 0, "last": None},
+        "youtube": {"count": 0, "last": None, "timestamps_utc": []},
         "ig_1": {"regular": 0, "trial": 0, "last": None},
         "ig_2": {"regular": 0, "trial": 0, "last": None},
     }
@@ -552,7 +553,8 @@ def _get_today_stats(logs: list) -> dict:
         if not ts_str:
             continue
         try:
-            dt_ist = datetime.fromisoformat(ts_str.replace("Z", "+00:00")).astimezone(IST)
+            dt_utc = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+            dt_ist = dt_utc.astimezone(IST)
         except Exception:
             continue
 
@@ -561,10 +563,25 @@ def _get_today_stats(logs: list) -> dict:
 
         yt_val = uploads.get("youtube")
         if isinstance(yt_val, str) and not yt_val.lower().startswith("failed"):
-            if is_today:
+            # Check if this upload has a scheduled publishAt timestamp
+            yt_sched_str = entry.get("youtube_publish_at")
+            if yt_sched_str:
+                try:
+                    yt_dt_utc = datetime.fromisoformat(yt_sched_str.replace("Z", "+00:00"))
+                    yt_dt_ist = yt_dt_utc.astimezone(IST)
+                except Exception:
+                    yt_dt_utc = dt_utc
+                    yt_dt_ist = dt_ist
+            else:
+                yt_dt_utc = dt_utc
+                yt_dt_ist = dt_ist
+
+            is_yt_today = yt_dt_ist.strftime("%Y-%m-%d") == today_str
+            if is_yt_today:
                 stats["youtube"]["count"] += 1
-            if stats["youtube"]["last"] is None or dt_ist > stats["youtube"]["last"]:
-                stats["youtube"]["last"] = dt_ist
+                stats["youtube"]["timestamps_utc"].append(yt_dt_utc)
+            if stats["youtube"]["last"] is None or yt_dt_ist > stats["youtube"]["last"]:
+                stats["youtube"]["last"] = yt_dt_ist
 
         for slot in (1, 2):
             key = f"ig_{slot}"
@@ -1136,28 +1153,30 @@ def publish_next_clip(
         return (None, None, None), {}
 
     # 1. YouTube Shorts
-    yt_cfg = sched.get("youtube", {"enabled": True, "shorts_per_day": 3, "hard_daily_ceiling": 3})
+    yt_cfg = sched.get("youtube", {"enabled": True, "shorts_per_day": 4, "hard_daily_ceiling": 4})
     if "youtube" in platforms and yt_cfg.get("enabled", True):
         yt_count = stats["youtube"]["count"]
-        yt_posts_day = int(yt_cfg.get("shorts_per_day", 3) if yt_cfg.get("shorts_per_day") is not None else 3)
+        yt_posts_day = int(yt_cfg.get("shorts_per_day", 4) if yt_cfg.get("shorts_per_day") is not None else 4)
         yt_ceiling = int(yt_cfg.get("hard_daily_ceiling", yt_posts_day) if yt_cfg.get("hard_daily_ceiling") is not None else yt_posts_day)
         yt_cap = min(yt_posts_day, yt_ceiling)
-        last_yt = stats["youtube"]["last"]
-        yt_gap_m = get_account_interval_minutes(yt_posts_day)
+        target_publish_at = None
 
         if yt_cap <= 0:
             print("[-] YouTube Shorts set to 0 posts/day (Paused). Refusing to post.")
             yt_ok = False
-        elif yt_count >= yt_cap:
+        elif yt_count >= yt_cap and not force:
             print(f"[-] Hard daily ceiling reached for YouTube ({yt_count}/{yt_cap} today). Refusing to post.")
             yt_ok = False
-        elif last_yt and ((now_ist - last_yt).total_seconds() / 60.0) < yt_gap_m:
-            elapsed_yt_m = (now_ist - last_yt).total_seconds() / 60.0
-            remaining_m = int(yt_gap_m - elapsed_yt_m)
-            print(f"[-] YouTube cooldown active: {elapsed_yt_m/60.0:.1f}h since last Short. Must wait {remaining_m}m.")
-            yt_ok = False
         else:
-            yt_ok = True
+            yt_ok, target_publish_at, sched_reason = get_optimal_publish_time(
+                stats["youtube"].get("timestamps_utc", []),
+                shorts_per_day=yt_posts_day,
+                force=force,
+            )
+            if not yt_ok:
+                print(f"[-] YouTube schedule gate: {sched_reason}")
+            else:
+                print(f"[+] YouTube schedule check passed: {sched_reason}")
 
         if yt_ok:
             clip_info, meta = _next_clip(for_platform="youtube")
@@ -1170,19 +1189,39 @@ def publish_next_clip(
             if clip_info[0]:
                 cname, cpath, _ = clip_info
                 raw_title = meta.get("title", cname.replace(".mp4", "").replace("_", " ").title())
-                raw_caption = meta.get("caption", f"{raw_title} #shorts #twitch #gaming")
-                title = sanitize_text_for_reach(raw_title)
+                streamer = meta.get("streamer") or meta.get("username") or ""
+                title = format_shorts_title(raw_title, streamer=streamer)
+                title = sanitize_text_for_reach(title)
+
+                # Contextual gaming description and rich algorithmic tags
+                raw_caption = meta.get("caption")
+                if not raw_caption:
+                    raw_caption = f"{title}\n\nWatch this crazy Twitch highlight!\n\n#Shorts #gaming #twitch"
                 caption = sanitize_text_for_reach(raw_caption)
+
+                # Dynamic tags for streamer, game, and high-velocity discovery
+                streamer_slug = slugify(streamer).replace("_", "")
+                game_slug = slugify(meta.get("game", "")).replace("_", "")
+                tags = ["shorts", "gaming", "twitch", "clips", "viral"]
+                if streamer_slug and streamer_slug not in tags:
+                    tags.append(streamer_slug)
+                if game_slug and game_slug not in tags and game_slug != "gaming":
+                    tags.append(game_slug)
+
                 try:
                     yt_url = upload_short(
                         cpath,
                         title=title,
                         description=caption,
-                        tags=["shorts", "gaming", "gta6", "twitch", "clips"],
+                        tags=tags,
                         category_id="20",
                         title_suffix="#Shorts",
+                        publish_at=target_publish_at,
+                        streamer=streamer,
                     )
                     results["uploads"]["youtube"] = yt_url
+                    if target_publish_at:
+                        results["youtube_publish_at"] = target_publish_at
                     results["upload_clip_map"]["youtube"] = cname
                     results["upload_captions"]["youtube"] = caption
                     results["clips_used"].append(cname)
