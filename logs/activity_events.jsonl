@@ -1,0 +1,3 @@
+{"timestamp": "2026-11-23T19:35:54.329583+00:00", "level": "INFO", "component": "Test", "action": "initialization", "details": {"status": "testing"}}
+{"timestamp": "2026-11-23T19:35:54.358932+00:00", "level": "SUCCESS", "component": "BackupManager", "action": "backup_critical_logs", "details": {"backed_up": ["posted_twitch_log.json", "posted_log.json", "clipper_state.json", "config.json"]}}
+{"timestamp": "2026-11-23T19:39:15.719637+00:00", "level": "SUCCESS", "component": "BackupManager", "action": "backup_critical_logs", "details": {"backed_up": ["posted_twitch_log.json", "posted_log.json", "clipper_state.json", "config.json"]}}

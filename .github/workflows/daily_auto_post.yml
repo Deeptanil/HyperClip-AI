@@ -44,7 +44,7 @@ jobs:
         run: |
           git fetch origin content
           # Populate output/ and state logs from dedicated content branch
-          git checkout origin/content -- output/ posted_log.json posted_twitch_log.json clipper_state.json 2>/dev/null || true
+          git checkout origin/content -- output/ posted_log.json posted_twitch_log.json clipper_state.json logs/ 2>/dev/null || true
 
       - name: Run Intelligent Pipeline
         env:
@@ -79,6 +79,6 @@ jobs:
           git stash --include-untracked
           git checkout -B content origin/content
           git stash pop || true
-          mkdir -p output/stream_pipeline output/stream_posted output/pipeline output/posted
-          git add -A posted_log.json posted_twitch_log.json clipper_state.json output/pipeline output/posted output/stream_pipeline output/stream_posted
+          mkdir -p output/stream_pipeline output/stream_posted output/pipeline output/posted logs
+          git add -A posted_log.json posted_twitch_log.json clipper_state.json logs/ output/pipeline output/posted output/stream_pipeline output/stream_posted
           git diff --quiet && git diff --staged --quiet || (git commit -m "chore(content): automated check and archive update [skip ci]" && git pull --rebase origin content && git push origin content)
