@@ -9,15 +9,12 @@
   "title": "KAI CENAT HITS THE JACKPOT \ud83c\udfb0",
   "caption": "Kai Cenat completely loses his mind playing GTA 6 for the very first time and hits an unexpected winning streak. Would you have reacted the same way to this crazy moment? Drop a comment below! #KaiCenat #GTA6 #Gaming #StreamerMoments",
   "hook": "BINGO W'S IN THE CHAT \ud83d\udea8",
-  "target_accounts": [
-    "ig_2",
-    "youtube"
-  ],
+  "target_accounts": [],
   "assigned_ig": "ig_2",
   "post_to_yt": true,
   "post_to_ig": true,
-  "posted_to_instagram": false,
-  "posted_to_youtube": false,
+  "posted_to_instagram": true,
+  "posted_to_youtube": true,
   "priority": 4,
   "discarded": false,
   "smart_edited": true,
@@ -34,5 +31,7 @@
   "bleep_segments": [],
   "target": "Instagram (@loopablez) & YouTube",
   "created_at": "2026-11-19T20:14:29.401152+00:00",
-  "timestamp": "2026-11-19T20:14:29.401178+00:00"
+  "timestamp": "2026-11-19T20:14:29.401178+00:00",
+  "youtube_url": "Failed: ('invalid_grant: Token has been expired or revoked.', {'error': 'invalid_grant', 'error_description': 'Token has been expired or revoked.'})",
+  "instagram_url": "https://www.instagram.com/reel/DgD6ZZDj1zb/"
 }

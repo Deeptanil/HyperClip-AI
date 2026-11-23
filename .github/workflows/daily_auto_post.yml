@@ -76,8 +76,9 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          # Switch exclusively to content branch (master is never modified by actions)
+          git stash --include-untracked
           git checkout -B content origin/content
+          git stash pop || true
           mkdir -p output/stream_pipeline output/stream_posted output/pipeline output/posted
           git add -A posted_log.json posted_twitch_log.json clipper_state.json output/pipeline output/posted output/stream_pipeline output/stream_posted
           git diff --quiet && git diff --staged --quiet || (git commit -m "chore(content): automated check and archive update [skip ci]" && git pull --rebase origin content && git push origin content)
