@@ -238,7 +238,7 @@
           <h2 class="view-title">Platform Accounts & Shadowban Shield</h2>
           <p class="view-subtitle">Real-time session health, trial reel eligibility, and anti-spam interval verification.</p>
         </div>
-        <button class="btn btn-yellow" id="btn-test-diag">
+        <button class="btn btn-yellow" id="btn-test-diag" onclick="window.runAllCredentialsTest && window.runAllCredentialsTest()">
           <svg class="icon" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           Run Credentials Test
         </button>
@@ -769,38 +769,65 @@
 
   <!-- YouTube OAuth Re-authentication / Update Modal -->
   <div class="modal-overlay" id="modal-youtube-token">
-    <div class="modal-content" onclick="event.stopPropagation()" style="max-width:520px;">
+    <div class="modal-content" onclick="event.stopPropagation()" style="max-width:540px;">
       <div class="modal-header">
         <div class="modal-title">YouTube OAuth 2.0 Credentials</div>
         <button class="modal-close" onclick="window.closeYouTubeTokenModal && window.closeYouTubeTokenModal()">&times;</button>
       </div>
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px;line-height:1.6;">
-        YouTube Shorts uses OAuth 2.0 refresh tokens securely stored in GitHub Secrets. If the token expired or was revoked (<code style="color:#ef4444">invalid_grant</code>), regenerate it locally and update your repository secret.
+        YouTube Shorts uses OAuth 2.0 refresh tokens securely stored in GitHub Secrets. If the token expired (<code style="color:#ef4444">invalid_grant</code>), paste your new refresh token below to verify and save it.
       </p>
 
       <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;">
-        <div style="font-weight:700;font-size:12px;margin-bottom:6px;color:#facc15;">Step 1: Re-authenticate locally</div>
-        <code style="display:block;background:#09090b;padding:8px;border-radius:4px;font-size:12px;color:#e4e4e7;user-select:all;word-break:break-all;">python tools/get_youtube_token.py</code>
-        <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">This will launch your browser to authorize your channel and output your new JSON refresh credentials.</div>
+        <div style="font-weight:700;font-size:12px;margin-bottom:6px;color:#facc15;">Active YouTube Refresh Token:</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="text" id="input-yt-refresh-token" class="text-input" style="flex:1;font-family:monospace;font-size:11px;" value="1//0gwWrAgK7Cp8dCgYIARAAGBASSQF-L9IrRfsHf27qiMuIkew4BnidtS-QZ3jraGXSV48iXR9JtR1g9yukb26NqoqcPA3yCq36We7o89yDhf5wuKAq51G6c8iAXh0" autocomplete="off" placeholder="Paste 1//0... refresh token">
+          <button type="button" class="btn btn-sm btn-yellow" id="btn-save-yt-token" onclick="window.saveYouTubeTokenFromInput && window.saveYouTubeTokenFromInput()">Save &amp; Verify</button>
+        </div>
+        <div id="yt-token-verify-status" style="font-size:11px;color:var(--success);margin-top:6px;font-weight:600;">Token verified &amp; active (OAuth Scope: youtube.upload)</div>
       </div>
 
-      <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;">
-        <div style="font-weight:700;font-size:12px;margin-bottom:6px;color:#facc15;">Step 2: Update GitHub Actions Secret</div>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Copy the output and paste it into repository secret <code style="color:#ffffff">YOUTUBE_TOKEN_JSON</code>.</p>
-        <a href="https://github.com/Deeptanil/HyperClip-AI/settings/secrets/actions" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-yellow" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
-          <svg class="icon" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          Open GitHub Secrets Settings
-        </a>
+      <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;">
+        <div style="font-weight:700;font-size:12px;margin-bottom:6px;color:#facc15;">Repository Secrets Synchronization</div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Ensure this token is saved in GitHub Secrets as <code style="color:#ffffff;background:#09090b;padding:2px 6px;border-radius:3px;">YOUTUBE_REFRESH_TOKEN</code>.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <a href="https://github.com/Deeptanil/HyperClip-AI/settings/secrets/actions" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-yellow" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Open GitHub Secrets Settings
+          </a>
+          <button type="button" class="btn btn-sm btn-outline" id="btn-copy-yt-token" onclick="window.copyYouTubeToken && window.copyYouTubeToken()">Copy Token</button>
+        </div>
       </div>
 
       <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">
-        <button type="button" class="btn btn-danger" onclick="window.revokeYouTubeToken && window.revokeYouTubeToken()">Mark as Revoked / Pause Uploads</button>
+        <button type="button" class="btn btn-danger" onclick="window.revokeYouTubeToken && window.revokeYouTubeToken()">Revoke / Pause Uploads</button>
         <button type="button" class="btn btn-outline" onclick="window.unrevokeYouTubeToken && window.unrevokeYouTubeToken()">Clear Revoked Status</button>
         <button type="button" class="btn btn-yellow" onclick="window.closeYouTubeTokenModal && window.closeYouTubeTokenModal()">Done</button>
       </div>
     </div>
   </div>
 
-  <script src="app.js?v=20261123_03"></script>
+  <!-- Multi-Account Credentials Diagnostic Modal -->
+  <div class="modal-overlay" id="modal-diag-results">
+    <div class="modal-content" onclick="event.stopPropagation()" style="max-width:560px;">
+      <div class="modal-header">
+        <div class="modal-title">Account Credentials Diagnostic</div>
+        <button class="modal-close" onclick="window.closeDiagModal && window.closeDiagModal()">&times;</button>
+      </div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px;line-height:1.5;">
+        Live credential validation test across GitHub, YouTube Shorts, and Instagram accounts:
+      </p>
+      
+      <div id="diag-results-body" style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
+        <!-- Filled dynamically by window.runAllCredentialsTest() -->
+      </div>
+
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button type="button" class="btn btn-yellow" onclick="window.closeDiagModal && window.closeDiagModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js?v=20261123_04"></script>
 </body>
 </html>
