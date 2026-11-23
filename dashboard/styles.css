@@ -1813,6 +1813,35 @@ input:checked + .slider:before {
   background: #DC2626;
 }
 
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-outline:hover {
+  background: var(--bg-hover);
+  border-color: #52525b;
+  color: #ffffff;
+}
+
+.btn-outline-danger {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  color: #ef4444;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-outline-danger:hover {
+  background: rgba(239, 68, 68, 0.22);
+  border-color: #ef4444;
+  color: #ffffff;
+}
+
 /* Mobile & Tablet Responsive Architecture */
 @media (max-width: 900px) {
   .stats-strip {
@@ -1858,7 +1887,7 @@ input:checked + .slider:before {
   }
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 1240px) {
   .app-container {
     padding: 0 4px;
   }
