@@ -9,14 +9,12 @@
   "title": "JASON THREW THE MILLION DOLLAR HEIST \ud83d\udc80\ud83d\udcb8",
   "caption": "Jason thought he was pulling off the ultimate GTA VI crime spree until his absolute zero IQ play ruined the entire getaway in seconds. Would you have trusted him on your team after that disaster? #GTA6 #jasontheween #GamingMoments #Fail",
   "hook": "BRO RUINED THE ENTIRE HEIST \ud83d\ude2d",
-  "target_accounts": [
-    "ig_1"
-  ],
+  "target_accounts": [],
   "assigned_ig": "ig_1",
   "post_to_yt": false,
   "post_to_ig": true,
-  "posted_to_instagram": false,
-  "posted_to_youtube": false,
+  "posted_to_instagram": true,
+  "posted_to_youtube": true,
   "priority": 4,
   "nsfw_censored": false,
   "nsfw_segments": [],
@@ -45,5 +43,7 @@
   "profanity_bleeped": false,
   "bleep_segments": [],
   "discarded": false,
-  "ai_retitled": true
+  "ai_retitled": true,
+  "youtube_url": "https://youtube.com/shorts/AcKi_Z9BZKw",
+  "instagram_url": "https://www.instagram.com/reel/DgFednanfej/"
 }
