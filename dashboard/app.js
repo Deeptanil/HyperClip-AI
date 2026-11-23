@@ -13,6 +13,7 @@
   const STORAGE_KEY_DATA_CACHE = 'hyperclip_data_cache_v2';
   const STORAGE_KEY_META_CACHE = 'hyperclip_meta_cache_v1';
   const STORAGE_KEY_YT_CACHE = 'hyperclip_yt_cache_v1';
+  const STORAGE_KEY_YT_REVOKED = 'hyperclip_yt_revoked';
 
   function safeGetStorage(key, defaultVal) {
     try {
@@ -502,6 +503,130 @@
     return Math.round(diffMs / (1000 * 60 * 60 * 24));
   }
 
+  function checkPlatformTokenErrors() {
+    const result = {
+      youtube: { isError: false, message: '', reason: '' },
+      github: { isError: false, message: '', reason: '' },
+      meta: { isError: false, isWarning: false, message: '', daysLeft: null, expDate: '' }
+    };
+
+    // 1. YouTube OAuth Token Check
+    const isYtRevokedByUser = localStorage.getItem(STORAGE_KEY_YT_REVOKED) === 'true';
+    let ytErrorFound = false;
+    let ytErrorMessage = '';
+
+    if (isYtRevokedByUser) {
+      ytErrorFound = true;
+      ytErrorMessage = 'OAuth 2.0 refresh token marked as revoked by user in dashboard.';
+    } else {
+      // Proactively scan posted clips & pipeline logs for YouTube OAuth invalid_grant failures
+      const allClipsToCheck = (postedClips || []).concat(pipelineClips || []);
+      for (const clip of allClipsToCheck) {
+        if (clip && Array.isArray(clip.post_logs)) {
+          for (const log of clip.post_logs) {
+            const logStr = JSON.stringify(log).toLowerCase();
+            if (logStr.includes('youtube') && (logStr.includes('invalid_grant') || logStr.includes('token has been expired or revoked') || logStr.includes('unauthorized') || logStr.includes('error: 401'))) {
+              ytErrorFound = true;
+              ytErrorMessage = log.status || log.error || 'Token has been expired or revoked (invalid_grant)';
+              break;
+            }
+          }
+        }
+        if (ytErrorFound) break;
+      }
+    }
+
+    if (ytErrorFound) {
+      result.youtube.isError = true;
+      result.youtube.reason = isYtRevokedByUser ? 'Revoked by User' : 'invalid_grant';
+      result.youtube.message = ytErrorMessage || 'YouTube OAuth token expired or revoked.';
+    }
+
+    // 2. GitHub PAT Credentials Check
+    if (lastAuthError && (lastAuthError.toLowerCase().includes('bad credentials') || lastAuthError.toLowerCase().includes('401') || lastAuthError.toLowerCase().includes('bad token'))) {
+      result.github.isError = true;
+      result.github.reason = '401 Bad Credentials';
+      result.github.message = lastAuthError;
+    }
+
+    // 3. Meta Graph API Token Expiration Check
+    const expDate = settings.tokenExpiryDate || '2027-01-17';
+    result.meta.expDate = expDate;
+    const daysLeft = calculateDaysUntilExpiry(expDate);
+    result.meta.daysLeft = daysLeft;
+    if (daysLeft !== null) {
+      if (daysLeft <= 0) {
+        result.meta.isError = true;
+        result.meta.message = `Meta Graph API token expired on ${expDate} (${Math.abs(daysLeft)} day${Math.abs(daysLeft) === 1 ? '' : 's'} ago).`;
+      } else if (daysLeft <= 30) {
+        result.meta.isWarning = true;
+        result.meta.message = `Meta Graph API token expires in ${daysLeft} day${daysLeft === 1 ? '' : 's'} (${expDate}).`;
+      }
+    }
+
+    return result;
+  }
+
+  function updateAccountsViewTokenStatus() {
+    const errors = checkPlatformTokenErrors();
+
+    // YouTube Card Updates
+    const pillYt = document.getElementById('pill-yt-status');
+    const diagYtToken = document.getElementById('diag-yt-token-status');
+    const diagYtLast = document.getElementById('diag-yt-last-status');
+    const btnRevokeYt = document.getElementById('btn-revoke-yt-token');
+
+    if (errors.youtube.isError) {
+      if (pillYt) {
+        pillYt.className = 'status-pill error';
+        pillYt.innerHTML = '<span class="dot danger"></span> Revoked / Expired';
+      }
+      if (diagYtToken) {
+        diagYtToken.style.color = 'var(--danger)';
+        diagYtToken.textContent = `Expired or Revoked (${errors.youtube.reason})`;
+      }
+      if (diagYtLast) {
+        diagYtLast.style.color = 'var(--danger)';
+        diagYtLast.textContent = errors.youtube.message;
+      }
+      if (btnRevokeYt) {
+        btnRevokeYt.textContent = 'Un-revoke / Restore';
+        btnRevokeYt.className = 'btn btn-sm btn-outline';
+        btnRevokeYt.onclick = () => window.unrevokeYouTubeToken && window.unrevokeYouTubeToken();
+      }
+    } else {
+      if (pillYt) {
+        pillYt.className = 'status-pill';
+        pillYt.innerHTML = '<span class="dot online"></span> Connected';
+      }
+      if (diagYtToken) {
+        diagYtToken.style.color = 'var(--success)';
+        diagYtToken.textContent = 'Valid & Auto-Refreshing';
+      }
+      if (diagYtLast) {
+        diagYtLast.style.color = 'var(--text-muted)';
+        diagYtLast.textContent = 'Operational (Autonomous Channel)';
+      }
+      if (btnRevokeYt) {
+        btnRevokeYt.textContent = 'Revoke Token';
+        btnRevokeYt.className = 'btn btn-sm btn-danger';
+        btnRevokeYt.onclick = () => window.revokeYouTubeToken && window.revokeYouTubeToken();
+      }
+    }
+
+    // Meta Card Updates
+    const btnRevokeMeta = document.getElementById('btn-revoke-meta-token');
+    if (btnRevokeMeta) {
+      if (errors.meta.isError) {
+        btnRevokeMeta.textContent = 'Token Revoked';
+        btnRevokeMeta.disabled = true;
+      } else {
+        btnRevokeMeta.textContent = 'Revoke Token';
+        btnRevokeMeta.disabled = false;
+      }
+    }
+  }
+
   function renderTokenExpiryAlerts() {
     const banner = document.getElementById('token-expiry-banner');
     const statusBox = document.getElementById('token-lifecycle-status-box');
@@ -509,21 +634,51 @@
     const diagIg1 = document.getElementById('diag-ig1-token-expiry');
     const diagIg2 = document.getElementById('diag-ig2-token-expiry');
 
-    const expDate = settings.tokenExpiryDate || '2027-01-17';
+    const errors = checkPlatformTokenErrors();
+    updateAccountsViewTokenStatus();
+
+    const expDate = errors.meta.expDate;
     if (inputDate && (!inputDate.value || inputDate.value !== expDate)) {
       inputDate.value = expDate;
     }
     if (diagIg1) diagIg1.textContent = expDate;
     if (diagIg2) diagIg2.textContent = expDate;
 
-    const daysLeft = calculateDaysUntilExpiry(expDate);
-    if (daysLeft === null) {
-      if (banner) banner.style.display = 'none';
-      return;
-    }
-
-    if (daysLeft <= 0) {
-      // CRITICAL ERROR: Token expired!
+    // Prioritized banner display
+    if (errors.youtube.isError) {
+      if (banner) {
+        banner.className = 'token-alert-banner banner-critical';
+        banner.style.display = 'flex';
+        banner.innerHTML = `
+          <div class="banner-icon"><svg class="icon icon-lg" viewBox="0 0 24 24"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+          <div class="banner-body">
+            <strong>CRITICAL: YouTube OAuth Token Expired or Revoked</strong>
+            <span>${escapeHtml(errors.youtube.message)} YouTube Shorts publishing is paused. Run <code>python tools/get_youtube_token.py</code> to regenerate your token.</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;flex-wrap:wrap;">
+            <button class="btn btn-sm btn-yellow" onclick="window.openYouTubeTokenModal && window.openYouTubeTokenModal()">Update Token</button>
+            <button class="btn btn-sm btn-critical" onclick="window.revokeYouTubeToken && window.revokeYouTubeToken()">Revoke Token</button>
+          </div>
+        `;
+      }
+    } else if (errors.github.isError) {
+      if (banner) {
+        banner.className = 'token-alert-banner banner-critical';
+        banner.style.display = 'flex';
+        banner.innerHTML = `
+          <div class="banner-icon"><svg class="icon icon-lg" viewBox="0 0 24 24"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+          <div class="banner-body">
+            <strong>GitHub Token Authentication Error (401 Bad Credentials)</strong>
+            <span>Your Personal Access Token was rejected or expired. The dashboard is operating in live public read-only fallback mode.</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;flex-wrap:wrap;">
+            <button class="btn btn-sm btn-yellow" onclick="window.openSetupModal && window.openSetupModal()">Update Token</button>
+            <button class="btn btn-sm btn-critical" onclick="window.revokeGitHubToken && window.revokeGitHubToken()">Revoke Token</button>
+          </div>
+        `;
+      }
+    } else if (errors.meta.isError) {
+      const daysLeft = errors.meta.daysLeft;
       if (banner) {
         banner.className = 'token-alert-banner banner-critical';
         banner.style.display = 'flex';
@@ -533,22 +688,14 @@
             <strong>CRITICAL ERROR: Meta Graph API Token Expired (${expDate})</strong>
             <span>Automatic Instagram Reels posting is stopped to prevent failed API calls. Please generate a fresh long-lived token in Meta Graph Explorer and update repository secrets.</span>
           </div>
-          <button class="btn btn-sm btn-critical" onclick="document.getElementById('tab-nav-accounts').click();">Resolve in Accounts</button>
-        `;
-      }
-      if (statusBox) {
-        statusBox.style.borderColor = 'var(--danger)';
-        statusBox.style.background = 'rgba(239, 68, 68, 0.12)';
-        statusBox.innerHTML = `
-          <div>
-            <div style="font-weight:700;color:var(--danger);font-size:13px;">CRITICAL: Token Expired on ${expDate} (${Math.abs(daysLeft)} day${Math.abs(daysLeft) === 1 ? '' : 's'} ago)</div>
-            <div style="color:var(--text-muted);font-size:12px;margin-top:2px;">Reels publishing is suspended. Generate a new token and update GitHub secrets.</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;flex-wrap:wrap;">
+            <button class="btn btn-sm btn-critical" onclick="document.getElementById('tab-nav-accounts').click();">Resolve in Accounts</button>
+            <button class="btn btn-sm btn-critical" onclick="window.revokeMetaToken && window.revokeMetaToken()">Revoke Token</button>
           </div>
-          <span class="status-pill error"><span class="dot offline"></span> EXPIRED</span>
         `;
       }
-    } else if (daysLeft <= 30) {
-      // WARNING: Expiring within 1 month (30 days)
+    } else if (errors.meta.isWarning) {
+      const daysLeft = errors.meta.daysLeft;
       if (banner) {
         banner.className = 'token-alert-banner banner-warning';
         banner.style.display = 'flex';
@@ -561,31 +708,42 @@
           <button class="btn btn-sm btn-yellow" onclick="document.getElementById('tab-nav-accounts').click();">Update Expiry Date</button>
         `;
       }
-      if (statusBox) {
+    } else {
+      if (banner) {
+        banner.style.display = 'none';
+      }
+    }
+
+    if (statusBox) {
+      if (errors.meta.isError) {
+        statusBox.style.borderColor = 'var(--danger)';
+        statusBox.style.background = 'rgba(239, 68, 68, 0.12)';
+        statusBox.innerHTML = `
+          <div>
+            <div style="font-weight:700;color:var(--danger);font-size:13px;">CRITICAL: Token Expired on ${expDate} (${Math.abs(errors.meta.daysLeft)} day${Math.abs(errors.meta.daysLeft) === 1 ? '' : 's'} ago)</div>
+            <div style="color:var(--text-muted);font-size:12px;margin-top:2px;">Reels publishing is suspended. Generate a new token and update GitHub secrets.</div>
+          </div>
+          <span class="status-pill error"><span class="dot offline"></span> EXPIRED</span>
+        `;
+      } else if (errors.meta.isWarning) {
         statusBox.style.borderColor = 'var(--yellow)';
         statusBox.style.background = 'rgba(250, 204, 21, 0.10)';
         statusBox.innerHTML = `
           <div>
-            <div style="font-weight:700;color:var(--yellow);font-size:13px;">Warning: Expires in ${daysLeft} days (${expDate})</div>
+            <div style="font-weight:700;color:var(--yellow);font-size:13px;">Warning: Expires in ${errors.meta.daysLeft} days (${expDate})</div>
             <div style="color:var(--text-muted);font-size:12px;margin-top:2px;">Approaching 30-day cutoff window. Extend your token in Meta Developer Portal.</div>
           </div>
-          <span class="status-pill warning"><span class="dot yellow"></span> Expires in ${daysLeft}d</span>
+          <span class="status-pill warning"><span class="dot yellow"></span> Expires in ${errors.meta.daysLeft}d</span>
         `;
-      }
-    } else {
-      // HEALTHY: More than 30 days remaining
-      if (banner) {
-        banner.style.display = 'none';
-      }
-      if (statusBox) {
+      } else {
         statusBox.style.borderColor = 'var(--border)';
         statusBox.style.background = 'var(--bg-elevated)';
         statusBox.innerHTML = `
           <div>
-            <div style="font-weight:700;color:var(--success);font-size:13px;">Healthy: Token valid until ${expDate} (${daysLeft} days remaining)</div>
-            <div style="color:var(--text-muted);font-size:12px;margin-top:2px;">Automatic warning will activate on ${new Date(Date.now() + (daysLeft - 30) * 86400000).toISOString().split('T')[0]} (1 month before expiry).</div>
+            <div style="font-weight:700;color:var(--success);font-size:13px;">Healthy: Token valid until ${expDate} (${errors.meta.daysLeft} days remaining)</div>
+            <div style="color:var(--text-muted);font-size:12px;margin-top:2px;">Automatic warning will activate on ${new Date(Date.now() + (errors.meta.daysLeft - 30) * 86400000).toISOString().split('T')[0]} (1 month before expiry).</div>
           </div>
-          <span class="status-pill"><span class="dot online"></span> ${daysLeft} Days Remaining</span>
+          <span class="status-pill"><span class="dot online"></span> ${errors.meta.daysLeft} Days Remaining</span>
         `;
       }
     }
@@ -1575,6 +1733,62 @@
   window.closeSetupModal = function () {
     const modal = document.getElementById('modal-setup');
     if (modal) modal.classList.remove('open');
+  };
+
+  window.openYouTubeTokenModal = function () {
+    const modal = document.getElementById('modal-youtube-token');
+    if (modal) modal.classList.add('open');
+  };
+
+  window.closeYouTubeTokenModal = function () {
+    const modal = document.getElementById('modal-youtube-token');
+    if (modal) modal.classList.remove('open');
+  };
+
+  window.revokeYouTubeToken = function () {
+    localStorage.setItem(STORAGE_KEY_YT_REVOKED, 'true');
+    window.closeYouTubeTokenModal();
+    renderTokenExpiryAlerts();
+    alert('YouTube OAuth 2.0 token marked as revoked.\n\nYouTube Shorts automated uploads are now safely paused.');
+  };
+
+  window.unrevokeYouTubeToken = function () {
+    localStorage.removeItem(STORAGE_KEY_YT_REVOKED);
+    window.closeYouTubeTokenModal();
+    renderTokenExpiryAlerts();
+    alert('YouTube OAuth token revocation flag cleared.\n\nYouTube Shorts upload status has been restored.');
+  };
+
+  window.revokeGitHubToken = function () {
+    if (confirm('Revoke and clear your GitHub Personal Access Token from this browser?\n\nThe dashboard will instantly switch to public read-only fallback mode.')) {
+      auth.pat = '';
+      auth.isDemo = true;
+      lastAuthError = '';
+      safeSetStorage(STORAGE_KEY_AUTH, auth);
+      const patEl = document.getElementById('setup-pat');
+      if (patEl) patEl.value = '';
+      const dot = document.getElementById('conn-dot');
+      const statusText = document.getElementById('conn-status-text');
+      if (dot) dot.className = 'dot online';
+      if (statusText) statusText.innerText = 'Live (Demo)';
+      const errBox = document.getElementById('setup-error-box');
+      if (errBox) errBox.style.display = 'none';
+      window.closeSetupModal();
+      renderTokenExpiryAlerts();
+      alert('GitHub Personal Access Token revoked and cleared.\n\nDashboard is now running in public read-only mode.');
+    }
+  };
+
+  window.revokeMetaToken = function () {
+    if (confirm('Revoke Meta Graph API Token for Instagram Reels?\n\nThis will mark the token as expired and immediately pause automated Reels posting.')) {
+      const expiredDate = '2020-01-01';
+      settings.tokenExpiryDate = expiredDate;
+      safeSetStorage(STORAGE_KEY_SETTINGS, settings);
+      const inputDate = document.getElementById('input-token-expiry');
+      if (inputDate) inputDate.value = expiredDate;
+      renderTokenExpiryAlerts();
+      alert('Meta Graph token marked as expired. Instagram Reels posting has been safely paused.');
+    }
   };
 
   let activePreviewSessionId = 0;
@@ -2602,6 +2816,7 @@
     } finally {
       isSyncing = false;
       if (syncIcon) syncIcon.classList.remove('spin-icon');
+      renderTokenExpiryAlerts();
     }
   }
 
@@ -3014,7 +3229,22 @@
       });
     }
 
-    // 6. Preview Modal Backdrop & Escape Key Handlers
+    const btnRevokePat = document.getElementById('btn-revoke-pat');
+    if (btnRevokePat) {
+      btnRevokePat.addEventListener('click', () => {
+        if (window.revokeGitHubToken) window.revokeGitHubToken();
+      });
+    }
+
+    // 6. YouTube OAuth Token Modal Backdrop Handler
+    const modalYt = document.getElementById('modal-youtube-token');
+    if (modalYt) {
+      modalYt.onclick = (e) => {
+        if (e.target === modalYt) window.closeYouTubeTokenModal();
+      };
+    }
+
+    // 7. Preview Modal Backdrop & Escape Key Handlers
     const modalPreview = document.getElementById('modal-preview');
     if (modalPreview) {
       modalPreview.onclick = (e) => {
@@ -3031,6 +3261,7 @@
       if (e.key === 'Escape') {
         window.closeSetupModal();
         window.closePreviewModal();
+        if (window.closeYouTubeTokenModal) window.closeYouTubeTokenModal();
       }
     });
 

@@ -289,23 +289,27 @@
         </div>
 
         <!-- YouTube Shorts -->
-        <div class="account-box">
+        <div class="account-box" id="account-box-youtube">
           <div class="account-box-header">
             <div>
               <div class="acc-name">YouTube Shorts</div>
               <div class="acc-handle">Autonomous Channel</div>
             </div>
-            <span class="status-pill"><span class="dot online"></span> Connected</span>
+            <span class="status-pill" id="pill-yt-status"><span class="dot online"></span> Connected</span>
           </div>
           <div class="diag-list">
-            <div class="diag-row"><span class="diag-label">OAuth 2.0 Token:</span><span class="diag-val" style="color:var(--success)">Valid & Auto-Refreshing</span></div>
-            <div class="diag-row"><span class="diag-label">Daily Shorts Limit:</span><span class="diag-val">3 Shorts / Day</span></div>
-            <div class="diag-row"><span class="diag-label">API Quota Usage:</span><span class="diag-val">1,600 / 10,000 pts</span></div>
-            <div class="diag-row"><span class="diag-label">Today's Uploads:</span><span class="diag-val">1 / 3 Shorts</span></div>
+            <div class="diag-row"><span class="diag-label">OAuth 2.0 Token:</span><span class="diag-val" id="diag-yt-token-status" style="color:var(--success)">Valid & Auto-Refreshing</span></div>
+            <div class="diag-row"><span class="diag-label">Daily Shorts Limit:</span><span class="diag-val" id="diag-yt-limit">4 Shorts / Day</span></div>
+            <div class="diag-row"><span class="diag-label">API Quota Usage:</span><span class="diag-val" id="diag-yt-quota">1,600 / 10,000 pts</span></div>
+            <div class="diag-row"><span class="diag-label">Today's Uploads:</span><span class="diag-val" id="diag-yt-today-uploads">0 / 4 Shorts</span></div>
             <div class="diag-row"><span class="diag-label">Min Separation:</span><span class="diag-val">3.0 Hours</span></div>
-            <div class="diag-row"><span class="diag-label">Category / Format:</span><span class="diag-val">Gaming (20) / #Shorts</span></div>
+            <div class="diag-row"><span class="diag-label">Last Upload Status:</span><span class="diag-val" id="diag-yt-last-status" style="color:var(--text-muted)">Checking logs...</span></div>
           </div>
-          <div class="acc-footer-note">Dual upload system with automatic category tagging and #Shorts suffix.</div>
+          <div class="acc-footer-actions" style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;">
+            <button type="button" class="btn btn-sm btn-yellow" id="btn-update-yt-token" onclick="window.openYouTubeTokenModal && window.openYouTubeTokenModal()">Update Token</button>
+            <button type="button" class="btn btn-sm btn-danger" id="btn-revoke-yt-token" onclick="window.revokeYouTubeToken && window.revokeYouTubeToken()">Revoke Token</button>
+          </div>
+          <div class="acc-footer-note" style="margin-top:8px;">Dual upload system with automatic category tagging and #Shorts suffix.</div>
         </div>
       </div>
 
@@ -322,9 +326,10 @@
             <span class="setting-label">Meta Long-Lived Token Expiration Date</span>
             <span class="setting-desc">Enter the exact expiration date reported by Meta Graph API Explorer (e.g. 2027-01-17)</span>
           </div>
-          <div class="setting-ctrl" style="display:flex;gap:8px;align-items:center;">
+          <div class="setting-ctrl" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
             <input type="date" id="input-token-expiry" class="text-input" style="padding:6px 10px;font-size:12px;color:var(--text-main);background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);">
             <button type="button" class="btn btn-sm btn-yellow" id="btn-save-token-expiry">Save Expiry Date</button>
+            <button type="button" class="btn btn-sm btn-danger" id="btn-revoke-meta-token" onclick="window.revokeMetaToken && window.revokeMetaToken()">Revoke Token</button>
           </div>
         </div>
 
@@ -651,13 +656,17 @@
           <input type="text" class="text-input" id="setup-content-branch" value="content" autocomplete="off">
         </div>
 
-        <div style="display:flex;gap:10px;margin-top:10px;">
-          <button class="btn btn-yellow" id="btn-save-pat" style="flex:1;justify-content:center">
+        <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
+          <button class="btn btn-yellow" id="btn-save-pat" style="flex:2;min-width:140px;justify-content:center">
             <svg class="icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
             Connect & Save
           </button>
-          <button class="btn" id="btn-use-demo" style="flex:1;justify-content:center">
-            Explore with Demo Data
+          <button type="button" class="btn btn-danger" id="btn-revoke-pat" style="flex:1;min-width:110px;justify-content:center" title="Revoke and clear GitHub token from browser">
+            <svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            Revoke Token
+          </button>
+          <button class="btn" id="btn-use-demo" style="flex:1 0 100%;justify-content:center">
+            Explore with Demo Data (Public Read-Only)
           </button>
         </div>
       </div>
@@ -758,6 +767,40 @@
 
   </div>
 
-  <script src="app.js?v=20261123_01"></script>
+  <!-- YouTube OAuth Re-authentication / Update Modal -->
+  <div class="modal-overlay" id="modal-youtube-token">
+    <div class="modal-content" onclick="event.stopPropagation()" style="max-width:520px;">
+      <div class="modal-header">
+        <div class="modal-title">YouTube OAuth 2.0 Credentials</div>
+        <button class="modal-close" onclick="window.closeYouTubeTokenModal && window.closeYouTubeTokenModal()">&times;</button>
+      </div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px;line-height:1.6;">
+        YouTube Shorts uses OAuth 2.0 refresh tokens securely stored in GitHub Secrets. If the token expired or was revoked (<code style="color:#ef4444">invalid_grant</code>), regenerate it locally and update your repository secret.
+      </p>
+
+      <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;">
+        <div style="font-weight:700;font-size:12px;margin-bottom:6px;color:#facc15;">Step 1: Re-authenticate locally</div>
+        <code style="display:block;background:#09090b;padding:8px;border-radius:4px;font-size:12px;color:#e4e4e7;user-select:all;word-break:break-all;">python tools/get_youtube_token.py</code>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">This will launch your browser to authorize your channel and output your new JSON refresh credentials.</div>
+      </div>
+
+      <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;">
+        <div style="font-weight:700;font-size:12px;margin-bottom:6px;color:#facc15;">Step 2: Update GitHub Actions Secret</div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Copy the output and paste it into repository secret <code style="color:#ffffff">YOUTUBE_TOKEN_JSON</code>.</p>
+        <a href="https://github.com/Deeptanil/HyperClip-AI/settings/secrets/actions" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-yellow" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Open GitHub Secrets Settings
+        </a>
+      </div>
+
+      <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">
+        <button type="button" class="btn btn-danger" onclick="window.revokeYouTubeToken && window.revokeYouTubeToken()">Mark as Revoked / Pause Uploads</button>
+        <button type="button" class="btn btn-outline" onclick="window.unrevokeYouTubeToken && window.unrevokeYouTubeToken()">Clear Revoked Status</button>
+        <button type="button" class="btn btn-yellow" onclick="window.closeYouTubeTokenModal && window.closeYouTubeTokenModal()">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js?v=20261123_02"></script>
 </body>
 </html>
