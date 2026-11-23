@@ -275,9 +275,55 @@
     }
     if (ytValEl) {
       ytValEl.innerHTML = `${lastTodayCounts.youtube} / ${settings.ytPosts} <small class="text-dim-unit">${settings.ytPosts === 0 ? 'paused' : 'in 24h'}</small>`;
-      const ytPill = document.querySelector('#stat-yt .status-pill');
-      if (ytPill && !auth.isDemo) {
-        ytPill.innerHTML = `<span class="dot online"></span> ${lastTodayCounts.youtube > 0 ? 'Verified Live' : 'Live Sync'}`;
+    }
+
+    // Dynamic account status validation based on token health
+    const errors = checkPlatformTokenErrors();
+    const statPillYt = document.getElementById('stat-pill-yt') || document.querySelector('#stat-yt .status-pill');
+    const statPillIg1 = document.getElementById('stat-pill-ig1') || document.querySelector('#stat-ig1 .status-pill');
+    const statPillIg2 = document.getElementById('stat-pill-ig2') || document.querySelector('#stat-ig2 .status-pill');
+
+    if (statPillYt) {
+      if (errors.youtube.isError) {
+        statPillYt.className = 'status-pill error';
+        statPillYt.innerHTML = '<span class="dot danger"></span> Disconnected';
+        statPillYt.title = errors.youtube.message || 'YouTube token expired or revoked';
+      } else {
+        statPillYt.className = 'status-pill';
+        statPillYt.innerHTML = `<span class="dot online"></span> ${lastTodayCounts.youtube > 0 ? 'Verified Live' : 'Active'}`;
+        statPillYt.title = 'YouTube OAuth token connected and valid';
+      }
+    }
+
+    if (statPillIg1) {
+      if (errors.meta.isError) {
+        statPillIg1.className = 'status-pill error';
+        statPillIg1.innerHTML = '<span class="dot danger"></span> Disconnected';
+        statPillIg1.title = errors.meta.message || 'Meta token expired';
+      } else if (errors.meta.isWarning) {
+        statPillIg1.className = 'status-pill warning';
+        statPillIg1.innerHTML = `<span class="dot yellow"></span> Expires in ${errors.meta.daysLeft}d`;
+        statPillIg1.title = errors.meta.message;
+      } else {
+        statPillIg1.className = 'status-pill';
+        statPillIg1.innerHTML = '<span class="dot online"></span> Active';
+        statPillIg1.title = 'Meta Graph API token valid';
+      }
+    }
+
+    if (statPillIg2) {
+      if (errors.meta.isError) {
+        statPillIg2.className = 'status-pill error';
+        statPillIg2.innerHTML = '<span class="dot danger"></span> Disconnected';
+        statPillIg2.title = errors.meta.message || 'Meta token expired';
+      } else if (errors.meta.isWarning) {
+        statPillIg2.className = 'status-pill warning';
+        statPillIg2.innerHTML = `<span class="dot yellow"></span> Expires in ${errors.meta.daysLeft}d`;
+        statPillIg2.title = errors.meta.message;
+      } else {
+        statPillIg2.className = 'status-pill';
+        statPillIg2.innerHTML = '<span class="dot online"></span> Active';
+        statPillIg2.title = 'Meta Graph API token valid';
       }
     }
   }
@@ -329,6 +375,7 @@
       renderPipelineQueue();
       renderDiscardedQueue();
       updateTopStatCards();
+      renderTokenExpiryAlerts();
       updateCooldownDisplays();
       if (cached.totalMediaBytes) {
         const totalMb = (cached.totalMediaBytes / (1024 * 1024)).toFixed(1);
@@ -579,11 +626,11 @@
     if (errors.youtube.isError) {
       if (pillYt) {
         pillYt.className = 'status-pill error';
-        pillYt.innerHTML = '<span class="dot danger"></span> Revoked / Expired';
+        pillYt.innerHTML = '<span class="dot danger"></span> Disconnected';
       }
       if (diagYtToken) {
         diagYtToken.style.color = 'var(--danger)';
-        diagYtToken.textContent = `Expired or Revoked (${errors.youtube.reason})`;
+        diagYtToken.textContent = `Disconnected (${errors.youtube.reason})`;
       }
       if (diagYtLast) {
         diagYtLast.style.color = 'var(--danger)';
@@ -614,13 +661,73 @@
       }
     }
 
-    // Meta Card Updates
+    // Instagram Accounts Updates
+    const pillIg1 = document.getElementById('pill-ig1-status');
+    const pillIg2 = document.getElementById('pill-ig2-status');
+    const diagIg1Session = document.getElementById('diag-ig1-session-status');
+    const diagIg2Session = document.getElementById('diag-ig2-session-status');
     const btnRevokeMeta = document.getElementById('btn-revoke-meta-token');
-    if (btnRevokeMeta) {
-      if (errors.meta.isError) {
+
+    if (errors.meta.isError) {
+      if (pillIg1) {
+        pillIg1.className = 'status-pill error';
+        pillIg1.innerHTML = '<span class="dot danger"></span> Disconnected';
+      }
+      if (pillIg2) {
+        pillIg2.className = 'status-pill error';
+        pillIg2.innerHTML = '<span class="dot danger"></span> Disconnected';
+      }
+      if (diagIg1Session) {
+        diagIg1Session.style.color = 'var(--danger)';
+        diagIg1Session.textContent = 'Disconnected (Token Expired)';
+      }
+      if (diagIg2Session) {
+        diagIg2Session.style.color = 'var(--danger)';
+        diagIg2Session.textContent = 'Disconnected (Token Expired)';
+      }
+      if (btnRevokeMeta) {
         btnRevokeMeta.textContent = 'Token Revoked';
         btnRevokeMeta.disabled = true;
-      } else {
+      }
+    } else if (errors.meta.isWarning) {
+      if (pillIg1) {
+        pillIg1.className = 'status-pill warning';
+        pillIg1.innerHTML = `<span class="dot yellow"></span> Expires in ${errors.meta.daysLeft}d`;
+      }
+      if (pillIg2) {
+        pillIg2.className = 'status-pill warning';
+        pillIg2.innerHTML = `<span class="dot yellow"></span> Expires in ${errors.meta.daysLeft}d`;
+      }
+      if (diagIg1Session) {
+        diagIg1Session.style.color = 'var(--yellow)';
+        diagIg1Session.textContent = `Expiring Soon (${errors.meta.daysLeft} days remaining)`;
+      }
+      if (diagIg2Session) {
+        diagIg2Session.style.color = 'var(--yellow)';
+        diagIg2Session.textContent = `Expiring Soon (${errors.meta.daysLeft} days remaining)`;
+      }
+      if (btnRevokeMeta) {
+        btnRevokeMeta.textContent = 'Revoke Token';
+        btnRevokeMeta.disabled = false;
+      }
+    } else {
+      if (pillIg1) {
+        pillIg1.className = 'status-pill';
+        pillIg1.innerHTML = '<span class="dot online"></span> Connected';
+      }
+      if (pillIg2) {
+        pillIg2.className = 'status-pill';
+        pillIg2.innerHTML = '<span class="dot online"></span> Connected';
+      }
+      if (diagIg1Session) {
+        diagIg1Session.style.color = 'var(--success)';
+        diagIg1Session.textContent = 'Saved & Verified';
+      }
+      if (diagIg2Session) {
+        diagIg2Session.style.color = 'var(--success)';
+        diagIg2Session.textContent = 'Saved & Verified';
+      }
+      if (btnRevokeMeta) {
         btnRevokeMeta.textContent = 'Revoke Token';
         btnRevokeMeta.disabled = false;
       }
@@ -1749,6 +1856,7 @@
     localStorage.setItem(STORAGE_KEY_YT_REVOKED, 'true');
     window.closeYouTubeTokenModal();
     renderTokenExpiryAlerts();
+    updateTopStatCards();
     alert('YouTube OAuth 2.0 token marked as revoked.\n\nYouTube Shorts automated uploads are now safely paused.');
   };
 
@@ -1756,6 +1864,7 @@
     localStorage.removeItem(STORAGE_KEY_YT_REVOKED);
     window.closeYouTubeTokenModal();
     renderTokenExpiryAlerts();
+    updateTopStatCards();
     alert('YouTube OAuth token revocation flag cleared.\n\nYouTube Shorts upload status has been restored.');
   };
 
@@ -1775,6 +1884,7 @@
       if (errBox) errBox.style.display = 'none';
       window.closeSetupModal();
       renderTokenExpiryAlerts();
+      updateTopStatCards();
       alert('GitHub Personal Access Token revoked and cleared.\n\nDashboard is now running in public read-only mode.');
     }
   };
@@ -1787,6 +1897,7 @@
       const inputDate = document.getElementById('input-token-expiry');
       if (inputDate) inputDate.value = expiredDate;
       renderTokenExpiryAlerts();
+      updateTopStatCards();
       alert('Meta Graph token marked as expired. Instagram Reels posting has been safely paused.');
     }
   };
