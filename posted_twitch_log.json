@@ -598,5 +598,24 @@
     "clips_used": [
       "2026-11-20-bingo_ws_in_the_chat.mp4"
     ]
+  },
+  {
+    "timestamp": "2026-11-23T13:21:35.779266+00:00",
+    "uploads": {
+      "youtube": "https://youtube.com/shorts/AcKi_Z9BZKw",
+      "instagram_1_regular": "https://www.instagram.com/reel/DgFednanfej/"
+    },
+    "upload_clip_map": {
+      "youtube": "2026-11-19-gta_vi_chaos_is_real.mp4",
+      "instagram_1_regular": "2026-11-19-jason_fails_the_gta_heist.mp4"
+    },
+    "upload_captions": {
+      "youtube": "Police completely destroyed the entire intersection in seconds during the wildest physics glitch ever caught on stream. Would you survive this level of pure mayhem in Vice City? #GTA6 #GamingMoments #Streamer #GTAChaos",
+      "instagram_1_regular": "Jason thought he was pulling off the ultimate GTA VI crime spree until his absolute zero IQ play ruined the entire getaway in seconds. Would you have trusted him on your team after that disaster? #GTA6 #jasontheween #GamingMoments #Fail"
+    },
+    "clips_used": [
+      "2026-11-19-gta_vi_chaos_is_real.mp4",
+      "2026-11-19-jason_fails_the_gta_heist.mp4"
+    ]
   }
 ]

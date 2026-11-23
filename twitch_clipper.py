@@ -31,6 +31,7 @@ from src.twitch_clipper.smart_editor import fast_forward_dead_air
 from src.twitch_clipper.text_censor import sanitize_text_for_reach
 from src.uploaders.youtube_uploader import upload_short, get_optimal_publish_time, format_shorts_title
 from src.uploaders.instagram_uploader import upload_reel, upload_reel_direct
+from src.utils.logger import log_event, backup_critical_logs
 
 CONFIG_FILE = "config.json"
 STATE_FILE = "clipper_state.json"
@@ -1301,6 +1302,12 @@ def publish_next_clip(
     if has_success:
         logs.append(results)
         _save_json(TWITCH_LOG_FILE, logs)
+        backup_critical_logs()
+        log_event("SUCCESS", "Publisher", "publish_next_clip", {
+            "uploads": results.get("uploads"),
+            "clips_used": results.get("clips_used"),
+            "youtube_publish_at": results.get("youtube_publish_at")
+        })
 
         yt_posted_cnames = [c for c in results.get("clips_used", []) if "youtube" in results.get("uploads", {})]
         ig_posted_cnames = [c for c in results.get("clips_used", []) if any(k.startswith("instagram_") for k in results.get("uploads", {}))]
@@ -1343,8 +1350,10 @@ def publish_next_clip(
                     try:
                         os.remove(cpath)
                         print(f"[+] Storage freed: Deleted posted video '{cname}' (All targets completed).")
+                        log_event("INFO", "StorageGovernor", "delete_completed_video", {"deleted": cname})
                     except Exception as e:
                         print(f"[-] Could not delete '{cname}': {e}")
+                        log_event("ERROR", "StorageGovernor", "delete_completed_video_failed", {"file": cname, "error": str(e)})
 
                 # Move the lightweight JSON metadata to stream_posted/ for archive history
                 posted_json = os.path.join(STREAM_POSTED_DIR, os.path.splitext(cname)[0] + ".json")
@@ -1354,12 +1363,14 @@ def publish_next_clip(
             else:
                 remaining_desc = ", ".join(targets)
                 print(f"[*] Clip '{cname}' retained in stream_pipeline/ for remaining destination: {remaining_desc}")
+                log_event("INFO", "StorageGovernor", "retain_multi_target_video", {"clip": cname, "remaining_targets": targets})
 
         # When a video is posted, trigger a new runner immediately to generate fresh clips
         print("[*] Video upload complete. Triggering background runner to generate next clips...")
         trigger_background_clip_generation(config)
     else:
         print("[*] No eligible publishing slots right now (cooldown/daily cap active).")
+        log_event("INFO", "Publisher", "skip_cycle", {"reason": "cooldown/daily cap active"})
 
     return results
 

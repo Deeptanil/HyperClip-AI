@@ -32,6 +32,7 @@ from src.uploaders.youtube_uploader import upload_short
 from src.uploaders.instagram_uploader import upload_reel_direct, upload_reel_meta_graph
 from src.uploaders.tiktok_uploader import upload_tiktok
 from src.twitch_clipper.text_censor import sanitize_text_for_reach
+from src.utils.logger import log_event, backup_critical_logs
 from generate_story import build_story_video
 
 LOG_FILE = "posted_log.json"
@@ -347,11 +348,17 @@ async def run_pipeline(platforms=None, force=False):
             results["uploads"]["tiktok"] = f"Failed: {e}"
 
     save_log_entry(results)
+    backup_critical_logs()
+    log_event("SUCCESS", "AutoPoster", "publish_next_post", {
+        "video": results.get("video"),
+        "uploads": results.get("uploads")
+    })
 
     # Delete posted video and metadata to prevent storage clutter (URLs recorded in logs)
     if os.path.exists(video_to_post):
         try:
             os.remove(video_to_post)
+            log_event("INFO", "AutoPoster", "delete_posted_video", {"video": video_to_post})
         except Exception:
             pass
     if os.path.exists(json_path):
