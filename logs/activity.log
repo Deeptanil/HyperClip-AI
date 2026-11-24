@@ -1,3 +1,7 @@
 [2026-11-23 19:35:54 UTC] [INFO] [Test] initialization: {"status": "testing"}
 [2026-11-23 19:35:54 UTC] [SUCCESS] [BackupManager] backup_critical_logs: {"backed_up": ["posted_twitch_log.json", "posted_log.json", "clipper_state.json", "config.json"]}
 [2026-11-23 19:39:15 UTC] [SUCCESS] [BackupManager] backup_critical_logs: {"backed_up": ["posted_twitch_log.json", "posted_log.json", "clipper_state.json", "config.json"]}
+[2026-11-24 01:05:11 UTC] [SUCCESS] [BackupManager] backup_critical_logs: {"backed_up": ["posted_twitch_log.json", "posted_log.json", "clipper_state.json", "config.json"]}
+[2026-11-24 01:05:11 UTC] [SUCCESS] [Publisher] publish_next_clip: {"uploads": {"youtube": "https://youtube.com/shorts/D7jP0j2RZRY", "instagram_2_regular": "https://www.instagram.com/reel/DgGu5rbCTko/"}, "clips_used": ["2026-11-19-kai_cenat_plays_gta_six.mp4", "2026-11-20-wait_until_he_finds_out.mp4"], "youtube_publish_at": "2026-11-24T15:00:00Z"}
+[2026-11-24 01:05:11 UTC] [INFO] [StorageGovernor] delete_completed_video: {"deleted": "2026-11-19-kai_cenat_plays_gta_six.mp4"}
+[2026-11-24 01:05:11 UTC] [INFO] [StorageGovernor] delete_completed_video: {"deleted": "2026-11-20-wait_until_he_finds_out.mp4"}

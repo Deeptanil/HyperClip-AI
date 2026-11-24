@@ -1,0 +1,38 @@
+{
+  "streamer": "Cinna",
+  "username": "cinna",
+  "vod_id": "2938693218",
+  "game": "Grand Theft Auto VI",
+  "peak_sec": 14667,
+  "hype_score": 175.75,
+  "z_score": 3.55,
+  "title": "CINNA: JASON DIED IN GTA 6?! \ud83d\udc80",
+  "caption": "Cinna completely lost her mind when Jason met an unexpected end and a wild random spawned a jet mid-scenario. Would you survive this absolute chaos in Leonida? #gta6 #cinna #gtavi #gaming",
+  "hook": "BRO BROUGHT A JET IN \ud83d\ude2d",
+  "target_accounts": [
+    "ig_1",
+    "youtube"
+  ],
+  "assigned_ig": "ig_1",
+  "post_to_yt": true,
+  "post_to_ig": true,
+  "posted_to_instagram": false,
+  "posted_to_youtube": false,
+  "priority": 4,
+  "discarded": false,
+  "smart_edited": true,
+  "fast_forward_segments": [
+    {
+      "start": 10.0,
+      "end": 23.41,
+      "speed": 3.0
+    }
+  ],
+  "nsfw_censored": false,
+  "nsfw_segments": [],
+  "profanity_bleeped": false,
+  "bleep_segments": [],
+  "target": "Instagram (@solvikz) & YouTube",
+  "created_at": "2026-11-24T01:08:20.939591+00:00",
+  "timestamp": "2026-11-24T01:08:20.939611+00:00"
+}
