@@ -14,7 +14,11 @@
   "post_to_yt": false,
   "post_to_ig": true,
   "posted_to_instagram": true,
+<<<<<<< Updated upstream
   "posted_to_youtube": true,
+=======
+  "posted_to_youtube": false,
+>>>>>>> Stashed changes
   "priority": 4,
   "discarded": false,
   "smart_edited": true,
