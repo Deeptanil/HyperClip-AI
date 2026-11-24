@@ -17,3 +17,10 @@
 [2026-11-24 12:09:29 UTC] [SUCCESS] [Publisher] publish_next_clip: {"uploads": {"youtube": "https://youtube.com/shorts/y3TjIdkgQwI"}, "clips_used": ["2026-11-19-kai_cenat_plays_gta_six.mp4"], "youtube_publish_at": "2026-11-24T15:00:00Z"}
 [2026-11-24 12:09:29 UTC] [INFO] [StorageGovernor] retain_multi_target_video: {"clip": "2026-11-19-kai_cenat_plays_gta_six.mp4", "remaining_targets": ["ig_1"]}
 >>>>>>> Stashed changes
+<<<<<<< Updated upstream
+=======
+[2026-11-24 20:56:39 UTC] [SUCCESS] [BackupManager] backup_critical_logs: {"backed_up": ["posted_twitch_log.json", "posted_log.json", "clipper_state.json", "config.json"]}
+[2026-11-24 20:56:39 UTC] [SUCCESS] [Publisher] publish_next_clip: {"uploads": {"youtube": "https://youtube.com/shorts/XBEc0-U3HZE", "instagram_1_regular": "https://www.instagram.com/reel/DgI3QhpnQoC/"}, "clips_used": ["2026-11-19-kai_cenat_plays_gta_six.mp4", "2026-11-19-kai_cenat_is_so_lost.mp4"], "youtube_publish_at": null}
+[2026-11-24 20:56:39 UTC] [INFO] [StorageGovernor] delete_completed_video: {"deleted": "2026-11-19-kai_cenat_is_so_lost.mp4"}
+[2026-11-24 20:56:39 UTC] [INFO] [StorageGovernor] delete_completed_video: {"deleted": "2026-11-19-kai_cenat_plays_gta_six.mp4"}
+>>>>>>> Stashed changes
