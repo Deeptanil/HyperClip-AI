@@ -1,58 +1,17 @@
 [
   {
-    "timestamp": "2026-11-15T08:52:01.038533+00:00",
+    "timestamp": "2026-11-24T12:09:27.143665+00:00",
     "uploads": {
-      "instagram_2_trial": "https://instagram.com/reel/DfwZVNOR_Ch"
+      "youtube": "https://youtube.com/shorts/y3TjIdkgQwI"
     },
     "upload_clip_map": {
-      "instagram_2_trial": "2026-11-15-clix_goes_crazy_on_fortnite.mp4"
-    },
-    "clips_used": [
-      "2026-11-15-clix_goes_crazy_on_fortnite.mp4"
-    ]
-  },
-  {
-    "timestamp": "2026-11-15T14:01:18.122283+00:00",
-    "uploads": {
-      "youtube": "https://youtube.com/shorts/ZaFL0O_vnKI",
-      "instagram_1_regular": "https://instagram.com/reel/Dfw8i-mRh-P"
-    },
-    "upload_clip_map": {
-      "youtube": "2026-11-15-caseoh_lethal_company_scream.mp4",
-      "instagram_1_regular": "2026-11-15-friendship_ruining_golf_shot.mp4"
-    },
-    "clips_used": [
-      "2026-11-15-caseoh_lethal_company_scream.mp4",
-      "2026-11-15-friendship_ruining_golf_shot.mp4"
-    ]
-  },
-  {
-    "timestamp": "2026-11-15T17:42:07.520646+00:00",
-    "uploads": {
-      "youtube": "https://youtube.com/shorts/HWFzact11GQ",
-      "instagram_2_regular": "https://instagram.com/reel/DfxV6mBRFO5"
-    },
-    "upload_clip_map": {
-      "youtube": "2026-11-15-xqc_cs_1v3_clutch.mp4",
-      "instagram_2_regular": "2026-11-15-kai_cenat_malenia_clutch.mp4"
-    },
-    "clips_used": [
-      "2026-11-15-xqc_cs_1v3_clutch.mp4",
-      "2026-11-15-kai_cenat_malenia_clutch.mp4"
-    ]
-  },
-  {
-    "timestamp": "2026-11-15T18:21:48.615599+00:00",
-    "uploads": {
-      "instagram_1_regular": "https://instagram.com/reel/Dfxac8exg6L"
-    },
-    "upload_clip_map": {
-      "instagram_1_regular": "2026-11-15-lacy_admits_it_on_stream.mp4"
+      "youtube": "2026-11-19-kai_cenat_plays_gta_six.mp4"
     },
     "upload_captions": {
-      "instagram_1_regular": "Bro really just dropped the lore out of nowhere \ud83d\udc80 #lacy #twitchcon #justchatting"
+      "youtube": "Kai Cenat completely loses his mind when he tests out the crazy new physics in GTA 6 and immediately wrecks his stolen whip. Would you survive five minutes in this chaotic lobby? #GTA6 #KaiCenat #GamingMoments #StreamerFails"
     },
     "clips_used": [
+<<<<<<< Updated upstream
       "2026-11-15-lacy_admits_it_on_stream.mp4"
     ]
   },
@@ -654,6 +613,11 @@
     "clips_used": [
       "2026-11-19-kai_cenat_is_so_lost.mp4"
     ]
+>>>>>>> Stashed changes
+=======
+      "2026-11-19-kai_cenat_plays_gta_six.mp4"
+    ],
+    "youtube_publish_at": "2026-11-24T15:00:00Z"
 >>>>>>> Stashed changes
   }
 ]

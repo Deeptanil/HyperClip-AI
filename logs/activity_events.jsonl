@@ -11,3 +11,9 @@
 {"timestamp": "2026-11-24T10:54:01.509305+00:00", "level": "SUCCESS", "component": "Publisher", "action": "publish_next_clip", "details": {"uploads": {"instagram_1_regular": "https://www.instagram.com/reel/DgHySqrk05x/"}, "clips_used": ["2026-11-19-kai_cenat_is_so_lost.mp4"], "youtube_publish_at": null}}
 {"timestamp": "2026-11-24T10:54:01.510382+00:00", "level": "INFO", "component": "StorageGovernor", "action": "delete_completed_video", "details": {"deleted": "2026-11-19-kai_cenat_is_so_lost.mp4"}}
 >>>>>>> Stashed changes
+<<<<<<< Updated upstream
+=======
+{"timestamp": "2026-11-24T12:09:29.172498+00:00", "level": "SUCCESS", "component": "BackupManager", "action": "backup_critical_logs", "details": {"backed_up": ["posted_twitch_log.json", "posted_log.json", "clipper_state.json", "config.json"]}}
+{"timestamp": "2026-11-24T12:09:29.172650+00:00", "level": "SUCCESS", "component": "Publisher", "action": "publish_next_clip", "details": {"uploads": {"youtube": "https://youtube.com/shorts/y3TjIdkgQwI"}, "clips_used": ["2026-11-19-kai_cenat_plays_gta_six.mp4"], "youtube_publish_at": "2026-11-24T15:00:00Z"}}
+{"timestamp": "2026-11-24T12:09:29.173000+00:00", "level": "INFO", "component": "StorageGovernor", "action": "retain_multi_target_video", "details": {"clip": "2026-11-19-kai_cenat_plays_gta_six.mp4", "remaining_targets": ["ig_1"]}}
+>>>>>>> Stashed changes
