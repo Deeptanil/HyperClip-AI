@@ -85,15 +85,20 @@ def upload_reel_meta_graph(video_path_or_url: str, caption: str, account_slot: i
     # Poll status
     status_endpoint = f"{base_graph}/{creation_id}"
     print(f"[*] Waiting for Instagram to process video container ({creation_id})...")
+    finished = False
+    last_status = None
     for attempt in range(40):
         time.sleep(5)
         check = requests.get(status_endpoint, params={"fields": "status_code", "access_token": token}, timeout=15).json()
-        status = check.get("status_code")
-        print(f"    Container status: {status} (check {attempt+1}/40)")
-        if status == "FINISHED":
+        last_status = check.get("status_code")
+        print(f"    Container status: {last_status} (check {attempt+1}/40)")
+        if last_status == "FINISHED":
+            finished = True
             break
-        elif status == "ERROR":
-            raise RuntimeError(f"Instagram video processing failed: {check}")
+        elif last_status in ("ERROR", "EXPIRED"):
+            raise RuntimeError(f"Instagram video processing failed ({last_status}): {check}")
+    if not finished:
+        raise RuntimeError(f"Instagram video processing timed out after 200s (last status: {last_status})")
 
     if scheduled_publish_time:
         print(f"[+] Successfully scheduled Instagram Reel container {creation_id} for {scheduled_publish_time} on Meta Graph API.")
