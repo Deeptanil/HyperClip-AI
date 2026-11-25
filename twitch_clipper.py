@@ -52,15 +52,33 @@ def _load_json(path: str, default):
     if os.path.exists(path):
         try:
             with open(path, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            pass
+                content = f.read()
+            # If conflict markers exist in content, auto-clean them
+            if "<<<<<<<" in content:
+                print(f"[!] Warning: Conflict markers detected in {path}. Auto-cleaning...")
+                lines = [l for l in content.splitlines() if not (l.startswith("<<<<<<<") or l.startswith("=======") or l.startswith(">>>>>>>"))]
+                content = "\n".join(lines)
+            return json.loads(content)
+        except Exception as e:
+            print(f"[!] Warning: Error reading {path}: {e}. Attempting backup recovery...")
+            base_fname = os.path.basename(path)
+            bak_path = os.path.join("logs", "backups", f"{os.path.splitext(base_fname)[0]}.backup.json")
+            if os.path.exists(bak_path):
+                try:
+                    with open(bak_path, "r", encoding="utf-8") as bf:
+                        bak_data = json.load(bf)
+                    print(f"[+] Successfully recovered {path} from {bak_path}")
+                    return bak_data
+                except Exception:
+                    pass
     return default
 
 
 def _save_json(path: str, data):
-    with open(path, "w", encoding="utf-8") as f:
+    tmp_path = path + ".tmp"
+    with open(tmp_path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
+    os.replace(tmp_path, path)
 
 
 def ensure_dirs():
@@ -1105,6 +1123,46 @@ def publish_next_clip(
         "clips_used": [],
     }
 
+    # Build definitive historical registry to prevent ANY duplicate uploads
+    published_history = {"youtube": set(), "ig_1": set(), "ig_2": set()}
+    for entry in logs:
+        uploads = entry.get("uploads", {})
+        clip_map = entry.get("upload_clip_map", {})
+        clips_used = entry.get("clips_used", [])
+        for k, v in uploads.items():
+            if not isinstance(v, str) or v.lower().startswith("failed"):
+                continue
+            cname_val = clip_map.get(k)
+            if not cname_val and len(clips_used) == 1:
+                cname_val = clips_used[0]
+            if cname_val:
+                base = os.path.splitext(cname_val)[0]
+                if "youtube" in k.lower():
+                    published_history["youtube"].add(cname_val)
+                    published_history["youtube"].add(base)
+                if "instagram_1" in k.lower():
+                    published_history["ig_1"].add(cname_val)
+                    published_history["ig_1"].add(base)
+                elif "instagram_2" in k.lower():
+                    published_history["ig_2"].add(cname_val)
+                    published_history["ig_2"].add(base)
+                elif "instagram" in k.lower():
+                    published_history["ig_1"].add(cname_val)
+                    published_history["ig_1"].add(base)
+
+    if os.path.exists(STREAM_POSTED_DIR):
+        for f in os.listdir(STREAM_POSTED_DIR):
+            if f.endswith(".json"):
+                base = os.path.splitext(f)[0]
+                pm = _load_json(os.path.join(STREAM_POSTED_DIR, f), {})
+                if pm.get("posted_to_youtube"):
+                    published_history["youtube"].add(f"{base}.mp4")
+                    published_history["youtube"].add(base)
+                if pm.get("posted_to_instagram"):
+                    assigned = pm.get("assigned_ig", "ig_1")
+                    published_history[assigned].add(f"{base}.mp4")
+                    published_history[assigned].add(base)
+
     def _next_clip(for_platform="instagram", ig_slot=1):
         target_tag = "youtube" if for_platform == "youtube" else f"ig_{ig_slot}"
         for cname in queued:
@@ -1116,11 +1174,28 @@ def publish_next_clip(
             if meta.get("discarded") or meta.get("approval_status") == "denied":
                 continue
 
+            cname_base = os.path.splitext(cname)[0]
+            # HARD DEDUPLICATION SHIELD: Check against definitive historical registry
+            if cname in published_history[target_tag] or cname_base in published_history[target_tag]:
+                if for_platform == "youtube" and not meta.get("posted_to_youtube"):
+                    meta["posted_to_youtube"] = True
+                    _save_json(mpath, meta)
+                elif for_platform == "instagram" and not meta.get("posted_to_instagram"):
+                    meta["posted_to_instagram"] = True
+                    _save_json(mpath, meta)
+                continue
+
             target_accounts = meta.get("target_accounts", [])
+            # If target_accounts is explicitly empty, this clip is already fully posted!
+            if "target_accounts" in meta and len(target_accounts) == 0:
+                continue
+
             target_str = str(meta.get("target", "")).lower()
 
             if for_platform == "youtube":
                 if meta.get("posted_to_youtube", False):
+                    continue
+                if "target_accounts" in meta and "youtube" not in target_accounts and not meta.get("post_to_yt", False):
                     continue
                 is_assigned_yt = ("youtube" in target_accounts) or meta.get("post_to_yt", False) or ("youtube" in target_str)
                 if is_assigned_yt:
@@ -1137,6 +1212,8 @@ def publish_next_clip(
                 if assigned_ig == other_slot_tag:
                     continue
                 if other_slot_tag in target_accounts and target_tag not in target_accounts:
+                    continue
+                if "target_accounts" in meta and target_tag not in target_accounts:
                     continue
 
                 is_assigned_this_ig = (

@@ -5,16 +5,15 @@
   "title": "CLIX UNLEASHES PURE CHAOS IN GTA 6 \ud83e\udd2f\ud83d\udd25",
   "hook": "HE ACTUALLY LOST HIS MIND \ud83d\udc80",
   "caption": "Clix completely broke the streets of GTA 6 with an unhinged rampage that left his entire lobby speechless. Would you have survived even five seconds against this madness? #GTA6 #Clix #GamingMoments #ViralGaming",
-  "target_accounts": [
-    "youtube"
-  ],
+  "target_accounts": [],
   "assigned_ig": "ig_2",
   "post_to_yt": true,
   "post_to_ig": true,
   "posted_to_instagram": true,
-  "posted_to_youtube": false,
+  "posted_to_youtube": true,
   "priority": 4,
   "discarded": false,
   "ai_retitled": true,
-  "instagram_url": "https://www.instagram.com/reel/DgAAeA5jZJF/"
+  "instagram_url": "https://www.instagram.com/reel/DgKqTm9sxnA/",
+  "youtube_url": "https://youtube.com/shorts/sNAg03iVo9M"
 }
