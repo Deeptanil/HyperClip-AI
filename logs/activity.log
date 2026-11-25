@@ -43,3 +43,10 @@
 [2026-11-25 05:18:03 UTC] [SUCCESS] [Publisher] publish_next_clip: {"uploads": {"youtube": "https://youtube.com/shorts/KqL7lDuInkk"}, "clips_used": ["2026-11-19-clix_goes_crazy_on_grand.mp4"], "youtube_publish_at": "2026-11-25T15:00:00Z"}
 [2026-11-25 05:18:03 UTC] [INFO] [StorageGovernor] delete_completed_video: {"deleted": "2026-11-19-clix_goes_crazy_on_grand.mp4"}
 >>>>>>> Stashed changes
+<<<<<<< Updated upstream
+=======
+[2026-11-25 13:41:55 UTC] [SUCCESS] [BackupManager] backup_critical_logs: {"backed_up": ["posted_twitch_log.json", "posted_log.json", "clipper_state.json", "config.json"]}
+[2026-11-25 13:41:55 UTC] [SUCCESS] [Publisher] publish_next_clip: {"uploads": {"youtube": "https://youtube.com/shorts/sNAg03iVo9M", "instagram_1_regular": "https://www.instagram.com/reel/DgKqTm9sxnA/"}, "clips_used": ["2026-11-19-clix_goes_crazy_on_grand.mp4", "2026-11-19-kai_cenat_is_so_lost.mp4"], "youtube_publish_at": "2026-11-25T15:00:00Z"}
+[2026-11-25 13:41:55 UTC] [INFO] [StorageGovernor] delete_completed_video: {"deleted": "2026-11-19-kai_cenat_is_so_lost.mp4"}
+[2026-11-25 13:41:55 UTC] [INFO] [StorageGovernor] delete_completed_video: {"deleted": "2026-11-19-clix_goes_crazy_on_grand.mp4"}
+>>>>>>> Stashed changes
