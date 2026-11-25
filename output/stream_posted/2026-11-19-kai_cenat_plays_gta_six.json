@@ -5,43 +5,15 @@
   "title": "KAI CENAT LOSES IT IN GTA 6 \ud83d\udc80\ud83d\udd25",
   "hook": "BRO FOUND THE GLITCH \ud83d\ude2d",
   "caption": "Kai Cenat completely loses his mind when he tests out the crazy new physics in GTA 6 and immediately wrecks his stolen whip. Would you survive five minutes in this chaotic lobby? #GTA6 #KaiCenat #GamingMoments #StreamerFails",
-<<<<<<< Updated upstream
-<<<<<<<< Updated upstream:output/stream_posted/2026-11-19-kai_cenat_plays_gta_six.json
-=======
->>>>>>> Stashed changes
   "target_accounts": [],
   "assigned_ig": "ig_1",
   "post_to_yt": true,
   "post_to_ig": true,
   "posted_to_instagram": true,
-<<<<<<< Updated upstream
-========
-  "target_accounts": [
-    "ig_1"
-  ],
-  "assigned_ig": "ig_1",
-  "post_to_yt": true,
-  "post_to_ig": true,
-  "posted_to_instagram": false,
-<<<<<<<< Updated upstream:output/stream_posted/2026-11-19-kai_cenat_plays_gta_six.json
->>>>>>>> Stashed changes:output/stream_pipeline/2026-11-19-kai_cenat_plays_gta_six.json
-========
->>>>>>>> Stashed changes:output/stream_pipeline/2026-11-19-kai_cenat_plays_gta_six.json
-=======
->>>>>>> Stashed changes
   "posted_to_youtube": true,
   "priority": 4,
   "discarded": false,
   "ai_retitled": true,
-<<<<<<< Updated upstream
-<<<<<<<< Updated upstream:output/stream_posted/2026-11-19-kai_cenat_plays_gta_six.json
-  "youtube_url": "https://youtube.com/shorts/D7jP0j2RZRY",
-  "instagram_url": "https://www.instagram.com/reel/DgGu5rbCTko/"
-========
-  "youtube_url": "https://youtube.com/shorts/y3TjIdkgQwI"
->>>>>>>> Stashed changes:output/stream_pipeline/2026-11-19-kai_cenat_plays_gta_six.json
-=======
   "youtube_url": "https://youtube.com/shorts/XBEc0-U3HZE",
   "instagram_url": "https://www.instagram.com/reel/DgI3QhpnQoC/"
->>>>>>> Stashed changes
 }

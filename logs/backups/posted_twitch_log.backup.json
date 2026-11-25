@@ -1,29 +1,58 @@
 [
   {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-    "timestamp": "2026-11-24T12:09:27.143665+00:00",
+    "timestamp": "2026-11-15T08:52:01.038533+00:00",
     "uploads": {
-      "youtube": "https://youtube.com/shorts/y3TjIdkgQwI"
-=======
-    "timestamp": "2026-11-24T22:41:49.792239+00:00",
-    "uploads": {
-      "youtube": "https://youtube.com/shorts/MWs7vRESfUY"
->>>>>>> Stashed changes
+      "instagram_2_trial": "https://instagram.com/reel/DfwZVNOR_Ch"
     },
     "upload_clip_map": {
-      "youtube": "2026-11-19-kai_cenat_plays_gta_six.mp4"
-    },
-    "upload_captions": {
-      "youtube": "Kai Cenat completely loses his mind when he tests out the crazy new physics in GTA 6 and immediately wrecks his stolen whip. Would you survive five minutes in this chaotic lobby? #GTA6 #KaiCenat #GamingMoments #StreamerFails"
+      "instagram_2_trial": "2026-11-15-clix_goes_crazy_on_fortnite.mp4"
     },
     "clips_used": [
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
+      "2026-11-15-clix_goes_crazy_on_fortnite.mp4"
+    ]
+  },
+  {
+    "timestamp": "2026-11-15T14:01:18.122283+00:00",
+    "uploads": {
+      "youtube": "https://youtube.com/shorts/ZaFL0O_vnKI",
+      "instagram_1_regular": "https://instagram.com/reel/Dfw8i-mRh-P"
+    },
+    "upload_clip_map": {
+      "youtube": "2026-11-15-caseoh_lethal_company_scream.mp4",
+      "instagram_1_regular": "2026-11-15-friendship_ruining_golf_shot.mp4"
+    },
+    "clips_used": [
+      "2026-11-15-caseoh_lethal_company_scream.mp4",
+      "2026-11-15-friendship_ruining_golf_shot.mp4"
+    ]
+  },
+  {
+    "timestamp": "2026-11-15T17:42:07.520646+00:00",
+    "uploads": {
+      "youtube": "https://youtube.com/shorts/HWFzact11GQ",
+      "instagram_2_regular": "https://instagram.com/reel/DfxV6mBRFO5"
+    },
+    "upload_clip_map": {
+      "youtube": "2026-11-15-xqc_cs_1v3_clutch.mp4",
+      "instagram_2_regular": "2026-11-15-kai_cenat_malenia_clutch.mp4"
+    },
+    "clips_used": [
+      "2026-11-15-xqc_cs_1v3_clutch.mp4",
+      "2026-11-15-kai_cenat_malenia_clutch.mp4"
+    ]
+  },
+  {
+    "timestamp": "2026-11-15T18:21:48.615599+00:00",
+    "uploads": {
+      "instagram_1_regular": "https://instagram.com/reel/Dfxac8exg6L"
+    },
+    "upload_clip_map": {
+      "instagram_1_regular": "2026-11-15-lacy_admits_it_on_stream.mp4"
+    },
+    "upload_captions": {
+      "instagram_1_regular": "Bro really just dropped the lore out of nowhere \ud83d\udc80 #lacy #twitchcon #justchatting"
+    },
+    "clips_used": [
       "2026-11-15-lacy_admits_it_on_stream.mp4"
     ]
   },
@@ -486,26 +515,10 @@
     },
     "upload_captions": {
       "youtube": "Kai Cenat somehow managed to get completely turned around and utterly lost within the first five minutes of exploring GTA 6. Watching him blindly panic while trying to navigate the new map is absolute comedy gold. Have you ever gotten this lost in an open-world game on day one? #GTA6 #KaiCenat #GamingMoments #StreamerFails"
-=======
-    "timestamp": "2026-11-24T20:55:58.899151+00:00",
-    "uploads": {
-      "youtube": "https://youtube.com/shorts/XBEc0-U3HZE",
-      "instagram_1_regular": "https://www.instagram.com/reel/DgI3QhpnQoC/"
-    },
-    "upload_clip_map": {
-      "youtube": "2026-11-19-kai_cenat_plays_gta_six.mp4",
-      "instagram_1_regular": "2026-11-19-kai_cenat_is_so_lost.mp4"
-    },
-    "upload_captions": {
-      "youtube": "Kai Cenat completely loses his mind when he tests out the crazy new physics in GTA 6 and immediately wrecks his stolen whip. Would you survive five minutes in this chaotic lobby? #GTA6 #KaiCenat #GamingMoments #StreamerFails",
-      "instagram_1_regular": "Kai Cenat somehow managed to get completely turned around and utterly lost within the first five minutes of exploring GTA 6. Watching him blindly panic while trying to navigate the new map is absolute comedy gold. Have you ever gotten this lost in an open-world game on day one? #GTA6 #KaiCenat #GamingMoments #StreamerFails"
->>>>>>> Stashed changes
     },
     "clips_used": [
-      "2026-11-19-kai_cenat_plays_gta_six.mp4",
       "2026-11-19-kai_cenat_is_so_lost.mp4"
     ]
-<<<<<<< Updated upstream
   },
   {
     "timestamp": "2026-11-21T10:23:22.479868+00:00",
@@ -517,22 +530,10 @@
     },
     "upload_captions": {
       "instagram_2_regular": "Clix completely broke the streets of GTA 6 with an unhinged rampage that left his entire lobby speechless. Would you have survived even five seconds against this madness? #GTA6 #Clix #GamingMoments #ViralGaming"
-=======
-    "timestamp": "2026-11-25T15:57:00.650867+00:00",
-    "uploads": {
-      "youtube": "https://youtube.com/shorts/YHsPDRYA1FI"
-    },
-    "upload_clip_map": {
-      "youtube": "2026-11-19-clix_goes_crazy_on_grand.mp4"
-    },
-    "upload_captions": {
-      "youtube": "Clix completely broke the streets of GTA 6 with an unhinged rampage that left his entire lobby speechless. Would you have survived even five seconds against this madness? #GTA6 #Clix #GamingMoments #ViralGaming"
->>>>>>> Stashed changes
     },
     "clips_used": [
       "2026-11-19-clix_goes_crazy_on_grand.mp4"
     ]
-<<<<<<< Updated upstream
   },
   {
     "timestamp": "2026-11-21T17:41:45.938885+00:00",
@@ -615,112 +616,100 @@
     "clips_used": [
       "2026-11-19-gta_vi_chaos_is_real.mp4",
       "2026-11-19-jason_fails_the_gta_heist.mp4"
-=======
-      "2026-11-19-kai_cenat_plays_gta_six.mp4"
->>>>>>> Stashed changes
     ]
   },
   {
-    "timestamp": "2026-11-24T01:04:30.301601+00:00",
+    "timestamp": "2026-11-24T01:05:11.355704+00:00",
     "uploads": {
       "youtube": "https://youtube.com/shorts/D7jP0j2RZRY",
       "instagram_2_regular": "https://www.instagram.com/reel/DgGu5rbCTko/"
-    },
-    "upload_clip_map": {
-      "youtube": "2026-11-19-kai_cenat_plays_gta_six.mp4",
-      "instagram_2_regular": "2026-11-20-wait_until_he_finds_out.mp4"
-    },
-    "upload_captions": {
-      "youtube": "Kai Cenat completely loses his mind when he tests out the crazy new physics in GTA 6 and immediately wrecks his stolen whip. Would you survive five minutes in this chaotic lobby? #GTA6 #KaiCenat #GamingMoments #StreamerFails",
-      "instagram_2_regular": "Kai Cenat's jaw completely dropped to the floor during his first playthrough of GTA 6 after seeing something wild pop up on screen. Chat went absolutely insane with reactions once they realized what he was looking at. Would you survive a full session of this chaos? #KaiCenat #GTA6 #GamingMoments #FunnyStreamers"
     },
     "clips_used": [
       "2026-11-19-kai_cenat_plays_gta_six.mp4",
       "2026-11-20-wait_until_he_finds_out.mp4"
     ],
     "youtube_publish_at": "2026-11-24T15:00:00Z"
-<<<<<<< Updated upstream
-=======
   },
   {
-    "timestamp": "2026-11-24T10:53:23.687370+00:00",
+    "timestamp": "2026-11-24T10:54:01.509305+00:00",
     "uploads": {
       "instagram_1_regular": "https://www.instagram.com/reel/DgHySqrk05x/"
-    },
-    "upload_clip_map": {
-      "instagram_1_regular": "2026-11-19-kai_cenat_is_so_lost.mp4"
-    },
-    "upload_captions": {
-      "instagram_1_regular": "Kai Cenat somehow managed to get completely turned around and utterly lost within the first five minutes of exploring GTA 6. Watching him blindly panic while trying to navigate the new map is absolute comedy gold. Have you ever gotten this lost in an open-world game on day one? #GTA6 #KaiCenat #GamingMoments #StreamerFails"
     },
     "clips_used": [
       "2026-11-19-kai_cenat_is_so_lost.mp4"
     ]
->>>>>>> Stashed changes
-=======
+  },
+  {
+    "timestamp": "2026-11-24T12:09:29.172650+00:00",
+    "uploads": {
+      "youtube": "https://youtube.com/shorts/y3TjIdkgQwI"
+    },
+    "clips_used": [
       "2026-11-19-kai_cenat_plays_gta_six.mp4"
     ],
     "youtube_publish_at": "2026-11-24T15:00:00Z"
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
-=======
-    "timestamp": "2026-11-25T03:51:44.330173+00:00",
+  },
+  {
+    "timestamp": "2026-11-24T20:56:39.323001+00:00",
+    "uploads": {
+      "youtube": "https://youtube.com/shorts/XBEc0-U3HZE",
+      "instagram_1_regular": "https://www.instagram.com/reel/DgI3QhpnQoC/"
+    },
+    "clips_used": [
+      "2026-11-19-kai_cenat_plays_gta_six.mp4",
+      "2026-11-19-kai_cenat_is_so_lost.mp4"
+    ]
+  },
+  {
+    "timestamp": "2026-11-24T22:41:52.231544+00:00",
+    "uploads": {
+      "youtube": "https://youtube.com/shorts/MWs7vRESfUY"
+    },
+    "clips_used": [
+      "2026-11-19-kai_cenat_plays_gta_six.mp4"
+    ]
+  },
+  {
+    "timestamp": "2026-11-25T03:52:25.484455+00:00",
     "uploads": {
       "youtube": "https://youtube.com/shorts/AI54h223eoU",
       "instagram_1_regular": "https://www.instagram.com/reel/DgJm1h3ADIl/"
-    },
-    "upload_clip_map": {
-      "youtube": "2026-11-19-clix_goes_crazy_on_grand.mp4",
-      "instagram_1_regular": "2026-11-19-kai_cenat_is_so_lost.mp4"
-    },
-    "upload_captions": {
-      "youtube": "Clix completely broke the streets of GTA 6 with an unhinged rampage that left his entire lobby speechless. Would you have survived even five seconds against this madness? #GTA6 #Clix #GamingMoments #ViralGaming",
-      "instagram_1_regular": "Kai Cenat somehow managed to get completely turned around and utterly lost within the first five minutes of exploring GTA 6. Watching him blindly panic while trying to navigate the new map is absolute comedy gold. Have you ever gotten this lost in an open-world game on day one? #GTA6 #KaiCenat #GamingMoments #StreamerFails"
     },
     "clips_used": [
       "2026-11-19-clix_goes_crazy_on_grand.mp4",
       "2026-11-19-kai_cenat_is_so_lost.mp4"
     ],
     "youtube_publish_at": "2026-11-25T15:00:00Z"
->>>>>>> Stashed changes
-=======
-    "timestamp": "2026-11-25T05:18:01.172159+00:00",
+  },
+  {
+    "timestamp": "2026-11-25T05:18:03.343171+00:00",
     "uploads": {
       "youtube": "https://youtube.com/shorts/KqL7lDuInkk"
-    },
-    "upload_clip_map": {
-      "youtube": "2026-11-19-clix_goes_crazy_on_grand.mp4"
-    },
-    "upload_captions": {
-      "youtube": "Clix completely broke the streets of GTA 6 with an unhinged rampage that left his entire lobby speechless. Would you have survived even five seconds against this madness? #GTA6 #Clix #GamingMoments #ViralGaming"
     },
     "clips_used": [
       "2026-11-19-clix_goes_crazy_on_grand.mp4"
     ],
     "youtube_publish_at": "2026-11-25T15:00:00Z"
->>>>>>> Stashed changes
-=======
-    "timestamp": "2026-11-25T13:41:18.986379+00:00",
+  },
+  {
+    "timestamp": "2026-11-25T13:41:55.801393+00:00",
     "uploads": {
       "youtube": "https://youtube.com/shorts/sNAg03iVo9M",
       "instagram_1_regular": "https://www.instagram.com/reel/DgKqTm9sxnA/"
-    },
-    "upload_clip_map": {
-      "youtube": "2026-11-19-clix_goes_crazy_on_grand.mp4",
-      "instagram_1_regular": "2026-11-19-kai_cenat_is_so_lost.mp4"
-    },
-    "upload_captions": {
-      "youtube": "Clix completely broke the streets of GTA 6 with an unhinged rampage that left his entire lobby speechless. Would you have survived even five seconds against this madness? #GTA6 #Clix #GamingMoments #ViralGaming",
-      "instagram_1_regular": "Kai Cenat somehow managed to get completely turned around and utterly lost within the first five minutes of exploring GTA 6. Watching him blindly panic while trying to navigate the new map is absolute comedy gold. Have you ever gotten this lost in an open-world game on day one? #GTA6 #KaiCenat #GamingMoments #StreamerFails"
     },
     "clips_used": [
       "2026-11-19-clix_goes_crazy_on_grand.mp4",
       "2026-11-19-kai_cenat_is_so_lost.mp4"
     ],
     "youtube_publish_at": "2026-11-25T15:00:00Z"
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
+  },
+  {
+    "timestamp": "2026-11-25T15:57:02.412272+00:00",
+    "uploads": {
+      "youtube": "https://youtube.com/shorts/YHsPDRYA1FI"
+    },
+    "clips_used": [
+      "2026-11-19-clix_goes_crazy_on_grand.mp4"
+    ]
   }
 ]

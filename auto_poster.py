@@ -59,8 +59,19 @@ def load_log():
     if os.path.exists(LOG_FILE):
         try:
             with open(LOG_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                content = f.read()
+            if "<<<<<<<" in content:
+                lines = [l for l in content.splitlines() if not (l.startswith("<<<<<<<") or l.startswith("=======") or l.startswith(">>>>>>>"))]
+                content = "\n".join(lines)
+            return json.loads(content)
         except Exception:
+            bak_path = os.path.join("logs", "backups", "posted_log.backup.json")
+            if os.path.exists(bak_path):
+                try:
+                    with open(bak_path, "r", encoding="utf-8") as bf:
+                        return json.load(bf)
+                except Exception:
+                    pass
             return []
     return []
 
