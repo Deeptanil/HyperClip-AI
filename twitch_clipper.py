@@ -829,6 +829,17 @@ def cleanup_fully_posted_clips(pipeline_dir: str = STREAM_PIPELINE_DIR, posted_d
             meta["target_accounts"] = targets
             _save_json(json_path, meta)
 
+            # If the video .mp4 is already deleted from disk, move orphaned JSON to stream_posted/
+            if not os.path.exists(mp4_path):
+                print(f"[*] Storage freed: Moving orphaned metadata '{fname}' to stream_posted/ (video already deleted).")
+                posted_json = os.path.join(posted_dir, fname)
+                try:
+                    shutil.move(json_path, posted_json)
+                except OSError:
+                    pass
+                cleaned.append(base_name)
+                continue
+
             # 3. If zero remaining targets -> ALL destinations posted and verified!
             if len(targets) == 0:
                 print(f"[+] Storage freed: Deleted fully posted video '{base_name}.mp4' (All destinations complete).")
