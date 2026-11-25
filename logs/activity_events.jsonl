@@ -30,3 +30,10 @@
 {"timestamp": "2026-11-24T22:41:52.231544+00:00", "level": "SUCCESS", "component": "Publisher", "action": "publish_next_clip", "details": {"uploads": {"youtube": "https://youtube.com/shorts/MWs7vRESfUY"}, "clips_used": ["2026-11-19-kai_cenat_plays_gta_six.mp4"], "youtube_publish_at": null}}
 {"timestamp": "2026-11-24T22:41:52.231964+00:00", "level": "INFO", "component": "StorageGovernor", "action": "retain_multi_target_video", "details": {"clip": "2026-11-19-kai_cenat_plays_gta_six.mp4", "remaining_targets": ["ig_1"]}}
 >>>>>>> Stashed changes
+<<<<<<< Updated upstream
+=======
+{"timestamp": "2026-11-25T03:52:25.484331+00:00", "level": "SUCCESS", "component": "BackupManager", "action": "backup_critical_logs", "details": {"backed_up": ["posted_twitch_log.json", "posted_log.json", "clipper_state.json", "config.json"]}}
+{"timestamp": "2026-11-25T03:52:25.484455+00:00", "level": "SUCCESS", "component": "Publisher", "action": "publish_next_clip", "details": {"uploads": {"youtube": "https://youtube.com/shorts/AI54h223eoU", "instagram_1_regular": "https://www.instagram.com/reel/DgJm1h3ADIl/"}, "clips_used": ["2026-11-19-clix_goes_crazy_on_grand.mp4", "2026-11-19-kai_cenat_is_so_lost.mp4"], "youtube_publish_at": "2026-11-25T15:00:00Z"}}
+{"timestamp": "2026-11-25T03:52:25.485564+00:00", "level": "INFO", "component": "StorageGovernor", "action": "delete_completed_video", "details": {"deleted": "2026-11-19-kai_cenat_is_so_lost.mp4"}}
+{"timestamp": "2026-11-25T03:52:25.486701+00:00", "level": "INFO", "component": "StorageGovernor", "action": "delete_completed_video", "details": {"deleted": "2026-11-19-clix_goes_crazy_on_grand.mp4"}}
+>>>>>>> Stashed changes
