@@ -131,8 +131,8 @@
     streamYield: 10,
     maxPipelineCapacity: 50,
     clipSpacing: 300,
-    minSpikeSigma: 2.6,
-    prioritizedCategories: ['Grand Theft Auto VI', 'GTA 6', 'GTA VI'],
+    minSpikeSigma: 2.8,
+    prioritizedCategories: [],
     deprioritizedCategories: [],
     autoCensorNsfw: true,
     censorMode: 'blur',
@@ -147,7 +147,7 @@
     settings.tokenExpiryDate = '2027-01-17';
   }
   if (!Array.isArray(settings.prioritizedCategories)) {
-    settings.prioritizedCategories = ['Grand Theft Auto VI', 'GTA 6', 'GTA VI'];
+    settings.prioritizedCategories = [];
   }
   if (!Array.isArray(settings.deprioritizedCategories)) {
     settings.deprioritizedCategories = [];
