@@ -444,7 +444,28 @@
         12322,
         642
       ]
+    },
+    "2938664561": {
+      "last_scanned_sec": 17646,
+      "clipped_peaks": [
+        17192
+      ]
+    },
+    "2938693218": {
+      "last_scanned_sec": 15768,
+      "clipped_peaks": [
+        15227,
+        14667
+      ]
+    },
+    "2938337379": {
+      "last_scanned_sec": 41712,
+      "clipped_peaks": [
+        40337,
+        41822,
+        41017
+      ]
     }
   },
-  "yt_toggle": true
+  "yt_toggle": false
 }

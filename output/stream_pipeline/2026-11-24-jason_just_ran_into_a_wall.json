@@ -1,0 +1,57 @@
+{
+  "streamer": "DarkViperAU",
+  "username": "darkviperau",
+  "vod_id": "2938337379",
+  "game": "Grand Theft Auto VI",
+  "peak_sec": 41822,
+  "hype_score": 12.0,
+  "z_score": 2.82,
+  "title": "DARKVIPERAU: JASON WHAT ARE YOU DOING \ud83d\udc80\ud83d\ude97",
+  "caption": "DarkViperAU could not contain his sheer disbelief watching AI completely lose its mind during this chaotic mission escape. Have you ever seen NPC pathfinding fail this miserably? #DarkViperAU #GTA6 #GamingFails #StreamerMoments",
+  "hook": "JASON JUST RAN INTO A WALL \ud83d\ude2d",
+  "target_accounts": [
+    "ig_2"
+  ],
+  "assigned_ig": "ig_2",
+  "post_to_yt": false,
+  "post_to_ig": true,
+  "posted_to_instagram": false,
+  "posted_to_youtube": false,
+  "priority": 4,
+  "discarded": false,
+  "smart_edited": true,
+  "fast_forward_segments": [
+    {
+      "start": 1.2,
+      "end": 6.32,
+      "speed": 3.0
+    },
+    {
+      "start": 8.23,
+      "end": 12.7,
+      "speed": 3.0
+    },
+    {
+      "start": 14.88,
+      "end": 23.3,
+      "speed": 3.0
+    },
+    {
+      "start": 24.52,
+      "end": 29.72,
+      "speed": 3.0
+    },
+    {
+      "start": 32.42,
+      "end": 34.01,
+      "speed": 3.0
+    }
+  ],
+  "nsfw_censored": false,
+  "nsfw_segments": [],
+  "profanity_bleeped": false,
+  "bleep_segments": [],
+  "target": "Instagram (@loopablez) Only",
+  "created_at": "2026-11-24T01:10:31.886113+00:00",
+  "timestamp": "2026-11-24T01:10:31.886131+00:00"
+}

@@ -43,10 +43,10 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout Working Branch (master)
+      - name: Checkout Dedicated Content Branch
         uses: actions/checkout@v4
         with:
-          ref: master
+          ref: content
           fetch-depth: 0
 
       - name: Set up Python 3.11
@@ -71,11 +71,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-
-      - name: Sync Queue & State from Content Branch
-        run: |
-          git fetch origin content
-          git checkout origin/content -- output/ posted_twitch_log.json clipper_state.json logs/ 2>/dev/null || true
 
       - name: Run HyperClip AI Twitch Pipeline
         env:
@@ -115,9 +110,6 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git stash --include-untracked
-          git checkout -B content origin/content
-          git stash pop || true
           mkdir -p output/stream_pipeline output/stream_posted logs
           git add -A posted_twitch_log.json clipper_state.json logs/ output/stream_pipeline output/stream_posted
-          git diff --quiet && git diff --staged --quiet || (git commit -m "chore(twitch): automated hype clip harvest & publish [skip ci]" && git pull --rebase origin content && git push origin content)
+          git diff --staged --quiet || (git commit -m "chore(twitch): automated hype clip harvest & publish [skip ci]" && git pull --rebase origin content && git push origin content)
