@@ -73,10 +73,7 @@
         ]
       }
     },
-    "target_games": [
-      "Grand Theft Auto VI",
-      "Grand Theft Auto V"
-    ],
+    "target_games": [],
     "min_stream_minutes": 30,
     "intro_skip_sec": 480,
     "outro_skip_sec": 360,
@@ -86,25 +83,21 @@
     "pre_peak_sec": 22,
     "post_peak_sec": 13,
     "max_clips_per_vod": 10,
-    "max_pipeline_capacity": 50,
+    "max_pipeline_capacity": 80,
     "min_clip_spacing_sec": 300,
-    "min_spike_sigma": 2.6,
+    "min_spike_sigma": 2.8,
     "min_messages_per_window": 16,
     "layout": "auto_stacked",
     "background_color": "#000000",
     "enable_captions": true,
     "whisper_model": "tiny.en",
-    "default_hashtags": "#gta6 #twitch #gaming #shorts #reels #clips #viral"
+    "default_hashtags": "#twitch #streamer #gaming #viral #shorts #reels #fyp #funny"
   },
   "publishing_schedule": {
     "min_cross_account_gap_minutes": 25,
     "token_expiry_date": "2027-01-17",
     "priority_rules": {
-      "prioritized_categories": [
-        "Grand Theft Auto VI",
-        "GTA 6",
-        "GTA VI"
-      ],
+      "prioritized_categories": [],
       "deprioritized_categories": []
     },
     "youtube": {

@@ -311,8 +311,8 @@ def harvest_clips(config: dict, max_total_new: int = None) -> list:
             post_peak_sec=tc.get("post_peak_sec", 13),
             max_clips=tc.get("max_clips_per_vod", 10),
             min_spacing_sec=tc.get("min_clip_spacing_sec", 300),
-            min_spike_sigma=tc.get("min_spike_sigma", 2.0),
-            min_messages_per_window=tc.get("min_messages_per_window", 12),
+            min_spike_sigma=tc.get("min_spike_sigma", 2.8),
+            min_messages_per_window=tc.get("min_messages_per_window", 16),
             viewers=target.get("viewers", 0),
             intro_skip_sec=tc.get("intro_skip_sec", 480),
         )
@@ -508,6 +508,7 @@ def harvest_clips(config: dict, max_total_new: int = None) -> list:
                     "peak_sec": peak,
                     "hype_score": m["score"],
                     "z_score": m["z_score"],
+                    "virality_score": float(eval_res.get("virality_score", 7.5)),
                     "title": clip_title,
                     "caption": clip_caption,
                     "hook": hook_headline,
@@ -631,11 +632,11 @@ def get_account_interval_minutes(posts_per_day: int) -> float:
 def compute_clip_priority(meta: dict, config: dict, filename: str = "") -> int:
     """
     5-Tier Posting Priority System (1 to 5, 5 being highest, 1 being lowest):
-      5 = Highest       : Only set if user explicitly sets it
-      4 = Prioritized   : Set if explicitly 4 OR matches prioritized_categories (e.g. GTA 6)
-      3 = Default       : Default priority for standard clips
-      2 = Unprioritized : Set if explicitly 2 OR matches deprioritized_categories
-      1 = Lowest        : Only set if user explicitly sets it
+      5 = Highest       : Explicitly 5 OR Mega Viral Spike (virality_score >= 9.0 or z_score >= 4.5)
+      4 = Prioritized   : Explicitly 4, matches prioritized_categories, OR High Virality (virality_score >= 8.2 or z_score >= 3.2)
+      3 = Default       : Standard viral clips (virality_score >= 7.5 or z_score >= 2.6)
+      2 = Unprioritized : Explicitly 2 OR matches deprioritized_categories
+      1 = Lowest        : Explicitly set to 1
       Discarded clips have meta.get("discarded") == True and return 0 (excluded from publishing).
     """
     if meta.get("discarded") is True or meta.get("approval_status") == "denied":
@@ -673,6 +674,22 @@ def compute_clip_priority(meta: dict, config: dict, filename: str = "") -> int:
         return 4
     if any(cat in haystack for cat in deprio_cats):
         return 2
+
+    # Dynamic virality tiering based on AI judge and chat spike intensity
+    try:
+        virality = float(meta.get("virality_score") or 0.0)
+    except (ValueError, TypeError):
+        virality = 0.0
+    try:
+        z = float(meta.get("z_score") or 0.0)
+    except (ValueError, TypeError):
+        z = 0.0
+
+    if virality >= 9.0 or z >= 4.5:
+        return 5
+    if virality >= 8.2 or z >= 3.2:
+        return 4
+
     return 3
 
 
@@ -1087,8 +1104,27 @@ def publish_next_clip(
             except Exception:
                 ts_val = 0.0
 
-        # Higher priority posts first (-priority), FIFO within tier (ts_val)
-        return (-priority, ts_val)
+        # Sort by priority tier, then virality score, then z-score, then chat hype velocity, then FIFO timestamp
+        virality_val = 0.0
+        try:
+            virality_val = float(meta.get("virality_score") or 0.0)
+        except (ValueError, TypeError):
+            virality_val = 0.0
+
+        z_val = 0.0
+        try:
+            z_val = float(meta.get("z_score") or 0.0)
+        except (ValueError, TypeError):
+            z_val = 0.0
+
+        hype_val = 0.0
+        try:
+            hype_val = float(meta.get("hype_score") or 0.0)
+        except (ValueError, TypeError):
+            hype_val = 0.0
+
+        # Higher priority posts first (-priority), highest virality (-virality_val), highest z-score (-z_val), highest chat spike (-hype_val), then FIFO (ts_val)
+        return (-priority, -virality_val, -z_val, -hype_val, ts_val)
 
     all_mp4s = [f for f in os.listdir(STREAM_PIPELINE_DIR) if f.endswith(".mp4")]
     publishable = [
