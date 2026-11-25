@@ -5,6 +5,7 @@
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     "timestamp": "2026-11-24T12:09:27.143665+00:00",
     "uploads": {
       "youtube": "https://youtube.com/shorts/y3TjIdkgQwI"
@@ -516,10 +517,22 @@
     },
     "upload_captions": {
       "instagram_2_regular": "Clix completely broke the streets of GTA 6 with an unhinged rampage that left his entire lobby speechless. Would you have survived even five seconds against this madness? #GTA6 #Clix #GamingMoments #ViralGaming"
+=======
+    "timestamp": "2026-11-25T15:57:00.650867+00:00",
+    "uploads": {
+      "youtube": "https://youtube.com/shorts/YHsPDRYA1FI"
+    },
+    "upload_clip_map": {
+      "youtube": "2026-11-19-clix_goes_crazy_on_grand.mp4"
+    },
+    "upload_captions": {
+      "youtube": "Clix completely broke the streets of GTA 6 with an unhinged rampage that left his entire lobby speechless. Would you have survived even five seconds against this madness? #GTA6 #Clix #GamingMoments #ViralGaming"
+>>>>>>> Stashed changes
     },
     "clips_used": [
       "2026-11-19-clix_goes_crazy_on_grand.mp4"
     ]
+<<<<<<< Updated upstream
   },
   {
     "timestamp": "2026-11-21T17:41:45.938885+00:00",
@@ -706,6 +719,8 @@
       "2026-11-19-kai_cenat_is_so_lost.mp4"
     ],
     "youtube_publish_at": "2026-11-25T15:00:00Z"
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
   }
 ]
