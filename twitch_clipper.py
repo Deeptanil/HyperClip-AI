@@ -1433,8 +1433,17 @@ def publish_next_clip(
             "youtube_publish_at": results.get("youtube_publish_at")
         })
 
-        yt_posted_cnames = [c for c in results.get("clips_used", []) if "youtube" in results.get("uploads", {})]
-        ig_posted_cnames = [c for c in results.get("clips_used", []) if any(k.startswith("instagram_") for k in results.get("uploads", {}))]
+        upload_map = results.get("upload_clip_map", {})
+        yt_url = results.get("uploads", {}).get("youtube")
+        yt_succeeded = isinstance(yt_url, str) and not yt_url.lower().startswith("failed")
+        yt_posted_clip = upload_map.get("youtube") if yt_succeeded else None
+
+        ig_posted_clips = {}
+        for k, url in results.get("uploads", {}).items():
+            if k.startswith("instagram_") and isinstance(url, str) and not url.lower().startswith("failed"):
+                ig_cname = upload_map.get(k)
+                if ig_cname:
+                    ig_posted_clips[ig_cname] = url
 
         for cname in set(results["clips_used"]):
             cpath = os.path.join(STREAM_PIPELINE_DIR, cname)
@@ -1443,17 +1452,15 @@ def publish_next_clip(
 
             targets = list(meta.get("target_accounts", []))
 
-            if cname in yt_posted_cnames:
+            if yt_posted_clip and cname == yt_posted_clip:
                 meta["posted_to_youtube"] = True
-                meta["youtube_url"] = results["uploads"].get("youtube", "")
+                meta["youtube_url"] = yt_url
                 if "youtube" in targets:
                     targets.remove("youtube")
 
-            if cname in ig_posted_cnames:
+            if cname in ig_posted_clips:
                 meta["posted_to_instagram"] = True
-                for k, url in results["uploads"].items():
-                    if k.startswith("instagram_"):
-                        meta["instagram_url"] = url
+                meta["instagram_url"] = ig_posted_clips[cname]
                 # Remove Instagram target
                 assigned_ig = meta.get("assigned_ig", "ig_1")
                 if assigned_ig in targets:
@@ -1493,8 +1500,12 @@ def publish_next_clip(
         print("[*] Video upload complete. Triggering background runner to generate next clips...")
         trigger_background_clip_generation(config)
     else:
-        print("[*] No eligible publishing slots right now (cooldown/daily cap active).")
-        log_event("INFO", "Publisher", "skip_cycle", {"reason": "cooldown/daily cap active"})
+        if results.get("uploads"):
+            print(f"[-] Upload failures occurred: {results['uploads']}")
+            log_event("ERROR", "Publisher", "upload_failed", {"uploads": results["uploads"]})
+        else:
+            print("[*] No eligible publishing slots right now (cooldown/daily cap active).")
+            log_event("INFO", "Publisher", "skip_cycle", {"reason": "cooldown/daily cap active"})
 
     return results
 
