@@ -33,3 +33,6 @@
 [2026-11-25 15:57:02 UTC] [SUCCESS] [Publisher] publish_next_clip: {"uploads": {"youtube": "https://youtube.com/shorts/YHsPDRYA1FI"}, "clips_used": ["2026-11-19-clix_goes_crazy_on_grand.mp4"], "youtube_publish_at": null}
 [2026-11-25 15:57:02 UTC] [INFO] [StorageGovernor] delete_completed_video: {"deleted": "2026-11-19-clix_goes_crazy_on_grand.mp4"}
 [2026-11-25 18:07:48 UTC] [SUCCESS] [BackupManager] backup_critical_logs: {"backed_up": ["posted_twitch_log.json", "posted_log.json", "clipper_state.json", "config.json"]}
+[2026-11-26 00:06:05 UTC] [SUCCESS] [BackupManager] backup_critical_logs: {"backed_up": ["posted_twitch_log.json", "posted_log.json", "clipper_state.json", "config.json"]}
+[2026-11-26 00:06:05 UTC] [SUCCESS] [AutoPoster] publish_next_post: {"video": "2026-11-26-the_worst_olympic_event_in_h.mp4", "uploads": {"youtube": "https://youtube.com/shorts/i6FOc72Ib0I"}}
+[2026-11-26 00:06:05 UTC] [INFO] [AutoPoster] delete_posted_video: {"video": "output/pipeline/2026-11-26-the_worst_olympic_event_in_h.mp4"}
