@@ -11,6 +11,10 @@ on:
         type: boolean
         default: false
 
+concurrency:
+  group: hyperclip-twitch-pipeline
+  cancel-in-progress: false
+
 jobs:
   check-and-publish:
     runs-on: ubuntu-latest

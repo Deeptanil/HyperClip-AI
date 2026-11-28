@@ -566,8 +566,10 @@ def harvest_clips(config: dict, max_total_new: int = None) -> list:
 
 def _get_today_stats(logs: list) -> dict:
     """Computes today's upload counts and timestamps per destination."""
-    now_ist = datetime.now(IST)
+    now_utc = datetime.now(timezone.utc)
+    now_ist = now_utc.astimezone(IST)
     today_str = now_ist.strftime("%Y-%m-%d")
+    today_utc_str = now_utc.strftime("%Y-%m-%d")
 
     stats = {
         "youtube": {"count": 0, "last": None, "timestamps_utc": []},
@@ -603,9 +605,10 @@ def _get_today_stats(logs: list) -> dict:
                 yt_dt_utc = dt_utc
                 yt_dt_ist = dt_ist
 
-            is_yt_today = yt_dt_ist.strftime("%Y-%m-%d") == today_str
+            is_yt_today = yt_dt_utc.strftime("%Y-%m-%d") == today_utc_str
             if is_yt_today:
                 stats["youtube"]["count"] += 1
+            if (now_utc - yt_dt_utc).total_seconds() <= 48 * 3600:
                 stats["youtube"]["timestamps_utc"].append(yt_dt_utc)
             if stats["youtube"]["last"] is None or yt_dt_ist > stats["youtube"]["last"]:
                 stats["youtube"]["last"] = yt_dt_ist
