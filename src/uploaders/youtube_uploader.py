@@ -40,39 +40,31 @@ def get_optimal_publish_time(
     existing_timestamps: list = None,
     now: datetime = None,
     shorts_per_day: int = 4,
-    min_gap_hours: float = 2.5,
-    max_scheduled_ahead: int = 1,
+    min_gap_hours: float = None,
+    max_scheduled_ahead: int = 0,
     force: bool = False,
 ) -> tuple[bool, str | None, str]:
     """
-    Determines whether a YouTube Short should be published immediately
-    or scheduled for the next optimal peak audience window via publishAt.
-    
-    Decouples YouTube releases from GitHub Actions cron jitter and delays.
-    Peak US/Global English gaming audience windows (UTC):
-      4 posts/day -> 15:00, 17:30, 20:00, 22:30 UTC (10 AM to 6:30 PM EDT)
-      3 posts/day -> 16:30, 19:30, 22:30 UTC
-      2 posts/day -> 16:30, 21:00 UTC
-      
+    Determines whether a YouTube Short should be published directly as public right now.
+    Direct public uploads (no private/publishAt scheduling) maximize Shorts feed discovery.
+
+    Prime US/Global English gaming audience window: 14:30 - 23:30 UTC (9h window).
+    Spacing:
+      >= 4 posts/day -> 2.25h minimum gap (fits 4 direct public Shorts cleanly in 9h)
+      <= 3 posts/day -> 2.50h minimum gap
+
     Returns:
-      (can_post: bool, publish_at_iso_or_none: str | None, reason: str)
+      (can_post: bool, publish_at: None, reason: str)
     """
     if force:
-        return True, None, "Force mode enabled: publishing immediately"
+        return True, None, "Force mode enabled: publishing directly as public"
 
     now = now or datetime.now(timezone.utc)
     if not now.tzinfo:
         now = now.replace(tzinfo=timezone.utc)
 
-    # Define peak slots based on target daily posts
-    if shorts_per_day >= 4:
-        slots = [(15, 0), (17, 30), (20, 0), (22, 30)]
-    elif shorts_per_day == 3:
-        slots = [(16, 30), (19, 30), (22, 30)]
-    elif shorts_per_day == 2:
-        slots = [(16, 30), (21, 0)]
-    else:
-        slots = [(18, 0)]
+    if min_gap_hours is None:
+        min_gap_hours = 2.25 if shorts_per_day >= 4 else 2.5
 
     existing = []
     for ts in (existing_timestamps or []):
@@ -88,38 +80,21 @@ def get_optimal_publish_time(
                 ts = ts.astimezone(timezone.utc)
             existing.append(ts)
 
-    existing_today = [ts for ts in existing if ts.date() == now.date()]
+    # Check if current time is inside prime viewing hours (14:30 - 23:30 UTC)
+    in_peak = (now.hour == 14 and now.minute >= 30) or (15 <= now.hour <= 22) or (now.hour == 23 and now.minute <= 30)
+    if not in_peak:
+        return False, None, "Outside prime viewing window (14:30-23:30 UTC); waiting to publish directly as public"
 
-    # Limit how many future scheduled posts are queued up at once
-    future_scheduled = [ts for ts in existing_today if ts > now]
-    if len(future_scheduled) >= max_scheduled_ahead:
-        sched_time_str = future_scheduled[0].strftime("%H:%M UTC")
-        return False, None, f"Upcoming Short already scheduled ahead for {sched_time_str}"
-
-    # Check if current time is inside prime viewing hours (14:30 - 23:00 UTC)
-    in_peak = (now.hour == 14 and now.minute >= 30) or (15 <= now.hour <= 22) or (now.hour == 23 and now.minute == 0)
-    past_posts = [ts for ts in existing_today if ts <= now]
+    past_posts = [ts for ts in existing if ts <= now]
     last_post = max(past_posts) if past_posts else None
-    cooldown_ok = (last_post is None) or ((now - last_post).total_seconds() >= min_gap_hours * 3600)
+    if last_post is not None:
+        elapsed_sec = (now - last_post).total_seconds()
+        required_sec = min_gap_hours * 3600
+        if elapsed_sec < required_sec:
+            remaining_m = int((required_sec - elapsed_sec) / 60.0) + 1
+            return False, None, f"YouTube spacing cooldown active ({remaining_m}m remaining before next direct public Short)"
 
-    if in_peak and cooldown_ok and not future_scheduled:
-        return True, None, "Peak viewing window active and cooldown satisfied: publishing immediately"
-
-    # Outside peak hours or recent post cooldown active -> Schedule for next open peak slot today
-    for h, m in slots:
-        slot_dt = now.replace(hour=h, minute=m, second=0, microsecond=0)
-        # Must be at least 10 minutes in the future for YouTube API
-        if slot_dt > now + timedelta(minutes=10):
-            conflict = False
-            for ts in existing_today:
-                if abs((slot_dt - ts).total_seconds()) < (min_gap_hours - 0.5) * 3600:
-                    conflict = True
-                    break
-            if not conflict:
-                iso_val = slot_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
-                return True, iso_val, f"Off-peak/cooldown active; scheduled for prime peak slot at {h:02d}:{m:02d} UTC"
-
-    return False, None, "All prime peak slots for today are occupied"
+    return True, None, "Peak viewing window active and cooldown satisfied: publishing directly as public"
 
 def format_shorts_title(raw_title: str, streamer: str = None, hook_prefix: str = None) -> str:
     """
