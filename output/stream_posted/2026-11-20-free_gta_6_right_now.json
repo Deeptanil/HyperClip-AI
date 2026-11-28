@@ -9,13 +9,11 @@
   "title": "CLIX JUST GAVE AWAY GTA LIVE \ud83c\udfae\ud83d\udd25",
   "caption": "During an intense GTA marathon stream, Clix suddenly stopped the gameplay to announce a surprise game giveaway for his chat. Drop a comment if you managed to catch the tweet in time! #Clix #GTA6 #GamingCommunity #Giveaway",
   "hook": "FREE GTA 6 RIGHT NOW \ud83d\udea8",
-  "target_accounts": [
-    "ig_2"
-  ],
+  "target_accounts": [],
   "assigned_ig": "ig_2",
   "post_to_yt": false,
   "post_to_ig": true,
-  "posted_to_instagram": false,
+  "posted_to_instagram": true,
   "posted_to_youtube": false,
   "priority": 4,
   "discarded": false,
@@ -38,5 +36,6 @@
   "bleep_segments": [],
   "target": "Instagram (@loopablez) Only",
   "created_at": "2026-11-19T20:32:48.047303+00:00",
-  "timestamp": "2026-11-19T20:32:48.047333+00:00"
+  "timestamp": "2026-11-19T20:32:48.047333+00:00",
+  "instagram_url": "https://www.instagram.com/reel/DgSqc9gqhJf/"
 }

@@ -10,14 +10,13 @@
   "caption": "Deansocool was just cruising through Vice City when he violently crashed into what appears to be an entirely invisible vehicle out of nowhere. Have you run into any wild GTA VI launch bugs yet? #gtavi #deansocool #gamingmoments #fail",
   "hook": "WHAT DID I EVEN HIT?! \ud83d\ude2d",
   "target_accounts": [
-    "ig_2",
-    "youtube"
+    "ig_2"
   ],
   "assigned_ig": "ig_2",
   "post_to_yt": true,
   "post_to_ig": true,
   "posted_to_instagram": false,
-  "posted_to_youtube": false,
+  "posted_to_youtube": true,
   "priority": 4,
   "discarded": false,
   "smart_edited": true,
@@ -39,5 +38,6 @@
   "bleep_segments": [],
   "target": "Instagram (@loopablez) & YouTube",
   "created_at": "2026-11-20T21:51:47.043296+00:00",
-  "timestamp": "2026-11-20T21:51:47.043312+00:00"
+  "timestamp": "2026-11-20T21:51:47.043312+00:00",
+  "youtube_url": "https://youtube.com/shorts/aPhbmWncnxI"
 }
