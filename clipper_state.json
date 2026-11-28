@@ -485,6 +485,19 @@
     "2942722041": {
       "last_scanned_sec": 17454,
       "clipped_peaks": []
+    },
+    "2943501338": {
+      "last_scanned_sec": 1231,
+      "clipped_peaks": [
+        532
+      ]
+    },
+    "2943293739": {
+      "last_scanned_sec": 15648,
+      "clipped_peaks": [
+        14707,
+        14167
+      ]
     }
   },
   "yt_toggle": false

@@ -10,14 +10,13 @@
   "caption": "Deansocool immediately panicked and blamed chat after completely wiping out his car in Vice City. Would you trust his driving in GTA VI? #GTA6 #Deansocool #Fail #GamingMoments",
   "hook": "HE BLAMED EVERYONE ELSE \ud83d\ude2d",
   "target_accounts": [
-    "ig_2",
-    "youtube"
+    "ig_2"
   ],
   "assigned_ig": "ig_2",
   "post_to_yt": true,
   "post_to_ig": true,
   "posted_to_instagram": false,
-  "posted_to_youtube": false,
+  "posted_to_youtube": true,
   "priority": 4,
   "discarded": false,
   "smart_edited": true,
@@ -44,5 +43,6 @@
   "bleep_segments": [],
   "target": "Instagram (@loopablez) & YouTube",
   "created_at": "2026-11-20T21:55:38.851241+00:00",
-  "timestamp": "2026-11-20T21:55:38.851257+00:00"
+  "timestamp": "2026-11-20T21:55:38.851257+00:00",
+  "youtube_url": "https://youtube.com/shorts/Yr1JcrjFDvY"
 }
