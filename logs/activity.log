@@ -48,3 +48,6 @@
 [2026-11-27 20:12:17 UTC] [SUCCESS] [BackupManager] backup_critical_logs: {"backed_up": ["posted_twitch_log.json", "posted_log.json", "clipper_state.json", "config.json"]}
 [2026-11-27 20:12:17 UTC] [SUCCESS] [AutoPoster] publish_next_post: {"video": "2026-11-27-the_worst_olympic_event_in_h.mp4", "uploads": {"youtube": "https://youtube.com/shorts/7cNXMlv1piU"}}
 [2026-11-27 20:12:17 UTC] [INFO] [AutoPoster] delete_posted_video: {"video": "output/pipeline/2026-11-27-the_worst_olympic_event_in_h.mp4"}
+[2026-11-28 02:54:32 UTC] [SUCCESS] [BackupManager] backup_critical_logs: {"backed_up": ["posted_twitch_log.json", "posted_log.json", "clipper_state.json", "config.json"]}
+[2026-11-28 02:54:32 UTC] [SUCCESS] [AutoPoster] publish_next_post: {"video": "2026-11-28-the_time_thor_had_to_wear_a_.mp4", "uploads": {"youtube": "https://youtube.com/shorts/QtwwPMVa8Co"}}
+[2026-11-28 02:54:32 UTC] [INFO] [AutoPoster] delete_posted_video: {"video": "output/pipeline/2026-11-28-the_time_thor_had_to_wear_a_.mp4"}
