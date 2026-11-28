@@ -33,3 +33,21 @@
 [2026-11-25 15:57:02 UTC] [SUCCESS] [Publisher] publish_next_clip: {"uploads": {"youtube": "https://youtube.com/shorts/YHsPDRYA1FI"}, "clips_used": ["2026-11-19-clix_goes_crazy_on_grand.mp4"], "youtube_publish_at": null}
 [2026-11-25 15:57:02 UTC] [INFO] [StorageGovernor] delete_completed_video: {"deleted": "2026-11-19-clix_goes_crazy_on_grand.mp4"}
 [2026-11-25 18:07:48 UTC] [SUCCESS] [BackupManager] backup_critical_logs: {"backed_up": ["posted_twitch_log.json", "posted_log.json", "clipper_state.json", "config.json"]}
+[2026-11-26 00:06:05 UTC] [SUCCESS] [BackupManager] backup_critical_logs: {"backed_up": ["posted_twitch_log.json", "posted_log.json", "clipper_state.json", "config.json"]}
+[2026-11-26 00:06:05 UTC] [SUCCESS] [AutoPoster] publish_next_post: {"video": "2026-11-26-the_worst_olympic_event_in_h.mp4", "uploads": {"youtube": "https://youtube.com/shorts/i6FOc72Ib0I"}}
+[2026-11-26 00:06:05 UTC] [INFO] [AutoPoster] delete_posted_video: {"video": "output/pipeline/2026-11-26-the_worst_olympic_event_in_h.mp4"}
+[2026-11-26 08:51:35 UTC] [SUCCESS] [BackupManager] backup_critical_logs: {"backed_up": ["posted_twitch_log.json", "posted_log.json", "clipper_state.json", "config.json"]}
+[2026-11-26 08:51:35 UTC] [SUCCESS] [AutoPoster] publish_next_post: {"video": "2026-11-26-the_time_thor_had_to_wear_a_.mp4", "uploads": {"youtube": "https://youtube.com/shorts/DBoDJQ56cZM"}}
+[2026-11-26 08:51:35 UTC] [INFO] [AutoPoster] delete_posted_video: {"video": "output/pipeline/2026-11-26-the_time_thor_had_to_wear_a_.mp4"}
+[2026-11-26 18:53:59 UTC] [SUCCESS] [BackupManager] backup_critical_logs: {"backed_up": ["posted_twitch_log.json", "posted_log.json", "clipper_state.json", "config.json"]}
+[2026-11-26 18:53:59 UTC] [SUCCESS] [AutoPoster] publish_next_post: {"video": "2026-11-26-the_worst_olympic_event_in_h.mp4", "uploads": {"youtube": "https://youtube.com/shorts/_8PqpSvZZg4"}}
+[2026-11-26 18:53:59 UTC] [INFO] [AutoPoster] delete_posted_video: {"video": "output/pipeline/2026-11-26-the_worst_olympic_event_in_h.mp4"}
+[2026-11-27 02:05:00 UTC] [SUCCESS] [BackupManager] backup_critical_logs: {"backed_up": ["posted_twitch_log.json", "posted_log.json", "clipper_state.json", "config.json"]}
+[2026-11-27 02:05:00 UTC] [SUCCESS] [AutoPoster] publish_next_post: {"video": "2026-11-27-the_time_thor_had_to_wear_a_.mp4", "uploads": {"youtube": "https://youtube.com/shorts/TqbI-szVVME"}}
+[2026-11-27 02:05:00 UTC] [INFO] [AutoPoster] delete_posted_video: {"video": "output/pipeline/2026-11-27-the_time_thor_had_to_wear_a_.mp4"}
+[2026-11-27 20:12:17 UTC] [SUCCESS] [BackupManager] backup_critical_logs: {"backed_up": ["posted_twitch_log.json", "posted_log.json", "clipper_state.json", "config.json"]}
+[2026-11-27 20:12:17 UTC] [SUCCESS] [AutoPoster] publish_next_post: {"video": "2026-11-27-the_worst_olympic_event_in_h.mp4", "uploads": {"youtube": "https://youtube.com/shorts/7cNXMlv1piU"}}
+[2026-11-27 20:12:17 UTC] [INFO] [AutoPoster] delete_posted_video: {"video": "output/pipeline/2026-11-27-the_worst_olympic_event_in_h.mp4"}
+[2026-11-28 02:54:32 UTC] [SUCCESS] [BackupManager] backup_critical_logs: {"backed_up": ["posted_twitch_log.json", "posted_log.json", "clipper_state.json", "config.json"]}
+[2026-11-28 02:54:32 UTC] [SUCCESS] [AutoPoster] publish_next_post: {"video": "2026-11-28-the_time_thor_had_to_wear_a_.mp4", "uploads": {"youtube": "https://youtube.com/shorts/QtwwPMVa8Co"}}
+[2026-11-28 02:54:32 UTC] [INFO] [AutoPoster] delete_posted_video: {"video": "output/pipeline/2026-11-28-the_time_thor_had_to_wear_a_.mp4"}
