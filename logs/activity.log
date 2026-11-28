@@ -51,3 +51,7 @@
 [2026-11-28 02:54:32 UTC] [SUCCESS] [BackupManager] backup_critical_logs: {"backed_up": ["posted_twitch_log.json", "posted_log.json", "clipper_state.json", "config.json"]}
 [2026-11-28 02:54:32 UTC] [SUCCESS] [AutoPoster] publish_next_post: {"video": "2026-11-28-the_time_thor_had_to_wear_a_.mp4", "uploads": {"youtube": "https://youtube.com/shorts/QtwwPMVa8Co"}}
 [2026-11-28 02:54:32 UTC] [INFO] [AutoPoster] delete_posted_video: {"video": "output/pipeline/2026-11-28-the_time_thor_had_to_wear_a_.mp4"}
+[2026-11-28 16:17:13 UTC] [SUCCESS] [BackupManager] backup_critical_logs: {"backed_up": ["posted_twitch_log.json", "posted_log.json", "clipper_state.json", "config.json"]}
+[2026-11-28 16:17:13 UTC] [SUCCESS] [Publisher] publish_next_clip: {"uploads": {"youtube": "https://youtube.com/shorts/aPhbmWncnxI", "instagram_2_regular": "https://www.instagram.com/reel/DgSqc9gqhJf/"}, "clips_used": ["2026-11-21-what_did_i_even_hit.mp4", "2026-11-20-free_gta_6_right_now.mp4"], "youtube_publish_at": null}
+[2026-11-28 16:17:13 UTC] [INFO] [StorageGovernor] retain_multi_target_video: {"clip": "2026-11-21-what_did_i_even_hit.mp4", "remaining_targets": ["ig_2"]}
+[2026-11-28 16:17:13 UTC] [INFO] [StorageGovernor] delete_completed_video: {"deleted": "2026-11-20-free_gta_6_right_now.mp4"}
