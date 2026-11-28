@@ -337,6 +337,8 @@ def harvest_clips(config: dict, max_total_new: int = None) -> list:
                 continue
 
             raw_clip = os.path.join(TEMP_DIR, f"raw_{vod_id}_{peak}.mp4")
+            orig_raw_clip = raw_clip
+            smart_raw = os.path.join(TEMP_DIR, f"smart_raw_{vod_id}_{peak}.mp4")
             ass_path = os.path.join(TEMP_DIR, f"subs_{vod_id}_{peak}.ass")
             banner_path = os.path.join(TEMP_DIR, f"banner_{vod_id}_{peak}.png")
             date_str = datetime.now(IST).strftime("%Y-%m-%d")
@@ -354,7 +356,6 @@ def harvest_clips(config: dict, max_total_new: int = None) -> list:
                 smart_cfg = config.get("smart_editing", {})
                 fast_forward_segments = []
                 if smart_cfg.get("enabled", True):
-                    smart_raw = os.path.join(TEMP_DIR, f"smart_raw_{vod_id}_{peak}.mp4")
                     db_val = smart_cfg.get("silence_threshold_db")
                     silence_db = float(db_val) if db_val is not None and db_val != "auto" else None
                     raw_clip, fast_forward_segments = fast_forward_dead_air(
@@ -518,7 +519,13 @@ def harvest_clips(config: dict, max_total_new: int = None) -> list:
                     "post_to_ig": True,
                     "posted_to_instagram": False,
                     "posted_to_youtube": False,
-                    "priority": compute_clip_priority({"game": target.get("game", ""), "title": clip_title, "caption": clip_caption}, config),
+                    "priority": compute_clip_priority({
+                        "game": target.get("game", ""),
+                        "title": clip_title,
+                        "caption": clip_caption,
+                        "virality_score": float(eval_res.get("virality_score", 7.5)),
+                        "z_score": m["z_score"],
+                    }, config),
                     "discarded": False,
                     "smart_edited": bool(fast_forward_segments),
                     "fast_forward_segments": fast_forward_segments,
@@ -537,8 +544,8 @@ def harvest_clips(config: dict, max_total_new: int = None) -> list:
             except Exception as e:
                 print(f"[-] Failed processing clip {vod_id}@{peak}s: {e}")
             finally:
-                for tmp in (raw_clip, ass_path, banner_path):
-                    if os.path.exists(tmp):
+                for tmp in (orig_raw_clip, smart_raw, raw_clip, ass_path, banner_path):
+                    if tmp and os.path.exists(tmp):
                         try:
                             os.remove(tmp)
                         except Exception:
@@ -1022,7 +1029,7 @@ def trigger_background_clip_generation(config: dict):
 
     token = os.getenv("GITHUB_TOKEN") or os.getenv("GH_TOKEN")
     repo = os.getenv("GITHUB_REPOSITORY")
-    if token and repo:
+    if token and repo and os.getenv("GITHUB_ACTIONS") != "true":
         try:
             import urllib.request
             url = f"https://api.github.com/repos/{repo}/actions/workflows/twitch_clipper.yml/dispatches"
