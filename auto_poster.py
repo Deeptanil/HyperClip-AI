@@ -267,6 +267,7 @@ async def run_pipeline(platforms=None, force=False):
                 return publish_next_clip(cfg, platforms=platforms, force=force)
         except Exception as e:
             print(f"[!] Error during hype publisher handoff: {e}")
+            return {"status": "error", "error": str(e)}
 
     ensure_directories()
     prune_posted_archive(days=7)

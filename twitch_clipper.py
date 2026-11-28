@@ -961,17 +961,18 @@ def check_any_platform_can_post(
             cooldown_reasons.append("YouTube paused (0 Shorts/day configured)")
         else:
             yt_count = stats["youtube"]["count"]
-            last_yt = stats["youtube"]["last"]
-            yt_gap_m = get_account_interval_minutes(yt_posts_day)
-
             if yt_count >= yt_cap:
                 cooldown_reasons.append(f"YouTube hit daily cap ({yt_count}/{yt_cap})")
-            elif last_yt and ((now_ist - last_yt).total_seconds() / 60.0) < yt_gap_m:
-                elapsed_m = (now_ist - last_yt).total_seconds() / 60.0
-                remaining_m = int(yt_gap_m - elapsed_m)
-                cooldown_reasons.append(f"YouTube cooldown active ({elapsed_m/60.0:.1f}h/{yt_gap_m/60.0:.1f}h, {remaining_m}m remaining)")
             else:
-                eligible.append("YouTube Shorts")
+                yt_ok, _, yt_sched_reason = get_optimal_publish_time(
+                    stats["youtube"].get("timestamps_utc", []),
+                    shorts_per_day=yt_posts_day,
+                    force=force,
+                )
+                if yt_ok:
+                    eligible.append("YouTube Shorts")
+                else:
+                    cooldown_reasons.append(f"YouTube: {yt_sched_reason}")
 
     # 2. Instagram accounts check
     if "instagram" in platforms:
@@ -1206,7 +1207,9 @@ def publish_next_clip(
                     published_history["youtube"].add(f"{base}.mp4")
                     published_history["youtube"].add(base)
                 if pm.get("posted_to_instagram"):
-                    assigned = pm.get("assigned_ig", "ig_1")
+                    assigned = pm.get("assigned_ig") or "ig_1"
+                    if assigned not in published_history:
+                        assigned = "ig_1"
                     published_history[assigned].add(f"{base}.mp4")
                     published_history[assigned].add(base)
 
