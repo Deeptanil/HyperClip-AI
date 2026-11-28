@@ -97,7 +97,7 @@ def get_optimal_publish_time(
         return False, None, f"Upcoming Short already scheduled ahead for {sched_time_str}"
 
     # Check if current time is inside prime viewing hours (14:30 - 23:00 UTC)
-    in_peak = (14 <= now.hour <= 22) or (now.hour == 14 and now.minute >= 30) or (now.hour == 23 and now.minute == 0)
+    in_peak = (now.hour == 14 and now.minute >= 30) or (15 <= now.hour <= 22) or (now.hour == 23 and now.minute == 0)
     past_posts = [ts for ts in existing_today if ts <= now]
     last_post = max(past_posts) if past_posts else None
     cooldown_ok = (last_post is None) or ((now - last_post).total_seconds() >= min_gap_hours * 3600)
