@@ -129,7 +129,7 @@
     ytPosts: 3,
     hypeMode: false,
     streamYield: 10,
-    maxPipelineCapacity: 50,
+    maxPipelineCapacity: 80,
     clipSpacing: 300,
     minSpikeSigma: 2.8,
     prioritizedCategories: [],
@@ -226,6 +226,15 @@
     const matchedDeprio = deprioCats.find(cat => haystack.includes(cat));
     if (matchedDeprio) {
       return { priority: 2, rank: 4, tier: '2', label: `P2 (${matchedDeprio.toUpperCase()})`, source: 'category' };
+    }
+
+    const virality = parseFloat(clip.virality_score || 0) || 0;
+    const zScore = parseFloat(clip.z_score || 0) || 0;
+    if (virality >= 9.0 || zScore >= 4.5) {
+      return { priority: 5, rank: 1, tier: '5', label: 'P5 (Mega Viral)', source: 'virality' };
+    }
+    if (virality >= 8.2 || zScore >= 3.2) {
+      return { priority: 4, rank: 2, tier: '4', label: 'P4 (High Viral)', source: 'virality' };
     }
     return { priority: 3, rank: 3, tier: '3', label: 'P3 (Default)', source: 'default' };
   }
